@@ -174,7 +174,7 @@
             flex: 0 0 auto; text-align: center; padding: 1.5rem 1.2rem;
             background: var(--bg-glass); backdrop-filter: blur(12px);
             border: 1px solid var(--border-glass); border-radius: var(--radius);
-            min-width: 160px;
+            min-width: 160px; max-width: 210px;
             transition: all 0.3s;
         }
         .pipeline-step:hover { border-color: rgba(34,211,238,0.35); transform: translateY(-6px); box-shadow: var(--glow-cyan); }
@@ -352,13 +352,13 @@
     <div class="fade-in">
         <div class="section-badge">System Architecture</div>
         <h2 class="section-title">End-to-End Pipeline</h2>
-        <p class="section-subtitle">From webcam frame to OS mouse event in under 12ms on CPU.</p>
+        <p class="section-subtitle">From webcam frame to OS mouse event at ~30 FPS on a laptop CPU — no GPU, no video leaves the machine. Two brains, one switch: a trained MLP reads the hand shape; a state machine turns shapes over time into actions.</p>
     </div>
     <div class="pipeline-flow fade-in">
         <div class="pipeline-step">
             <div class="icon">📸</div>
             <div class="step-title">Webcam Feed</div>
-            <div class="step-desc">30 FPS RGB frames via OpenCV</div>
+            <div class="step-desc">30 FPS frames via OpenCV, mirrored</div>
         </div>
         <div class="pipeline-arrow">→</div>
         <div class="pipeline-step">
@@ -370,25 +370,60 @@
         <div class="pipeline-step">
             <div class="icon">📐</div>
             <div class="step-title">Normalization</div>
-            <div class="step-desc">63-D wrist-centered, palm-scaled</div>
+            <div class="step-desc">63-D: wrist at origin, palm length = 1 — same hand near or far</div>
         </div>
         <div class="pipeline-arrow">→</div>
         <div class="pipeline-step">
             <div class="icon">🧠</div>
-            <div class="step-title">MLP Classifier</div>
-            <div class="step-desc">63→128→64→5 gestures</div>
+            <div class="step-title">Pose Classifier</div>
+            <div class="step-desc">MLP 63→128→64→6 poses, 0.1 ms. Rule baseline kept as live fallback (<code>k</code>)</div>
+        </div>
+        <div class="pipeline-arrow">→</div>
+        <div class="pipeline-step">
+            <div class="icon">🗳️</div>
+            <div class="step-title">Vote Smoother</div>
+            <div class="step-desc">Majority of last 5 frames, confidence ≥ 0.75 — one bad frame never clicks</div>
         </div>
         <div class="pipeline-arrow">→</div>
         <div class="pipeline-step">
             <div class="icon">🎯</div>
             <div class="step-title">1€ Filter + FSM</div>
-            <div class="step-desc">Smooth cursor + state logic</div>
+            <div class="step-desc">Tremor-free cursor; pose + time → click, drag, right-click, scroll</div>
         </div>
         <div class="pipeline-arrow">→</div>
         <div class="pipeline-step">
             <div class="icon">🖱️</div>
             <div class="step-title">OS Mouse Event</div>
-            <div class="step-desc">Move, Click, Drag, Scroll</div>
+            <div class="step-desc">PyAutoGUI — any app, any OS</div>
+        </div>
+    </div>
+    <div class="fade-in" style="margin-top:2.5rem;">
+        <div class="section-badge">Learning Loop</div>
+        <p class="section-subtitle">The classifier is trained on real hands, not hand-written thresholds. Recording a new person takes 80 seconds; retraining takes two.</p>
+    </div>
+    <div class="pipeline-flow fade-in">
+        <div class="pipeline-step">
+            <div class="icon">⏺️</div>
+            <div class="step-title">Record</div>
+            <div class="step-desc">6 poses × 10 s per person. A capture guard rejects frames that contradict the label</div>
+        </div>
+        <div class="pipeline-arrow">→</div>
+        <div class="pipeline-step">
+            <div class="icon">📊</div>
+            <div class="step-title">Dataset</div>
+            <div class="step-desc">Raw landmark CSV per person; normalized at train and inference time</div>
+        </div>
+        <div class="pipeline-arrow">→</div>
+        <div class="pipeline-step">
+            <div class="icon">🏋️</div>
+            <div class="step-title">Train</div>
+            <div class="step-desc">±34° tilt + noise augmentation; accuracy reported leave-one-user-out — on hands never seen</div>
+        </div>
+        <div class="pipeline-arrow">→</div>
+        <div class="pipeline-step">
+            <div class="icon">🚀</div>
+            <div class="step-title">Live</div>
+            <div class="step-desc">Model file loads into the demo; <code>k</code> flips rules ↔ MLP on stage</div>
         </div>
     </div>
 </section>
