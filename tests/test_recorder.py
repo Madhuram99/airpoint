@@ -1,7 +1,26 @@
 import csv
 
-from airpoint.recorder import HEADER, Recorder, RecordSession
-from tests.hands import OPEN_PALM
+from airpoint.recorder import HEADER, Recorder, RecordSession, looks_like
+from tests.hands import BY_POSE, FIST, OPEN_PALM, PINCH, THUMB_UP, V_SIGN
+
+
+def test_every_textbook_pose_looks_like_its_own_label():
+    for pose, pts in BY_POSE.items():
+        assert looks_like(pose, pts), pose
+
+
+def test_gross_drift_is_rejected():
+    assert not looks_like("palm", FIST)         # hand closed during a palm capture
+    assert not looks_like("pinch", OPEN_PALM)   # tips apart during a pinch capture
+    assert not looks_like("fist", OPEN_PALM)
+    assert not looks_like("v_sign", FIST)
+    assert not looks_like("thumb_up", OPEN_PALM)
+    assert not looks_like("thumb_down", THUMB_UP)
+
+
+def test_mild_variation_is_accepted():
+    assert looks_like("pinch", FIST)            # relaxed-finger pinch: tips close, rest curled
+    assert looks_like("palm", V_SIGN)           # two fingers up still counts as an open hand
 
 
 def test_recorder_writes_header_once_and_rows_with_63_coords(tmp_path):

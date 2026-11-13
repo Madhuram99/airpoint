@@ -15,6 +15,7 @@ from sklearn.metrics import precision_recall_fscore_support
 from sklearn.neural_network import MLPClassifier
 
 from .features import normalize_63
+from .recorder import looks_like
 
 TILT_MAX_RAD = 0.60   # +/- 34 degrees in-plane
 NOISE_SIGMA = 0.12    # palm units
@@ -22,15 +23,22 @@ AUG_COPIES = 3
 
 
 def load_rows(data_dir):
-    X, y, users = [], [], []
+    """Rows whose geometry contradicts their label (recorded before the capture guard) are skipped."""
+    X, y, users, dropped = [], [], [], 0
     for path in sorted(glob.glob(os.path.join(data_dir, "*.csv"))):
         with open(path, newline="") as f:
             for row in csv.DictReader(f):
-                X.append([float(row[f"{a}{i}"]) for i in range(21) for a in "xyz"])
+                coords = [float(row[f"{a}{i}"]) for i in range(21) for a in "xyz"]
+                if not looks_like(row["pose"], coords):
+                    dropped += 1
+                    continue
+                X.append(coords)
                 y.append(row["pose"])
                 users.append(row["user"])
     if not X:
         raise SystemExit(f"no rows in {data_dir}/*.csv — record first: run_demo.py --record --user <name>")
+    if dropped:
+        print(f"[train] skipped {dropped} rows whose geometry contradicts their label")
     return np.array(X), np.array(y), np.array(users)
 
 

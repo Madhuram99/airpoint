@@ -11,7 +11,7 @@ from .camera import Camera
 from .classifier import PoseClassifier, RuleClassifier, VoteSmoother
 from .filters import OneEuroFilter
 from .fsm import AirPointFSM
-from .recorder import Recorder, RecordSession
+from .recorder import Recorder, RecordSession, looks_like
 from .tracker import HandTracker
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -47,7 +47,7 @@ def main(argv=None):
     recorder = Recorder(os.path.join(ROOT, "data", f"{args.user}.csv"), args.user) if args.user else None
     session = RecordSession() if args.record else None
     camera, tracker = Camera(), HandTracker()
-    last_event, prev_t = "none", time.time()
+    last_event, prev_t, rejected = "none", time.time(), 0
     print(f"[AirPoint] camera {camera.index} | classifier {clf.name} | {KEYS}")
 
     try:
@@ -64,15 +64,20 @@ def main(argv=None):
                 if session.fresh:
                     recorder.drop(pose)
                     session.fresh = False
+                lost = False
                 if session.capturing and pts is not None:
-                    recorder.write(pose, t, hand, pts)
+                    if looks_like(pose, pts):
+                        recorder.write(pose, t, hand, pts)
+                    else:
+                        rejected, lost = rejected + 1, True
                 title = {
                     "idle": f"RECORD {args.user}: SPACE = all poses, 1-6 = one pose",
                     "countdown": f"raise hand, make {pose}   {left:.0f}",
-                    "capturing": f"HOLD {pose}   {left:.0f}s",
+                    "capturing": f"HOLD {pose}   {left:.0f}s" + ("   << SIGN LOST" if lost else ""),
                     "done": "done - q to quit, 1-6 to redo one pose",
                 }[phase]
-                hud.draw_prompt(frame, title, f"tilt, move closer, move away | rows {recorder.count} | {KEYS}")
+                hud.draw_prompt(frame, title,
+                                f"tilt, move closer, move away | kept {recorder.count} | rejected {rejected} | {KEYS}")
             else:
                 if pts is None:
                     label, conf, ratio = smoother.update(None, 0.0), 0.0, 1.0

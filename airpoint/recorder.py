@@ -3,10 +3,33 @@ import os
 
 import numpy as np
 
-from .poses import POSES
+from .features import INDEX_TIP, MIDDLE_MCP, MIDDLE_TIP, RING_TIP, THUMB_TIP, WRIST, to_array
+from .poses import FIST, PALM, PINCH, POSES, THUMB_DOWN, THUMB_UP, V_SIGN
 
 COUNTDOWN_S, CAPTURE_S = 3.0, 10.0
 HEADER = ["user", "pose", "ts", "handedness"] + [f"{a}{i}" for i in range(21) for a in "xyz"]
+
+
+def looks_like(pose, pts):
+    """Loose sanity check: could this frame be `pose` at all? Catches gross drift during a
+    capture (hand closed mid-palm, tips apart mid-pinch). Deliberately not a classifier."""
+    p = to_array(pts)
+    palm = np.linalg.norm(p[MIDDLE_MCP, :2] - p[WRIST, :2]) + 1e-6
+
+    def ext(i):
+        return np.linalg.norm(p[i, :2] - p[WRIST, :2]) / palm
+
+    idx, mid, ring = ext(INDEX_TIP), ext(MIDDLE_TIP), ext(RING_TIP)
+    gap = np.linalg.norm(p[THUMB_TIP, :2] - p[INDEX_TIP, :2]) / palm
+    thumb_above_wrist = p[THUMB_TIP, 1] < p[WRIST, 1]
+    return {
+        PALM: idx > 1.2 and mid > 1.2,
+        PINCH: gap < 0.5,
+        FIST: idx < 1.1 and mid < 1.1,
+        V_SIGN: idx > 1.2 and mid > 1.2 and ring < 1.2,
+        THUMB_UP: thumb_above_wrist and idx < 1.7,
+        THUMB_DOWN: not thumb_above_wrist,
+    }[pose]
 
 
 class Recorder:
