@@ -66,7 +66,7 @@ Expected: `ok`. The pip cache holds every wheel from this morning, so this is fa
 - [x] **Step 4: Git identity and pytest config**
 
 ```bash
-cd ~/Projects/airpoint && git config user.name "Madhuram Rathi" && git config user.email "madhuram@solfoundry.co"
+cd ~/Projects/airpoint && git config user.name "Madhuram Rathi" && git config user.email "madhuramrathi99@gmail.com"
 touch conftest.py
 printf '[pytest]\ntestpaths = tests\n' > pytest.ini
 printf '\nmodels/train_report.json\n' >> .gitignore
