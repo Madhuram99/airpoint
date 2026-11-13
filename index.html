@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AirPoint — Gesture-Based Virtual Mouse | PEC Chandigarh</title>
+    <meta name="description" content="AirPoint: A touchless hand-gesture mouse control system using MediaPipe, 1-Euro Filter, and MLP classification. Major Project, CSE Dept, PEC Chandigarh.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        /* ===== CSS RESET & DESIGN TOKENS ===== */
+        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-card: rgba(17, 24, 39, 0.7);
+            --bg-glass: rgba(30, 41, 59, 0.45);
+            --border-glass: rgba(100, 200, 255, 0.12);
+            --accent-cyan: #22d3ee;
+            --accent-green: #34d399;
+            --accent-blue: #60a5fa;
+            --accent-purple: #a78bfa;
+            --accent-pink: #f472b6;
+            --accent-amber: #fbbf24;
+            --accent-red: #f87171;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --glow-cyan: 0 0 25px rgba(34, 211, 238, 0.3);
+            --glow-green: 0 0 25px rgba(52, 211, 153, 0.3);
+            --radius: 16px;
+            --radius-sm: 10px;
+            --font-body: 'Inter', -apple-system, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: var(--font-body);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.65;
+            overflow-x: hidden;
+        }
+        a { color: var(--accent-cyan); text-decoration: none; }
+
+        /* ===== GLOBAL BACKGROUND GRID ===== */
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background-image:
+                linear-gradient(rgba(34,211,238,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(34,211,238,0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* ===== NAVIGATION ===== */
+        nav {
+            position: fixed; top:0; left:0; right:0; z-index:100;
+            background: rgba(10, 14, 26, 0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-glass);
+            padding: 0 2rem;
+        }
+        .nav-inner {
+            max-width: 1280px; margin: 0 auto;
+            display: flex; align-items: center; justify-content: space-between;
+            height: 64px;
+        }
+        .nav-logo {
+            font-weight: 800; font-size: 1.35rem;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-green));
+            -webkit-background-clip: text; background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+        .nav-logo span { font-weight: 400; opacity: 0.6; font-size: 0.8rem; margin-left: 8px; -webkit-text-fill-color: var(--text-muted); }
+        .nav-links { display: flex; gap: 2rem; list-style: none; }
+        .nav-links a {
+            color: var(--text-secondary); font-size: 0.88rem; font-weight: 500;
+            transition: color 0.3s;
+        }
+        .nav-links a:hover { color: var(--accent-cyan); }
+
+        /* ===== SECTION COMMON ===== */
+        section { padding: 5rem 2rem; max-width: 1280px; margin: 0 auto; }
+        .section-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-family: var(--font-mono); font-size: 0.72rem; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 2px;
+            color: var(--accent-cyan); background: rgba(34,211,238,0.08);
+            border: 1px solid rgba(34,211,238,0.2);
+            padding: 6px 14px; border-radius: 999px;
+            margin-bottom: 1rem;
+        }
+        .section-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-cyan); animation: pulse-dot 2s infinite; }
+        @keyframes pulse-dot { 0%,100%{ opacity: 1; } 50%{ opacity: 0.3; } }
+        .section-title {
+            font-size: 2.6rem; font-weight: 800; letter-spacing: -1px;
+            line-height: 1.15; margin-bottom: 1rem;
+        }
+        .section-subtitle { font-size: 1.1rem; color: var(--text-secondary); max-width: 680px; }
+
+        /* ===== HERO ===== */
+        #hero {
+            min-height: 100vh; display: flex; align-items: center;
+            padding-top: 64px; position: relative;
+        }
+        .hero-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; width: 100%; }
+        .hero-text h1 {
+            font-size: 3.8rem; font-weight: 900; letter-spacing: -2px; line-height: 1.05;
+            margin-bottom: 1.5rem;
+        }
+        .hero-text h1 .gradient {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-green), var(--accent-blue));
+            -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .hero-text p { font-size: 1.15rem; color: var(--text-secondary); margin-bottom: 2rem; max-width: 520px; }
+        .hero-badges { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 2.5rem; }
+        .hero-badge {
+            font-size: 0.78rem; font-weight: 600; padding: 6px 14px;
+            border-radius: 999px; border: 1px solid rgba(255,255,255,0.1);
+            background: var(--bg-glass); backdrop-filter: blur(8px);
+            color: var(--text-secondary);
+        }
+        .hero-badge.active { border-color: rgba(34,211,238,0.3); color: var(--accent-cyan); background: rgba(34,211,238,0.08); }
+        .hero-stats { display: flex; gap: 2.5rem; }
+        .hero-stat .num {
+            font-size: 2.2rem; font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-green));
+            -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .hero-stat .label { font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+
+        /* Hero Visual */
+        .hero-visual { position: relative; display: flex; justify-content: center; align-items: center; }
+        .hero-canvas-container {
+            width: 480px; height: 480px; position: relative;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(34,211,238,0.06), transparent 70%);
+        }
+        #heroCanvas { width: 100%; height: 100%; }
+
+        /* Floating orbs behind hero */
+        .orb {
+            position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.15; animation: float 8s ease-in-out infinite;
+        }
+        .orb-1 { width: 400px; height: 400px; background: var(--accent-cyan); top: -80px; right: -100px; animation-delay: 0s; }
+        .orb-2 { width: 300px; height: 300px; background: var(--accent-purple); bottom: -60px; left: -80px; animation-delay: 3s; }
+        @keyframes float { 0%,100%{ transform: translateY(0); } 50%{ transform: translateY(-30px); } }
+
+        /* ===== GLASS CARD ===== */
+        .glass-card {
+            background: var(--bg-glass);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius);
+            padding: 2rem;
+            transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+        }
+        .glass-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(34,211,238,0.25);
+            box-shadow: var(--glow-cyan);
+        }
+
+        /* ===== ARCHITECTURE SECTION ===== */
+        .pipeline-flow {
+            display: flex; align-items: center; gap: 0; flex-wrap: wrap;
+            margin-top: 3rem; justify-content: center;
+        }
+        .pipeline-step {
+            flex: 0 0 auto; text-align: center; padding: 1.5rem 1.2rem;
+            background: var(--bg-glass); backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glass); border-radius: var(--radius);
+            min-width: 160px;
+            transition: all 0.3s;
+        }
+        .pipeline-step:hover { border-color: rgba(34,211,238,0.35); transform: translateY(-6px); box-shadow: var(--glow-cyan); }
+        .pipeline-step .icon { font-size: 2rem; margin-bottom: 0.6rem; }
+        .pipeline-step .step-title { font-weight: 700; font-size: 0.9rem; margin-bottom: 0.3rem; }
+        .pipeline-step .step-desc { font-size: 0.75rem; color: var(--text-muted); }
+        .pipeline-arrow {
+            font-size: 1.5rem; color: var(--accent-cyan); padding: 0 0.6rem;
+            opacity: 0.5; flex-shrink: 0;
+        }
+
+        /* ===== GESTURES SECTION ===== */
+        .gestures-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1.2rem; margin-top: 3rem; }
+        .gesture-card {
+            text-align: center; padding: 2rem 1rem;
+            cursor: pointer; position: relative; overflow: hidden;
+        }
+        .gesture-card.active { border-color: rgba(34,211,238,0.4); box-shadow: var(--glow-cyan); }
+        .gesture-card .gesture-icon { font-size: 3rem; margin-bottom: 1rem; filter: saturate(1.2); }
+        .gesture-card .gesture-name { font-weight: 700; font-size: 0.95rem; margin-bottom: 0.3rem; }
+        .gesture-card .gesture-action { font-size: 0.78rem; color: var(--accent-cyan); font-family: var(--font-mono); }
+        .gesture-card .gesture-desc { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem; }
+        .gesture-detail-panel {
+            margin-top: 2rem; padding: 2rem;
+            display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;
+        }
+        .gesture-detail-panel canvas { width: 100%; border-radius: var(--radius-sm); background: rgba(0,0,0,0.3); }
+
+        /* ===== FILTER SECTION ===== */
+        .filter-demo-container { margin-top: 3rem; }
+        .filter-canvas-wrap {
+            background: rgba(0,0,0,0.35); border-radius: var(--radius);
+            border: 1px solid var(--border-glass); overflow: hidden;
+        }
+        #filterCanvas { width: 100%; display: block; }
+        .filter-legend {
+            display: flex; gap: 2rem; padding: 1rem 1.5rem;
+            background: var(--bg-glass); border-top: 1px solid var(--border-glass);
+        }
+        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; }
+        .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+        /* ===== FSM SECTION ===== */
+        .fsm-container { margin-top: 3rem; }
+        #fsmCanvas { width: 100%; display: block; border-radius: var(--radius); background: rgba(0,0,0,0.25); border: 1px solid var(--border-glass); }
+        .fsm-controls {
+            display: flex; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap; justify-content: center;
+        }
+        .fsm-btn {
+            padding: 10px 22px; border-radius: 999px; border: 1px solid var(--border-glass);
+            background: var(--bg-glass); color: var(--text-primary); font-family: var(--font-body);
+            font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.3s;
+        }
+        .fsm-btn:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); box-shadow: var(--glow-cyan); }
+        .fsm-btn.active { background: rgba(34,211,238,0.15); border-color: var(--accent-cyan); color: var(--accent-cyan); }
+
+        /* ===== RESULTS SECTION ===== */
+        .results-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-top: 3rem; }
+        .result-card { text-align: center; }
+        .result-card .result-value {
+            font-size: 3rem; font-weight: 900;
+            background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan));
+            -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .result-card .result-label { font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.3rem; }
+        .result-card .result-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem; font-family: var(--font-mono); }
+
+        /* Comparison Table */
+        .comparison-table { width: 100%; margin-top: 2.5rem; border-collapse: collapse; }
+        .comparison-table th, .comparison-table td {
+            padding: 14px 18px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.06);
+            font-size: 0.88rem;
+        }
+        .comparison-table th {
+            font-weight: 600; font-size: 0.75rem; text-transform: uppercase;
+            letter-spacing: 1px; color: var(--text-muted);
+            background: rgba(0,0,0,0.2);
+        }
+        .comparison-table tr:hover td { background: rgba(34,211,238,0.04); }
+        .comparison-table .highlight { color: var(--accent-green); font-weight: 700; }
+        .comparison-table .dimmed { color: var(--text-muted); }
+
+        /* ===== TEAM SECTION ===== */
+        .team-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-top: 3rem; }
+        .team-card { text-align: center; padding: 2rem 1rem; }
+        .team-avatar {
+            width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 1rem;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2rem; font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            color: white;
+        }
+        .team-card .name { font-weight: 700; font-size: 1rem; }
+        .team-card .role { font-size: 0.8rem; color: var(--accent-cyan); font-family: var(--font-mono); margin-top: 0.3rem; }
+
+        /* ===== FOOTER ===== */
+        footer {
+            text-align: center; padding: 3rem 2rem; border-top: 1px solid var(--border-glass);
+            color: var(--text-muted); font-size: 0.85rem; max-width: 1280px; margin: 0 auto;
+        }
+        footer .footer-logo { font-size: 1.2rem; font-weight: 800; color: var(--accent-cyan); margin-bottom: 0.5rem; }
+
+        /* ===== ANIMATIONS ===== */
+        .fade-in {
+            opacity: 0; transform: translateY(30px);
+            transition: opacity 0.7s, transform 0.7s;
+        }
+        .fade-in.visible { opacity: 1; transform: translateY(0); }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 900px) {
+            .hero-grid { grid-template-columns: 1fr; text-align: center; }
+            .hero-text h1 { font-size: 2.5rem; }
+            .hero-visual { display: none; }
+            .gestures-grid { grid-template-columns: repeat(2, 1fr); }
+            .results-grid { grid-template-columns: 1fr; }
+            .team-grid { grid-template-columns: repeat(2, 1fr); }
+            .pipeline-flow { flex-direction: column; }
+            .pipeline-arrow { transform: rotate(90deg); }
+            .gesture-detail-panel { grid-template-columns: 1fr; }
+            .nav-links { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===== NAVIGATION ===== -->
+<nav>
+    <div class="nav-inner">
+        <div class="nav-logo">AirPoint<span>v1.0 — PEC Chandigarh</span></div>
+        <ul class="nav-links">
+            <li><a href="#hero">Home</a></li>
+            <li><a href="#architecture">Architecture</a></li>
+            <li><a href="#gestures">Gestures</a></li>
+            <li><a href="#filter">1€ Filter</a></li>
+            <li><a href="#fsm">FSM</a></li>
+            <li><a href="#results">Results</a></li>
+            <li><a href="#team">Team</a></li>
+        </ul>
+    </div>
+</nav>
+
+<!-- ===== HERO ===== -->
+<section id="hero">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="hero-grid">
+        <div class="hero-text">
+            <div class="section-badge">Major Project — CSE Dept</div>
+            <h1>Control Your Computer<br><span class="gradient">With Gestures</span></h1>
+            <p>AirPoint is a touchless virtual mouse system that uses MediaPipe hand tracking, 1-Euro smoothing, and a finite state machine to map hand gestures to mouse actions in real-time.</p>
+            <div class="hero-badges">
+                <span class="hero-badge active">MediaPipe Hands</span>
+                <span class="hero-badge active">1-Euro Filter</span>
+                <span class="hero-badge">63-D Landmarks</span>
+                <span class="hero-badge">MLP Classifier</span>
+                <span class="hero-badge">ISO 9241-411</span>
+            </div>
+            <div class="hero-stats">
+                <div class="hero-stat"><div class="num" id="stat-acc">0%</div><div class="label">MLP Accuracy</div></div>
+                <div class="hero-stat"><div class="num" id="stat-jitter">0%</div><div class="label">Jitter Reduction</div></div>
+                <div class="hero-stat"><div class="num" id="stat-latency">0ms</div><div class="label">Inference Latency</div></div>
+            </div>
+        </div>
+        <div class="hero-visual">
+            <div class="hero-canvas-container">
+                <canvas id="heroCanvas" width="480" height="480"></canvas>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== ARCHITECTURE ===== -->
+<section id="architecture">
+    <div class="fade-in">
+        <div class="section-badge">System Architecture</div>
+        <h2 class="section-title">End-to-End Pipeline</h2>
+        <p class="section-subtitle">From webcam frame to OS mouse event in under 12ms on CPU.</p>
+    </div>
+    <div class="pipeline-flow fade-in">
+        <div class="pipeline-step">
+            <div class="icon">📸</div>
+            <div class="step-title">Webcam Feed</div>
+            <div class="step-desc">30 FPS RGB frames via OpenCV</div>
+        </div>
+        <div class="pipeline-arrow">→</div>
+        <div class="pipeline-step">
+            <div class="icon">🤚</div>
+            <div class="step-title">MediaPipe Hands</div>
+            <div class="step-desc">21 3D landmarks per frame</div>
+        </div>
+        <div class="pipeline-arrow">→</div>
+        <div class="pipeline-step">
+            <div class="icon">📐</div>
+            <div class="step-title">Normalization</div>
+            <div class="step-desc">63-D wrist-centered, palm-scaled</div>
+        </div>
+        <div class="pipeline-arrow">→</div>
+        <div class="pipeline-step">
+            <div class="icon">🧠</div>
+            <div class="step-title">MLP Classifier</div>
+            <div class="step-desc">63→128→64→5 gestures</div>
+        </div>
+        <div class="pipeline-arrow">→</div>
+        <div class="pipeline-step">
+            <div class="icon">🎯</div>
+            <div class="step-title">1€ Filter + FSM</div>
+            <div class="step-desc">Smooth cursor + state logic</div>
+        </div>
+        <div class="pipeline-arrow">→</div>
+        <div class="pipeline-step">
+            <div class="icon">🖱️</div>
+            <div class="step-title">OS Mouse Event</div>
+            <div class="step-desc">Move, Click, Drag, Scroll</div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== GESTURES ===== -->
+<section id="gestures">
+    <div class="fade-in">
+        <div class="section-badge">Gesture Recognition</div>
+        <h2 class="section-title">5 Accessibility Gestures</h2>
+        <p class="section-subtitle">Each gesture maps to a distinct mouse action via scale-free geometric ratios and a trained MLP network.</p>
+    </div>
+    <div class="gestures-grid fade-in">
+        <div class="gesture-card glass-card active" data-gesture="0" onclick="selectGesture(0)">
+            <div class="gesture-icon">🖐️</div>
+            <div class="gesture-name">Open Palm</div>
+            <div class="gesture-action">MOVE CURSOR</div>
+            <div class="gesture-desc">All fingers extended</div>
+        </div>
+        <div class="gesture-card glass-card" data-gesture="1" onclick="selectGesture(1)">
+            <div class="gesture-icon">🤏</div>
+            <div class="gesture-name">Pinch</div>
+            <div class="gesture-action">LEFT CLICK</div>
+            <div class="gesture-desc">Thumb + Index touch</div>
+        </div>
+        <div class="gesture-card glass-card" data-gesture="2" onclick="selectGesture(2)">
+            <div class="gesture-icon">✊</div>
+            <div class="gesture-name">Fist</div>
+            <div class="gesture-action">ALT CLICK</div>
+            <div class="gesture-desc">All fingers curled</div>
+        </div>
+        <div class="gesture-card glass-card" data-gesture="3" onclick="selectGesture(3)">
+            <div class="gesture-icon">✌️</div>
+            <div class="gesture-name">V-Sign</div>
+            <div class="gesture-action">RIGHT CLICK</div>
+            <div class="gesture-desc">Index + Middle extended</div>
+        </div>
+        <div class="gesture-card glass-card" data-gesture="4" onclick="selectGesture(4)">
+            <div class="gesture-icon">👍</div>
+            <div class="gesture-name">Thumbs Up</div>
+            <div class="gesture-action">SCROLL</div>
+            <div class="gesture-desc">Thumb extended only</div>
+        </div>
+    </div>
+
+    <!-- Interactive Hand Landmark Canvas -->
+    <div class="gesture-detail-panel glass-card fade-in" id="gestureDetailPanel">
+        <div>
+            <canvas id="gestureCanvas" width="400" height="400"></canvas>
+        </div>
+        <div>
+            <h3 style="font-size:1.2rem; margin-bottom:1rem;">Landmark Analysis</h3>
+            <div id="gestureInfo" style="font-size:0.88rem; color:var(--text-secondary); line-height:2;">
+                <div>Gesture: <strong style="color:var(--accent-cyan)">Open Palm (Move)</strong></div>
+                <div>Pinch Ratio: <span style="color:var(--accent-green); font-family:var(--font-mono)">0.85</span></div>
+                <div>Index Extension: <span style="font-family:var(--font-mono)">1.82</span></div>
+                <div>Middle Extension: <span style="font-family:var(--font-mono)">1.91</span></div>
+                <div>Ring Extension: <span style="font-family:var(--font-mono)">1.74</span></div>
+                <div>Pinky Extension: <span style="font-family:var(--font-mono)">1.58</span></div>
+                <div>Classification: <span style="color:var(--accent-green)">Rule ✓ | MLP ✓</span></div>
+            </div>
+            <div style="margin-top:1.5rem; padding:1rem; background:rgba(0,0,0,0.3); border-radius:var(--radius-sm); font-family:var(--font-mono); font-size:0.75rem; color:var(--text-muted);">
+                <div style="color:var(--accent-cyan); margin-bottom:0.5rem;">// Scale-free pinch formula (Slide 9)</div>
+                <div>pinch_ratio = dist(THUMB_TIP, INDEX_TIP) / palm_size</div>
+                <div style="margin-top:4px;">palm_size = dist(WRIST, MIDDLE_MCP)</div>
+                <div style="margin-top:8px; color:var(--accent-green);">// Hysteresis thresholds</div>
+                <div>enter_threshold = 0.28</div>
+                <div>exit_threshold  = 0.36</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== 1-EURO FILTER ===== -->
+<section id="filter">
+    <div class="fade-in">
+        <div class="section-badge">Signal Processing</div>
+        <h2 class="section-title">1-Euro Filter Visualization</h2>
+        <p class="section-subtitle">Casiez et al. (CHI 2012) — Adaptive low-pass filter that eliminates tremor at rest while preserving fast movement fidelity.</p>
+    </div>
+    <div class="filter-demo-container fade-in">
+        <div class="filter-canvas-wrap">
+            <canvas id="filterCanvas" width="1200" height="350"></canvas>
+            <div class="filter-legend">
+                <div class="legend-item"><div class="legend-dot" style="background:var(--accent-red)"></div>Raw Landmarks (Noisy)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:var(--accent-amber)"></div>Fixed Low-Pass (Laggy)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:var(--accent-green)"></div>1-Euro Filter (Ours)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:rgba(255,255,255,0.2)"></div>Ground Truth</div>
+            </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:1.2rem; margin-top:1.5rem;">
+            <div class="glass-card" style="text-align:center;">
+                <div style="font-size:2rem; font-weight:800; color:var(--accent-red);" id="res-raw-jitter">±9.05px</div>
+                <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.3rem;">Raw Jitter at Rest</div>
+            </div>
+            <div class="glass-card" style="text-align:center;">
+                <div style="font-size:2rem; font-weight:800; color:var(--accent-green);" id="res-euro-jitter">±2.16px</div>
+                <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.3rem;">1-Euro Filtered Jitter</div>
+            </div>
+            <div class="glass-card" style="text-align:center;">
+                <div style="font-size:2rem; font-weight:800; color:var(--accent-cyan);" id="res-jitter-red">-76.2%</div>
+                <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.3rem;">Jitter Reduction</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== FSM ===== -->
+<section id="fsm">
+    <div class="fade-in">
+        <div class="section-badge">State Machine</div>
+        <h2 class="section-title">Finite State Machine</h2>
+        <p class="section-subtitle">Click the buttons below to simulate gesture transitions through the AirPoint FSM from Slide 6.</p>
+    </div>
+    <div class="fsm-container fade-in">
+        <canvas id="fsmCanvas" width="1200" height="420"></canvas>
+        <div class="fsm-controls">
+            <button class="fsm-btn" onclick="fsmTransition('hand_detected')">🖐️ Hand Detected</button>
+            <button class="fsm-btn" onclick="fsmTransition('pinch_enter')">🤏 Pinch (Enter)</button>
+            <button class="fsm-btn" onclick="fsmTransition('pinch_release_short')">⚡ Quick Release</button>
+            <button class="fsm-btn" onclick="fsmTransition('hold_500ms')">⏱️ Hold > 500ms</button>
+            <button class="fsm-btn" onclick="fsmTransition('pinch_release_long')">📦 Release Drag</button>
+            <button class="fsm-btn" onclick="fsmTransition('thumb_scroll')">👍 Thumb Scroll</button>
+            <button class="fsm-btn" onclick="fsmTransition('reset')">🔄 Reset</button>
+        </div>
+        <div id="fsmEventLog" style="margin-top:1rem; padding:1rem; background:rgba(0,0,0,0.3); border-radius:var(--radius-sm); font-family:var(--font-mono); font-size:0.8rem; color:var(--accent-green); max-height:120px; overflow-y:auto;">
+            > FSM initialized in RESTING state
+        </div>
+    </div>
+</section>
+
+<!-- ===== RESULTS ===== -->
+<section id="results">
+    <div class="fade-in">
+        <div class="section-badge">Benchmarks</div>
+        <h2 class="section-title">Experiment Results</h2>
+        <p class="section-subtitle">Performance benchmarks from our HaGRID + Local webcam dataset across all evaluation metrics.</p>
+    </div>
+    <div class="results-grid fade-in">
+        <div class="result-card glass-card">
+            <div class="result-value" id="res-mlp-acc">99.9%</div>
+            <div class="result-label">MLP Classifier Accuracy</div>
+            <div class="result-sub" id="res-mlp-sub">63→128→64→5 | Held-out hands | Rules: 85.8%</div>
+        </div>
+        <div class="result-card glass-card">
+            <div class="result-value" id="res-tp">2.58</div>
+            <div class="result-label">Fitts's Law Throughput (bits/s)</div>
+            <div class="result-sub" id="res-tp-sub">ISO 9241-411 | +83.5% vs Raw</div>
+        </div>
+        <div class="result-card glass-card">
+            <div class="result-value" id="res-latency">&lt;1ms</div>
+            <div class="result-label">CPU Inference Latency</div>
+            <div class="result-sub">Per-frame | No GPU Required</div>
+        </div>
+    </div>
+
+    <div class="fade-in" style="margin-top:3rem;">
+        <h3 style="font-size:1.2rem; margin-bottom:1rem;">Classifier Comparison — Rule Baseline vs. MLP</h3>
+        <div style="overflow-x:auto;">
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Gesture</th>
+                        <th>Rule Baseline Accuracy</th>
+                        <th>MLP Accuracy</th>
+                        <th>MLP Precision</th>
+                        <th>MLP Recall</th>
+                        <th>MLP F1-Score</th>
+                    </tr>
+                </thead>
+                <tbody id="res-class-body">
+                    <tr>
+                        <td>Move (Open Palm)</td>
+                        <td class="dimmed">88.3%</td>
+                        <td class="highlight">97.2%</td>
+                        <td>0.965</td>
+                        <td>0.978</td>
+                        <td>0.972</td>
+                    </tr>
+                    <tr>
+                        <td>Click (Pinch)</td>
+                        <td class="dimmed">82.1%</td>
+                        <td class="highlight">95.8%</td>
+                        <td>0.961</td>
+                        <td>0.955</td>
+                        <td>0.958</td>
+                    </tr>
+                    <tr>
+                        <td>Alt Click (Fist)</td>
+                        <td class="dimmed">86.7%</td>
+                        <td class="highlight">96.5%</td>
+                        <td>0.958</td>
+                        <td>0.971</td>
+                        <td>0.964</td>
+                    </tr>
+                    <tr>
+                        <td>Right Click (V-Sign)</td>
+                        <td class="dimmed">84.4%</td>
+                        <td class="highlight">95.3%</td>
+                        <td>0.947</td>
+                        <td>0.959</td>
+                        <td>0.953</td>
+                    </tr>
+                    <tr>
+                        <td>Scroll (Thumb)</td>
+                        <td class="dimmed">83.6%</td>
+                        <td class="highlight">97.1%</td>
+                        <td>0.972</td>
+                        <td>0.969</td>
+                        <td>0.971</td>
+                    </tr>
+                    <tr style="font-weight:700; border-top:2px solid rgba(255,255,255,0.1);">
+                        <td>Overall (Weighted Avg)</td>
+                        <td class="dimmed">85.2%</td>
+                        <td class="highlight">96.4%</td>
+                        <td class="highlight">0.961</td>
+                        <td class="highlight">0.966</td>
+                        <td class="highlight">0.964</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="fade-in" style="margin-top:3rem;">
+        <h3 style="font-size:1.2rem; margin-bottom:1rem;">Fitts's Law Throughput Analysis</h3>
+        <div style="overflow-x:auto;">
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Distance D (px)</th>
+                        <th>Width W (px)</th>
+                        <th>ID (bits)</th>
+                        <th>Raw MT (s)</th>
+                        <th>AirPoint MT (s)</th>
+                        <th>Raw TP (bits/s)</th>
+                        <th>AirPoint TP (bits/s)</th>
+                    </tr>
+                </thead>
+                <tbody id="res-fitts-body">
+                    <tr><td>240</td><td>80</td><td>2.00</td><td>1.45</td><td class="highlight">0.78</td><td>1.38</td><td class="highlight">2.56</td></tr>
+                    <tr><td>480</td><td>60</td><td>3.17</td><td>2.15</td><td class="highlight">1.18</td><td>1.48</td><td class="highlight">2.69</td></tr>
+                    <tr><td>600</td><td>40</td><td>4.00</td><td>2.94</td><td class="highlight">1.61</td><td>1.36</td><td class="highlight">2.48</td></tr>
+                    <tr style="font-weight:700; border-top:2px solid rgba(255,255,255,0.1);">
+                        <td colspan="5">Mean Throughput</td>
+                        <td class="dimmed">1.40 bits/s</td>
+                        <td class="highlight">2.58 bits/s (+83.5%)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<!-- ===== TEAM ===== -->
+<section id="team">
+    <div class="fade-in">
+        <div class="section-badge">Our Team</div>
+        <h2 class="section-title">Project Team</h2>
+        <p class="section-subtitle">Department of Computer Science & Engineering, PEC Chandigarh. Mentor: Mrs. Rupali</p>
+    </div>
+    <div class="team-grid fade-in">
+        <div class="team-card glass-card">
+            <div class="team-avatar">MR</div>
+            <div class="name">Madhuram Rathi</div>
+            <div class="role">Developer</div>
+        </div>
+        <div class="team-card glass-card">
+            <div class="team-avatar" style="background:linear-gradient(135deg, var(--accent-green), var(--accent-blue))">IG</div>
+            <div class="name">Ishan Gupta</div>
+            <div class="role">Developer</div>
+        </div>
+        <div class="team-card glass-card">
+            <div class="team-avatar" style="background:linear-gradient(135deg, var(--accent-purple), var(--accent-pink))">DS</div>
+            <div class="name">Dakshmeet Singh</div>
+            <div class="role">Developer</div>
+        </div>
+        <div class="team-card glass-card">
+            <div class="team-avatar" style="background:linear-gradient(135deg, var(--accent-amber), var(--accent-red))">BK</div>
+            <div class="name">Bhuvi Kansal</div>
+            <div class="role">Developer</div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer>
+    <div class="footer-logo">AirPoint</div>
+    <div>Major Project — CSE Department, PEC Chandigarh — October 2026</div>
+    <div style="margin-top:0.5rem;">Mentor: Mrs. Rupali | MediaPipe Hands • 1-Euro Filter • MLP Classifier • ISO 9241-411</div>
+</footer>
+
+<!-- ===== JAVASCRIPT ===== -->
+<script src="results.js"></script>
+<script>
+// ============================================================
+// 0. LIVE EXPERIMENT RESULTS (written by the benchmark suite)
+// ============================================================
+const R = window.AIRPOINT_RESULTS || null;
+const HERO = { acc: 99.9, jitter: 76.2, latency: 0.06 };
+if (R) {
+    const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+    const c = R.classifier, f = R.filter, ft = R.fitts;
+    if (c) {
+        HERO.acc = +c.mlp_acc.toFixed(1);
+        HERO.latency = +c.inference_ms.toFixed(2);
+        set('res-mlp-acc', c.mlp_acc.toFixed(1) + '%');
+        set('res-mlp-sub', `63→128→64→5 | Held-out hands | Rules: ${c.rule_acc.toFixed(1)}%`);
+        set('res-latency', c.inference_ms < 1 ? `${c.inference_ms.toFixed(2)}ms` : `${c.inference_ms.toFixed(1)}ms`);
+        const rows = c.per_class.map(g => `<tr><td>${g.name.replace(/^\d+: /, '')}</td>` +
+            `<td class="dimmed">${g.rule_acc.toFixed(1)}%</td><td class="highlight">${g.mlp_acc.toFixed(1)}%</td>` +
+            `<td>${g.precision.toFixed(3)}</td><td>${g.recall.toFixed(3)}</td><td>${g.f1.toFixed(3)}</td></tr>`);
+        rows.push(`<tr style="font-weight:700; border-top:2px solid rgba(255,255,255,0.1);"><td>Overall (Weighted Avg)</td>` +
+            `<td class="dimmed">${c.rule_acc.toFixed(1)}%</td><td class="highlight">${c.mlp_acc.toFixed(1)}%</td>` +
+            `<td class="highlight">${c.weighted.precision.toFixed(3)}</td><td class="highlight">${c.weighted.recall.toFixed(3)}</td>` +
+            `<td class="highlight">${c.weighted.f1.toFixed(3)}</td></tr>`);
+        document.getElementById('res-class-body').innerHTML = rows.join('');
+    }
+    if (f) {
+        HERO.jitter = +f.jitter_reduction_pct.toFixed(1);
+        set('res-raw-jitter', `±${f.raw_jitter_px.toFixed(2)}px`);
+        set('res-euro-jitter', `±${f.euro_jitter_px.toFixed(2)}px`);
+        set('res-jitter-red', `-${f.jitter_reduction_pct.toFixed(1)}%`);
+    }
+    if (ft) {
+        set('res-tp', ft.tp_airpoint.toFixed(2));
+        set('res-tp-sub', `ISO 9241-411 | +${ft.tp_gain_pct.toFixed(1)}% vs Raw`);
+        const rows = ft.trials.map(t => `<tr><td>${t.D}</td><td>${t.W}</td><td>${t.ID.toFixed(2)}</td>` +
+            `<td>${t.mt_raw.toFixed(2)}</td><td class="highlight">${t.mt_airpoint.toFixed(2)}</td>` +
+            `<td>${t.tp_raw.toFixed(2)}</td><td class="highlight">${t.tp_airpoint.toFixed(2)}</td></tr>`);
+        rows.push(`<tr style="font-weight:700; border-top:2px solid rgba(255,255,255,0.1);"><td colspan="5">Mean Throughput</td>` +
+            `<td class="dimmed">${ft.tp_raw.toFixed(2)} bits/s</td><td class="highlight">${ft.tp_airpoint.toFixed(2)} bits/s (+${ft.tp_gain_pct.toFixed(1)}%)</td></tr>`);
+        document.getElementById('res-fitts-body').innerHTML = rows.join('');
+    }
+}
+</script>
+<script>
+// ============================================================
+// 1. ANIMATED HERO HAND SKELETON
+// ============================================================
+const heroCanvas = document.getElementById('heroCanvas');
+const heroCtx = heroCanvas.getContext('2d');
+
+// 21 MediaPipe landmark positions for an open palm (normalized to canvas)
+const HAND_CONNECTIONS = [
+    [0,1],[1,2],[2,3],[3,4],       // Thumb
+    [0,5],[5,6],[6,7],[7,8],       // Index
+    [0,9],[9,10],[10,11],[11,12],  // Middle
+    [0,13],[13,14],[14,15],[15,16],// Ring
+    [0,17],[17,18],[18,19],[19,20],// Pinky
+    [5,9],[9,13],[13,17]           // Palm cross
+];
+
+const gestureLandmarks = {
+    // Open palm
+    0: [
+        [240,380],[215,340],[195,295],[178,255],[160,220],
+        [200,210],[188,160],[180,125],[174,95],
+        [240,200],[235,145],[232,105],[230,72],
+        [278,210],[280,155],[282,118],[283,88],
+        [312,230],[318,185],[322,152],[325,125]
+    ],
+    // Pinch (thumb+index touch)
+    1: [
+        [240,380],[215,340],[195,295],[185,260],[195,235],
+        [200,210],[195,185],[198,215],[195,235],
+        [240,200],[235,145],[232,105],[230,72],
+        [278,210],[280,155],[282,118],[283,88],
+        [312,230],[318,185],[322,152],[325,125]
+    ],
+    // Fist
+    2: [
+        [240,380],[215,340],[195,310],[205,290],[225,285],
+        [200,250],[195,225],[210,240],[225,255],
+        [240,245],[240,215],[248,235],[252,255],
+        [278,250],[282,225],[275,240],[268,258],
+        [312,265],[315,240],[308,255],[300,270]
+    ],
+    // V-Sign
+    3: [
+        [240,380],[215,340],[195,310],[205,290],[225,285],
+        [200,210],[188,160],[180,125],[174,95],
+        [240,200],[235,145],[232,105],[230,72],
+        [278,250],[282,225],[275,240],[268,258],
+        [312,265],[315,240],[308,255],[300,270]
+    ],
+    // Thumbs up
+    4: [
+        [240,380],[215,340],[195,280],[178,235],[160,195],
+        [200,260],[195,245],[210,255],[222,268],
+        [240,255],[240,238],[248,250],[255,262],
+        [278,260],[282,245],[275,255],[268,268],
+        [312,275],[315,258],[308,268],[300,280]
+    ]
+};
+
+let currentGesture = 0;
+let targetLandmarks = gestureLandmarks[0].map(p => [...p]);
+let animatedLandmarks = gestureLandmarks[0].map(p => [...p]);
+let heroPhase = 0;
+
+function drawHand(ctx, landmarks, w, h, glow = true) {
+    // Draw connections
+    ctx.lineWidth = 2;
+    HAND_CONNECTIONS.forEach(([a, b]) => {
+        const [x1, y1] = landmarks[a];
+        const [x2, y2] = landmarks[b];
+        const grad = ctx.createLinearGradient(x1, y1, x2, y2);
+        grad.addColorStop(0, 'rgba(34, 211, 238, 0.6)');
+        grad.addColorStop(1, 'rgba(52, 211, 153, 0.6)');
+        ctx.strokeStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+    });
+
+    // Draw landmarks
+    landmarks.forEach(([x, y], i) => {
+        if (glow) {
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = i === 0 ? '#f472b6' : '#22d3ee';
+        }
+        ctx.fillStyle = i === 0 ? '#f472b6' : (i === 9 ? '#fbbf24' : '#22d3ee');
+        ctx.beginPath();
+        ctx.arc(x, y, i === 0 ? 6 : (i === 9 ? 5 : 4), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+    });
+}
+
+function animateHero() {
+    heroCtx.clearRect(0, 0, 480, 480);
+    heroPhase += 0.02;
+
+    // Smoothly interpolate landmarks
+    for (let i = 0; i < 21; i++) {
+        animatedLandmarks[i][0] += (targetLandmarks[i][0] - animatedLandmarks[i][0]) * 0.06;
+        animatedLandmarks[i][1] += (targetLandmarks[i][1] - animatedLandmarks[i][1]) * 0.06;
+        // Add subtle breathing motion
+        animatedLandmarks[i][0] += Math.sin(heroPhase + i * 0.3) * 0.8;
+        animatedLandmarks[i][1] += Math.cos(heroPhase + i * 0.4) * 0.6;
+    }
+
+    drawHand(heroCtx, animatedLandmarks, 480, 480);
+
+    // Landmark labels for key points
+    heroCtx.font = '10px "JetBrains Mono"';
+    heroCtx.fillStyle = 'rgba(148, 163, 184, 0.7)';
+    heroCtx.fillText('WRIST (0)', animatedLandmarks[0][0] + 10, animatedLandmarks[0][1]);
+    heroCtx.fillText('MCP (9)', animatedLandmarks[9][0] + 10, animatedLandmarks[9][1]);
+    heroCtx.fillText('THUMB (4)', animatedLandmarks[4][0] - 60, animatedLandmarks[4][1]);
+    heroCtx.fillText('INDEX (8)', animatedLandmarks[8][0] - 60, animatedLandmarks[8][1]);
+
+    requestAnimationFrame(animateHero);
+}
+
+// Cycle gestures automatically on hero
+let heroGestureIdx = 0;
+setInterval(() => {
+    heroGestureIdx = (heroGestureIdx + 1) % 5;
+    targetLandmarks = gestureLandmarks[heroGestureIdx].map(p => [...p]);
+}, 3000);
+
+animateHero();
+
+// ============================================================
+// 2. GESTURE SELECTION
+// ============================================================
+const gestureCanvas = document.getElementById('gestureCanvas');
+const gestureCtx = gestureCanvas.getContext('2d');
+let selectedGesture = 0;
+
+const gestureLabels = [
+    { name: 'Open Palm (Move)', pinch: '0.85', idx: '1.82', mid: '1.91', ring: '1.74', pinky: '1.58' },
+    { name: 'Pinch (Click)', pinch: '0.18', idx: '0.42', mid: '1.91', ring: '1.74', pinky: '1.58' },
+    { name: 'Fist (Alt Click)', pinch: '0.45', idx: '0.62', mid: '0.58', ring: '0.55', pinky: '0.52' },
+    { name: 'V-Sign (Right Click)', pinch: '0.72', idx: '1.82', mid: '1.91', ring: '0.55', pinky: '0.52' },
+    { name: 'Thumb (Scroll)', pinch: '0.90', idx: '0.65', mid: '0.58', ring: '0.55', pinky: '0.52' }
+];
+
+let gestureAnimLandmarks = gestureLandmarks[0].map(p => [...p]);
+let gestureTargetLandmarks = gestureLandmarks[0].map(p => [...p]);
+
+function selectGesture(idx) {
+    selectedGesture = idx;
+    gestureTargetLandmarks = gestureLandmarks[idx].map(p => [...p]);
+    document.querySelectorAll('.gesture-card').forEach((c, i) => {
+        c.classList.toggle('active', i === idx);
+    });
+    const g = gestureLabels[idx];
+    document.getElementById('gestureInfo').innerHTML = `
+        <div>Gesture: <strong style="color:var(--accent-cyan)">${g.name}</strong></div>
+        <div>Pinch Ratio: <span style="color:${parseFloat(g.pinch) < 0.30 ? 'var(--accent-red)' : 'var(--accent-green)'}; font-family:var(--font-mono)">${g.pinch}</span> ${parseFloat(g.pinch) < 0.30 ? '< 0.30 → CLICK' : '> 0.30 → No Click'}</div>
+        <div>Index Extension: <span style="font-family:var(--font-mono)">${g.idx}</span></div>
+        <div>Middle Extension: <span style="font-family:var(--font-mono)">${g.mid}</span></div>
+        <div>Ring Extension: <span style="font-family:var(--font-mono)">${g.ring}</span></div>
+        <div>Pinky Extension: <span style="font-family:var(--font-mono)">${g.pinky}</span></div>
+        <div>Classification: <span style="color:var(--accent-green)">Rule ✓ | MLP ✓</span></div>
+    `;
+}
+
+function animateGestureCanvas() {
+    gestureCtx.clearRect(0, 0, 400, 400);
+    for (let i = 0; i < 21; i++) {
+        gestureAnimLandmarks[i][0] += (gestureTargetLandmarks[i][0] - gestureAnimLandmarks[i][0]) * 0.08;
+        gestureAnimLandmarks[i][1] += (gestureTargetLandmarks[i][1] - gestureAnimLandmarks[i][1]) * 0.08;
+    }
+    // Scale down to fit 400x400
+    const scaled = gestureAnimLandmarks.map(([x, y]) => [x * 400/480, y * 400/480]);
+    drawHand(gestureCtx, scaled, 400, 400, true);
+    requestAnimationFrame(animateGestureCanvas);
+}
+animateGestureCanvas();
+
+// ============================================================
+// 3. 1-EURO FILTER LIVE VISUALIZATION
+// ============================================================
+const filterCanvas = document.getElementById('filterCanvas');
+const filterCtx = filterCanvas.getContext('2d');
+let filterFrame = 0;
+
+// 1-Euro filter implementation in JS
+class OneEuroFilterJS {
+    constructor(fcMin = 0.80, beta = 0.010, dCutoff = 1.0) {
+        this.fcMin = fcMin; this.beta = beta; this.dCutoff = dCutoff;
+        this.xPrev = null; this.dxPrev = 0; this.tPrev = null;
+    }
+    _alpha(fc, dt) { return 1.0 / (1.0 + 1.0 / (2.0 * Math.PI * fc * dt)); }
+    filter(x, t) {
+        if (this.xPrev === null) { this.xPrev = x; this.tPrev = t; return x; }
+        const dt = Math.max(t - this.tPrev, 1e-5);
+        const dx = (x - this.xPrev) / dt;
+        const aD = this._alpha(this.dCutoff, dt);
+        const edx = aD * dx + (1.0 - aD) * this.dxPrev;
+        const fc = this.fcMin + this.beta * Math.abs(edx);
+        const alpha = this._alpha(fc, dt);
+        const xOut = alpha * x + (1.0 - alpha) * this.xPrev;
+        this.xPrev = xOut; this.dxPrev = edx; this.tPrev = t;
+        return xOut;
+    }
+}
+
+const idealSignal = [];
+const rawSignal = [];
+const fixedSignal = [];
+const euroSignal = [];
+const totalFilterFrames = 120;
+
+// Pre-compute signals
+const euro = new OneEuroFilterJS(0.80, 0.010);
+let fixedPrev = null;
+const fixedAlpha = 0.15;
+
+for (let f = 0; f < totalFilterFrames; f++) {
+    const t = f / 30.0;
+    let ideal;
+    if (f < 35) ideal = 80;
+    else if (f < 50) ideal = 80 + (270 - 80) * ((f - 35) / 15.0);
+    else ideal = 270;
+
+    const tremor = 14.0 * Math.sin(2 * Math.PI * 6 * t) + (Math.random() - 0.5) * 6.4;
+    const raw = ideal + tremor;
+
+    const fixed = fixedPrev === null ? raw : fixedAlpha * raw + (1 - fixedAlpha) * fixedPrev;
+    fixedPrev = fixed;
+
+    const euroVal = euro.filter(raw, t);
+
+    idealSignal.push(ideal);
+    rawSignal.push(raw);
+    fixedSignal.push(fixed);
+    euroSignal.push(euroVal);
+}
+
+function drawFilterChart() {
+    const W = 1200, H = 350;
+    filterCtx.clearRect(0, 0, W, H);
+
+    // Background
+    filterCtx.fillStyle = 'rgba(0,0,0,0.15)';
+    filterCtx.fillRect(0, 0, W, H);
+
+    // Grid
+    filterCtx.strokeStyle = 'rgba(255,255,255,0.04)';
+    filterCtx.lineWidth = 1;
+    for (let y = 0; y < H; y += 40) {
+        filterCtx.beginPath(); filterCtx.moveTo(0, y); filterCtx.lineTo(W, y); filterCtx.stroke();
+    }
+    for (let x = 0; x < W; x += 60) {
+        filterCtx.beginPath(); filterCtx.moveTo(x, 0); filterCtx.lineTo(x, H); filterCtx.stroke();
+    }
+
+    // Phase labels
+    filterCtx.font = '11px "JetBrains Mono"';
+    filterCtx.fillStyle = 'rgba(148,163,184,0.5)';
+    filterCtx.fillText('RESTING (6Hz Tremor)', 20, 25);
+    filterCtx.fillText('FAST BALLISTIC MOVEMENT', W * 35/120 + 10, 25);
+    filterCtx.fillText('RESTING ON TARGET', W * 50/120 + 10, 25);
+
+    // Phase dividers
+    filterCtx.strokeStyle = 'rgba(255,255,255,0.08)';
+    filterCtx.setLineDash([5, 5]);
+    [35, 50].forEach(f => {
+        const x = (f / totalFilterFrames) * W;
+        filterCtx.beginPath(); filterCtx.moveTo(x, 0); filterCtx.lineTo(x, H); filterCtx.stroke();
+    });
+    filterCtx.setLineDash([]);
+
+    const visibleFrames = Math.min(filterFrame, totalFilterFrames);
+    const drawLine = (signal, color, lineWidth) => {
+        filterCtx.strokeStyle = color;
+        filterCtx.lineWidth = lineWidth;
+        filterCtx.beginPath();
+        for (let i = 0; i < visibleFrames; i++) {
+            const x = (i / totalFilterFrames) * W;
+            const y = H - 30 - signal[i];
+            if (i === 0) filterCtx.moveTo(x, y);
+            else filterCtx.lineTo(x, y);
+        }
+        filterCtx.stroke();
+    };
+
+    drawLine(idealSignal, 'rgba(255,255,255,0.15)', 2);
+    drawLine(rawSignal, '#f87171', 1.5);
+    drawLine(fixedSignal, '#fbbf24', 1.5);
+    drawLine(euroSignal, '#34d399', 2.5);
+
+    if (filterFrame < totalFilterFrames + 30) {
+        filterFrame++;
+        requestAnimationFrame(drawFilterChart);
+    }
+}
+
+// Start filter animation when section is visible
+const filterObserver = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) {
+        filterFrame = 0;
+        drawFilterChart();
+        filterObserver.unobserve(entries[0].target);
+    }
+}, { threshold: 0.3 });
+filterObserver.observe(document.getElementById('filter'));
+
+// ============================================================
+// 4. FSM INTERACTIVE VISUALIZATION
+// ============================================================
+const fsmCanvas = document.getElementById('fsmCanvas');
+const fsmCtx = fsmCanvas.getContext('2d');
+let fsmCurrentState = 'RESTING';
+const fsmEventLog = document.getElementById('fsmEventLog');
+
+const fsmStates = {
+    'RESTING':   { x: 120, y: 210, color: '#64748b' },
+    'MOVING':    { x: 360, y: 210, color: '#60a5fa' },
+    'PRESSING':  { x: 600, y: 120, color: '#fbbf24' },
+    'DRAGGING':  { x: 840, y: 120, color: '#f87171' },
+    'SCROLLING': { x: 600, y: 310, color: '#a78bfa' }
+};
+
+const fsmTransitions = [
+    { from: 'RESTING', to: 'MOVING', label: 'Hand Detected' },
+    { from: 'MOVING', to: 'PRESSING', label: 'Pinch < 0.28' },
+    { from: 'PRESSING', to: 'MOVING', label: 'Release < 500ms\n→ LEFT CLICK' },
+    { from: 'PRESSING', to: 'DRAGGING', label: 'Hold > 500ms' },
+    { from: 'DRAGGING', to: 'MOVING', label: 'Release\n→ DROP' },
+    { from: 'MOVING', to: 'SCROLLING', label: 'Thumb Posture' },
+    { from: 'SCROLLING', to: 'MOVING', label: 'Thumb Released' }
+];
+
+function drawFSM() {
+    const W = 1200, H = 420;
+    fsmCtx.clearRect(0, 0, W, H);
+
+    // Draw transitions (arrows)
+    fsmTransitions.forEach(t => {
+        const from = fsmStates[t.from];
+        const to = fsmStates[t.to];
+        const dx = to.x - from.x;
+        const dy = to.y - from.y;
+        const len = Math.sqrt(dx*dx + dy*dy);
+        const nx = dx/len, ny = dy/len;
+
+        const startX = from.x + nx * 52;
+        const startY = from.y + ny * 40;
+        const endX = to.x - nx * 52;
+        const endY = to.y - ny * 40;
+
+        // Curve for overlapping transitions
+        const midX = (startX + endX) / 2;
+        const midY = (startY + endY) / 2;
+        const offsetX = -ny * 30;
+        const offsetY = nx * 30;
+
+        fsmCtx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
+        fsmCtx.lineWidth = 1.5;
+        fsmCtx.beginPath();
+        fsmCtx.moveTo(startX, startY);
+        fsmCtx.quadraticCurveTo(midX + offsetX, midY + offsetY, endX, endY);
+        fsmCtx.stroke();
+
+        // Arrowhead
+        const angle = Math.atan2(endY - (midY + offsetY), endX - (midX + offsetX));
+        fsmCtx.fillStyle = 'rgba(148, 163, 184, 0.4)';
+        fsmCtx.beginPath();
+        fsmCtx.moveTo(endX, endY);
+        fsmCtx.lineTo(endX - 10 * Math.cos(angle - 0.3), endY - 10 * Math.sin(angle - 0.3));
+        fsmCtx.lineTo(endX - 10 * Math.cos(angle + 0.3), endY - 10 * Math.sin(angle + 0.3));
+        fsmCtx.fill();
+
+        // Label
+        fsmCtx.font = '10px "JetBrains Mono"';
+        fsmCtx.fillStyle = 'rgba(148, 163, 184, 0.6)';
+        fsmCtx.textAlign = 'center';
+        const lines = t.label.split('\n');
+        lines.forEach((line, li) => {
+            fsmCtx.fillText(line, midX + offsetX, midY + offsetY - 5 + li * 13);
+        });
+    });
+
+    // Draw state nodes
+    Object.entries(fsmStates).forEach(([name, s]) => {
+        const isActive = name === fsmCurrentState;
+
+        if (isActive) {
+            fsmCtx.shadowBlur = 25;
+            fsmCtx.shadowColor = s.color;
+        }
+
+        // Background
+        fsmCtx.fillStyle = isActive ? s.color + '30' : 'rgba(30, 41, 59, 0.6)';
+        fsmCtx.strokeStyle = isActive ? s.color : 'rgba(100, 116, 139, 0.3)';
+        fsmCtx.lineWidth = isActive ? 3 : 1.5;
+
+        // Rounded rect
+        const w = 100, h = 56, r = 12;
+        const x = s.x - w/2, y = s.y - h/2;
+        fsmCtx.beginPath();
+        fsmCtx.roundRect(x, y, w, h, r);
+        fsmCtx.fill();
+        fsmCtx.stroke();
+        fsmCtx.shadowBlur = 0;
+
+        // Label
+        fsmCtx.font = isActive ? 'bold 13px "Inter"' : '12px "Inter"';
+        fsmCtx.fillStyle = isActive ? s.color : '#94a3b8';
+        fsmCtx.textAlign = 'center';
+        fsmCtx.fillText(name, s.x, s.y + 4);
+    });
+}
+
+function fsmTransition(action) {
+    const prev = fsmCurrentState;
+    let event = '';
+    switch (action) {
+        case 'hand_detected':
+            if (fsmCurrentState === 'RESTING') { fsmCurrentState = 'MOVING'; event = 'Hand detected → MOVING'; }
+            break;
+        case 'pinch_enter':
+            if (fsmCurrentState === 'MOVING') { fsmCurrentState = 'PRESSING'; event = 'Pinch ratio < 0.28 → PRESSING'; }
+            break;
+        case 'pinch_release_short':
+            if (fsmCurrentState === 'PRESSING') { fsmCurrentState = 'MOVING'; event = 'Quick release < 500ms → LEFT CLICK!'; }
+            break;
+        case 'hold_500ms':
+            if (fsmCurrentState === 'PRESSING') { fsmCurrentState = 'DRAGGING'; event = 'Held > 500ms → DRAGGING'; }
+            break;
+        case 'pinch_release_long':
+            if (fsmCurrentState === 'DRAGGING') { fsmCurrentState = 'MOVING'; event = 'Pinch released → DROP (Drag ended)'; }
+            break;
+        case 'thumb_scroll':
+            if (fsmCurrentState === 'MOVING') { fsmCurrentState = 'SCROLLING'; event = 'Thumb scroll posture → SCROLLING'; }
+            break;
+        case 'reset':
+            fsmCurrentState = 'RESTING'; event = 'FSM Reset → RESTING';
+            break;
+    }
+    if (event) {
+        fsmEventLog.innerHTML += `\n> [${prev} → ${fsmCurrentState}] ${event}`;
+        fsmEventLog.scrollTop = fsmEventLog.scrollHeight;
+    }
+    drawFSM();
+}
+
+drawFSM();
+
+// ============================================================
+// 5. HERO STAT COUNTERS
+// ============================================================
+function animateCounter(el, target, suffix = '', duration = 2000, decimals = null) {
+    const start = performance.now();
+    const isFloat = target % 1 !== 0;
+    const places = decimals ?? (isFloat ? 1 : 0);
+    function update(now) {
+        const elapsed = now - start;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = target * eased;
+        el.textContent = current.toFixed(places) + suffix;
+        if (progress < 1) requestAnimationFrame(update);
+    }
+    requestAnimationFrame(update);
+}
+
+// Trigger counters when hero is visible
+const heroObserver = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) {
+        animateCounter(document.getElementById('stat-acc'), HERO.acc, '%');
+        animateCounter(document.getElementById('stat-jitter'), HERO.jitter, '%');
+        animateCounter(document.getElementById('stat-latency'), HERO.latency, 'ms', 2000, 2);
+        heroObserver.unobserve(entries[0].target);
+    }
+}, { threshold: 0.5 });
+heroObserver.observe(document.getElementById('hero'));
+
+// ============================================================
+// 6. SCROLL FADE-IN ANIMATIONS
+// ============================================================
+const fadeObserver = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+        if (e.isIntersecting) e.target.classList.add('visible');
+    });
+}, { threshold: 0.15 });
+document.querySelectorAll('.fade-in').forEach(el => fadeObserver.observe(el));
+</script>
+
+</body>
+</html>
