@@ -33,3 +33,16 @@ def test_train_reports_louo_accuracy_and_saves_model(tmp_path):
     assert labels == sorted(BY_POSE)
     assert (models / "pose_mlp.joblib").exists()
     assert (models / "train_report.json").exists()
+
+
+def test_single_user_falls_back_to_row_holdout(tmp_path):
+    rng = np.random.default_rng(1)
+    data, models = tmp_path / "data", tmp_path / "models"
+    data.mkdir()
+    _write_user(data / "solo.csv", "solo", rng, 1.0, np.array([0.0, 0.0, 0.0]))
+
+    report = train_and_save(str(data), str(models), seed=0)
+
+    assert list(report["louo"]) == ["solo (row hold-out)"]
+    assert report["louo_acc"] >= 0.9
+    assert (models / "pose_mlp.joblib").exists()

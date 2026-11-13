@@ -58,6 +58,17 @@ def make_model(seed):
                          max_iter=400, random_state=seed)
 
 
+def folds(users, rng):
+    """Leave-one-user-out. With a single user there is no unseen hand: 25% row hold-out instead."""
+    names = sorted(set(users))
+    if len(names) >= 2:
+        for u in names:
+            yield u, users != u, users == u
+        return
+    te = rng.random(len(users)) < 0.25
+    yield f"{names[0]} (row hold-out)", ~te, te
+
+
 def train_and_save(data_dir, models_dir, seed=42):
     rng = np.random.default_rng(seed)
     X_raw, y, users = load_rows(data_dir)
@@ -65,12 +76,11 @@ def train_and_save(data_dir, models_dir, seed=42):
     labels = sorted(set(y))
 
     louo, y_true, y_pred = {}, [], []
-    for u in sorted(set(users)):
-        tr, te = users != u, users == u
+    for name, tr, te in folds(users, rng):
         X_tr, y_tr = augment(Xn[tr], y[tr], AUG_COPIES, rng)
         m = make_model(seed).fit(X_tr, y_tr)
         p = m.predict(Xn[te])
-        louo[u] = float(np.mean(p == y[te]))
+        louo[name] = float(np.mean(p == y[te]))
         y_true.extend(y[te]); y_pred.extend(p)
     prec, rec, _, _ = precision_recall_fscore_support(y_true, y_pred, labels=labels, zero_division=0)
 
