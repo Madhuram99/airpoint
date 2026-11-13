@@ -99,7 +99,15 @@ Housekeeping before any edit:
 
 - HUD names the pose, 3 s countdown, then captures 10 s (~300 frames) while the
   prompt says "tilt, move closer, move away".
-- Keys `1`–`6` jump to a pose; `space` redoes the current one.
+- `space` records all six in sequence; `1`–`6` records that one pose only and stops.
+- Recording a pose **replaces** that user's earlier rows for it (never appends), so a bad
+  capture is fixed by redoing it.
+- **Capture guard** (`looks_like(pose, pts)`): a loose geometric check per label — palm needs
+  an extended index and middle, pinch needs the tips within 0.5 palm lengths, fist needs
+  both curled, V needs ring curled, thumb poses need the thumb on the right side of the
+  wrist. Frames that fail are not written and the prompt shows `SIGN LOST`. `train.py`
+  applies the same check to old CSVs. Added after the first session: three of six captures
+  drifted mid-10 s (palm closed, pinch opened), and the model learned the drift.
 - Row: `user, pose, ts, handedness, x0, y0, z0 … x20, y20, z20` — raw MediaPipe
   normalized-image coordinates. Normalization runs at train and inference time, so
   it can change without re-recording.
