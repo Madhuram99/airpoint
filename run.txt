@@ -8,6 +8,7 @@ venv/bin/python airpoint_offline_training_filter_fitts_law_benchmark_suite.py
 
 # 3. Live demo (q quit | m mouse | k rules/mlp | r record | 1-6 pose | space start/redo)
 venv/bin/python run_demo.py                    # MLP if models/pose_mlp.joblib exists, else rules
+venv/bin/python run_demo.py --mouse            # same, OS mouse control already ON
 venv/bin/python run_demo.py --rules            # force rules
 venv/bin/python run_demo.py --record --user <name>   # record poses to data/<name>.csv
 #    palm = move | pinch/fist < 0.5 s = click | hold = drag | v-sign 0.3 s = right click

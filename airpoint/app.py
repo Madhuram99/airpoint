@@ -34,6 +34,7 @@ def main(argv=None):
     ap.add_argument("--user", help="name for data/<user>.csv; enables record mode")
     ap.add_argument("--record", action="store_true", help="start in record mode")
     ap.add_argument("--rules", action="store_true", help="force the rule classifier")
+    ap.add_argument("--mouse", action="store_true", help="start with OS mouse control ON")
     args = ap.parse_args(argv)
     if args.record and not args.user:
         ap.error("--record needs --user")
@@ -44,6 +45,8 @@ def main(argv=None):
     fx, fy = OneEuroFilter(FC_MIN), OneEuroFilter(FC_MIN)
     mouse = PyAutoGuiMouse()
     runner = ActionRunner(mouse, mouse.size())
+    if args.mouse:
+        runner.toggle()
     recorder = Recorder(os.path.join(ROOT, "data", f"{args.user}.csv"), args.user) if args.user else None
     session = RecordSession() if args.record else None
     camera, tracker = Camera(), HandTracker()

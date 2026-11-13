@@ -28,6 +28,7 @@ webcam → MediaPipe Hands (21 points) → wrist-centred, palm-scaled 63-d vecto
 venv/bin/pip install numpy scikit-learn opencv-python mediapipe pyautogui pytest
 
 venv/bin/python run_demo.py                      # live demo; m = mouse on/off, k = rules/mlp, q = quit
+venv/bin/python run_demo.py --mouse              # start with the mouse already on
 venv/bin/python run_demo.py --record --user you  # record your hand: space = all poses, 1-6 = one pose
 venv/bin/python -m airpoint.train                # retrain on data/*.csv, leave-one-user-out report
 venv/bin/pytest -q                               # unit tests (no camera needed)
