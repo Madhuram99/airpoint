@@ -1,16 +1,20 @@
-# AirPoint — demo commands (run from this folder)
-cd "/Users/madhuramrathi/Downloads/Major Project"
-source venv/bin/activate
+# AirPoint — demo commands (run from ~/Projects/airpoint)
 
-# 1. Run the experiments (writes results.js for the dashboard, ~5 s)
-python airpoint_offline_training_filter_fitts_law_benchmark_suite.py
-
-# 2. Open the web dashboard (numbers come from step 1)
+# 1. Web dashboard
 open index.html
 
-# 3. Live webcam demo
-python airpoint_live_webcam_prototype_1_euro_filter_fsm_pinch.py
-#    m = toggle real mouse control (OFF at start)   q = quit
-#    pinch < 0.5 s = click | hold pinch = drag | thumb pose + move up/down = scroll
+# 2. Benchmarks (writes results.js for the dashboard, ~5 s)
+venv/bin/python airpoint_offline_training_filter_fitts_law_benchmark_suite.py
 
-# First time only (already done): python3.12 -m venv venv && pip install numpy scikit-learn opencv-python mediapipe pyautogui
+# 3. Live demo (q quit | m mouse | k rules/mlp | r record | 1-6 pose | space start/redo)
+venv/bin/python run_demo.py                    # MLP if models/pose_mlp.joblib exists, else rules
+venv/bin/python run_demo.py --rules            # force rules
+venv/bin/python run_demo.py --record --user <name>   # record poses to data/<name>.csv
+#    palm = move | pinch/fist < 0.5 s = click | hold = drag | v-sign 0.3 s = right click
+#    thumb up / down = scroll | hand out of frame = rest
+
+# 4. Train on data/*.csv -> models/
+venv/bin/python -m airpoint.train
+
+# First time only: /opt/homebrew/opt/python@3.12/bin/python3.12 -m venv venv
+#   && venv/bin/pip install numpy scikit-learn opencv-python mediapipe pyautogui pytest
