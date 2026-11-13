@@ -61,13 +61,16 @@ def main(argv=None):
 
             if session is not None:
                 phase, pose, left = session.update(t)
+                if session.fresh:
+                    recorder.drop(pose)
+                    session.fresh = False
                 if session.capturing and pts is not None:
                     recorder.write(pose, t, hand, pts)
                 title = {
-                    "idle": f"RECORD {args.user}: press SPACE to start",
-                    "countdown": f"get ready: {pose}   {left:.0f}",
+                    "idle": f"RECORD {args.user}: SPACE = all poses, 1-6 = one pose",
+                    "countdown": f"raise hand, make {pose}   {left:.0f}",
                     "capturing": f"HOLD {pose}   {left:.0f}s",
-                    "done": "done - press q, or 1-6 to redo a pose",
+                    "done": "done - q to quit, 1-6 to redo one pose",
                 }[phase]
                 hud.draw_prompt(frame, title, f"tilt, move closer, move away | rows {recorder.count} | {KEYS}")
             else:
