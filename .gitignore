@@ -5,3 +5,5 @@ __pycache__/
 results.js
 data/*_calib.csv
 profiles/
+
+models/train_report.json
