@@ -732,10 +732,10 @@ def test_active_region_maps_to_full_screen_and_clamps():
 def test_events_map_to_mouse_calls_when_enabled():
     m, r = make()
     r.toggle()
-    r.move(0.5, 0.475)
+    r.move(0.15, 0.15)
     r.apply([Event("click"), Event("right_click"), Event("scroll", -2),
              Event("hotkey", ("command", "tab"))])
-    assert m.calls == [("move", 500, 250), ("click",), ("right_click",), ("scroll", -2),
+    assert m.calls == [("move", 0, 0), ("click",), ("right_click",), ("scroll", -2),
                        ("hotkey", "command", "tab")]
 
 
