@@ -45,25 +45,25 @@
 - Create: `conftest.py`, `pytest.ini`
 - Modify: `.gitignore`
 
-- [ ] **Step 1: Stop the other Claude session that has this folder open**
+- [x] **Step 1: Stop the other Claude session that has this folder open**
 
 A Claude desktop-app session (started 10:12 today) created the venv and edited both scripts this morning. Close it in its own window. Do not proceed while two sessions edit the folder.
 
-- [ ] **Step 2: Move the folder**
+- [x] **Step 2: Move the folder**
 
 ```bash
 mkdir -p ~/Projects && mv ~/Downloads/"Major Project" ~/Projects/airpoint && cd ~/Projects/airpoint && git status --short
 ```
 Expected: no output from `git status` (clean tree, the move keeps `.git`).
 
-- [ ] **Step 3: Recreate the venv (absolute paths inside it broke on the move)**
+- [x] **Step 3: Recreate the venv (absolute paths inside it broke on the move)**
 
 ```bash
 cd ~/Projects/airpoint && rm -rf venv && /opt/homebrew/opt/python@3.12/bin/python3.12 -m venv venv && venv/bin/pip install --quiet numpy scikit-learn opencv-python mediapipe pyautogui pytest && venv/bin/python -c "import cv2, mediapipe, sklearn, pyautogui, pytest; print('ok')"
 ```
 Expected: `ok`. The pip cache holds every wheel from this morning, so this is fast even on a flaky network.
 
-- [ ] **Step 4: Git identity and pytest config**
+- [x] **Step 4: Git identity and pytest config**
 
 ```bash
 cd ~/Projects/airpoint && git config user.name "Madhuram Rathi" && git config user.email "madhuram@solfoundry.co"
@@ -73,12 +73,12 @@ printf '\nmodels/train_report.json\n' >> .gitignore
 mkdir -p airpoint tests data models && touch airpoint/__init__.py tests/__init__.py
 ```
 
-- [ ] **Step 5: Verify pytest runs (no tests yet)**
+- [x] **Step 5: Verify pytest runs (no tests yet)**
 
 Run: `venv/bin/pytest -q`
 Expected: `no tests ran`
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A && git commit -m "chore: package skeleton, pytest config, fresh venv notes"
@@ -91,7 +91,7 @@ git add -A && git commit -m "chore: package skeleton, pytest config, fresh venv 
 **Files:**
 - Create: `airpoint/poses.py`, `airpoint/features.py`, `tests/hands.py`, `tests/test_features.py`
 
-- [ ] **Step 1: Write the pose constants**
+- [x] **Step 1: Write the pose constants**
 
 `airpoint/poses.py`:
 ```python
@@ -107,7 +107,7 @@ GRIP = frozenset({PINCH, FIST})
 SCROLL = {THUMB_UP: 1, THUMB_DOWN: -1}
 ```
 
-- [ ] **Step 2: Write the synthetic hand fixtures**
+- [x] **Step 2: Write the synthetic hand fixtures**
 
 `tests/hands.py`:
 ```python
@@ -150,7 +150,7 @@ BY_POSE = {"palm": OPEN_PALM, "pinch": PINCH, "fist": FIST, "v_sign": V_SIGN,
            "thumb_up": THUMB_UP, "thumb_down": THUMB_DOWN}
 ```
 
-- [ ] **Step 3: Write the failing feature tests**
+- [x] **Step 3: Write the failing feature tests**
 
 `tests/test_features.py`:
 ```python
@@ -183,12 +183,12 @@ def test_pinch_ratio_is_thumb_index_gap_over_palm():
     assert F.pinch_ratio(PINCH) < 0.10
 ```
 
-- [ ] **Step 4: Run tests to verify they fail**
+- [x] **Step 4: Run tests to verify they fail**
 
 Run: `venv/bin/pytest tests/test_features.py -q`
 Expected: `ImportError` / `ModuleNotFoundError: airpoint.features`
 
-- [ ] **Step 5: Implement features**
+- [x] **Step 5: Implement features**
 
 `airpoint/features.py`:
 ```python
@@ -219,12 +219,12 @@ def pinch_ratio(landmarks) -> float:
     return float(np.linalg.norm(pts[THUMB_TIP, :2] - pts[INDEX_TIP, :2]) / palm)
 ```
 
-- [ ] **Step 6: Run tests to verify they pass**
+- [x] **Step 6: Run tests to verify they pass**
 
 Run: `venv/bin/pytest tests/test_features.py -q`
 Expected: `4 passed`
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add airpoint/poses.py airpoint/features.py tests/hands.py tests/test_features.py
@@ -238,7 +238,7 @@ git commit -m "feat: pose constants, landmark normalization, synthetic hand fixt
 **Files:**
 - Create: `airpoint/filters.py`, `tests/test_filters.py`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `tests/test_filters.py`:
 ```python
@@ -276,12 +276,12 @@ def test_custom_fc_min_lowers_cutoff_for_more_smoothing():
     assert slow.filter(100.0, t=11 / 30, custom_fc_min=0.3) < fast.filter(100.0, t=11 / 30)
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `venv/bin/pytest tests/test_filters.py -q`
 Expected: `ModuleNotFoundError: airpoint.filters`
 
-- [ ] **Step 3: Implement (lifted from the live script, unchanged behaviour)**
+- [x] **Step 3: Implement (lifted from the live script, unchanged behaviour)**
 
 `airpoint/filters.py`:
 ```python
@@ -314,12 +314,12 @@ class OneEuroFilter:
         return x_out
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `venv/bin/pytest tests/test_filters.py -q`
 Expected: `4 passed`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add airpoint/filters.py tests/test_filters.py && git commit -m "feat: OneEuroFilter module"
@@ -332,7 +332,7 @@ git add airpoint/filters.py tests/test_filters.py && git commit -m "feat: OneEur
 **Files:**
 - Create: `airpoint/classifier.py`, `tests/test_classifier.py`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `tests/test_classifier.py`:
 ```python
@@ -400,12 +400,12 @@ def test_smoother_no_hand_is_none_and_clears_history():
     assert s.update("pinch", 0.9) == "pinch"
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `venv/bin/pytest tests/test_classifier.py -q`
 Expected: `ModuleNotFoundError: airpoint.classifier`
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 `airpoint/classifier.py`:
 ```python
@@ -487,12 +487,12 @@ class VoteSmoother:
         return winner if mean_conf >= self.min_conf else UNKNOWN
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `venv/bin/pytest tests/test_classifier.py -q`
 Expected: `7 passed`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add airpoint/classifier.py tests/test_classifier.py && git commit -m "feat: rule and MLP pose classifiers with vote smoother"
@@ -505,7 +505,7 @@ git add airpoint/classifier.py tests/test_classifier.py && git commit -m "feat: 
 **Files:**
 - Create: `airpoint/fsm.py`, `tests/test_fsm.py`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `tests/test_fsm.py`:
 ```python
@@ -579,12 +579,12 @@ def test_cursor_frozen_only_while_resting_or_scrolling():
     assert fsm.cursor_frozen
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `venv/bin/pytest tests/test_fsm.py -q`
 Expected: `ModuleNotFoundError: airpoint.fsm`
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 `airpoint/fsm.py`:
 ```python
@@ -683,12 +683,12 @@ class AirPointFSM:
         return self.state, events
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `venv/bin/pytest tests/test_fsm.py -q`
 Expected: `9 passed`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add airpoint/fsm.py tests/test_fsm.py && git commit -m "feat: pose-driven FSM with grip, hold and scroll states"
@@ -701,7 +701,7 @@ git add airpoint/fsm.py tests/test_fsm.py && git commit -m "feat: pose-driven FS
 **Files:**
 - Create: `airpoint/actions.py`, `tests/test_actions.py`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `tests/test_actions.py`:
 ```python
@@ -755,12 +755,12 @@ def test_toggle_off_releases_a_held_button():
     assert not r.enabled and not r.button_down
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `venv/bin/pytest tests/test_actions.py -q`
 Expected: `ModuleNotFoundError: airpoint.actions`
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 `airpoint/actions.py`:
 ```python
@@ -876,12 +876,12 @@ class ActionRunner:
             self.button_down = False
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `venv/bin/pytest tests/test_actions.py -q`
 Expected: `5 passed`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add airpoint/actions.py tests/test_actions.py && git commit -m "feat: ActionRunner maps FSM events to the OS mouse"
@@ -894,7 +894,7 @@ git add airpoint/actions.py tests/test_actions.py && git commit -m "feat: Action
 **Files:**
 - Create: `airpoint/camera.py`, `airpoint/tracker.py`, `airpoint/hud.py`
 
-- [ ] **Step 1: Camera with index fallback**
+- [x] **Step 1: Camera with index fallback**
 
 `airpoint/camera.py`:
 ```python
@@ -924,7 +924,7 @@ class Camera:
         self.cap.release()
 ```
 
-- [ ] **Step 2: Tracker wrapper**
+- [x] **Step 2: Tracker wrapper**
 
 `airpoint/tracker.py`:
 ```python
@@ -970,7 +970,7 @@ class HandTracker:
         self.detector.close()
 ```
 
-- [ ] **Step 3: HUD drawing helpers**
+- [x] **Step 3: HUD drawing helpers**
 
 `airpoint/hud.py`:
 ```python
@@ -1024,7 +1024,7 @@ def draw_prompt(frame, title, subtitle):
     cv2.putText(frame, subtitle, (30, h // 2 + 30), FONT, 0.6, WHITE, 1)
 ```
 
-- [ ] **Step 4: Smoke-test tracker + camera from the terminal (window opens, 60 frames, closes)**
+- [x] **Step 4: Smoke-test tracker + camera from the terminal (window opens, 60 frames, closes)**
 
 Run:
 ```bash
@@ -1049,7 +1049,7 @@ EOF
 ```
 Expected: a window for ~2 s; hold your hand up; prints `frames with a hand: <n>` with n > 0.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add airpoint/camera.py airpoint/tracker.py airpoint/hud.py && git commit -m "feat: camera, MediaPipe tracker and HUD helpers"
@@ -1062,7 +1062,7 @@ git add airpoint/camera.py airpoint/tracker.py airpoint/hud.py && git commit -m 
 **Files:**
 - Create: `airpoint/recorder.py`, `tests/test_recorder.py`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `tests/test_recorder.py`:
 ```python
@@ -1116,12 +1116,12 @@ def test_session_select_jumps_to_a_pose_and_redo_restarts_current():
     assert s.update(23.0) == ("countdown", "palm", 3.0)
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `venv/bin/pytest tests/test_recorder.py -q`
 Expected: `ModuleNotFoundError: airpoint.recorder`
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 `airpoint/recorder.py`:
 ```python
@@ -1201,12 +1201,12 @@ class RecordSession:
         return self.phase, self.pose, left
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `venv/bin/pytest tests/test_recorder.py -q`
 Expected: `3 passed`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add airpoint/recorder.py tests/test_recorder.py && git commit -m "feat: landmark CSV recorder and record-session timing"
@@ -1219,7 +1219,7 @@ git add airpoint/recorder.py tests/test_recorder.py && git commit -m "feat: land
 **Files:**
 - Create: `airpoint/train.py`, `tests/test_train.py`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/test_train.py`:
 ```python
@@ -1260,12 +1260,12 @@ def test_train_reports_louo_accuracy_and_saves_model(tmp_path):
     assert (models / "train_report.json").exists()
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `venv/bin/pytest tests/test_train.py -q`
 Expected: `ModuleNotFoundError: airpoint.train`
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 `airpoint/train.py`:
 ```python
@@ -1381,15 +1381,23 @@ if __name__ == "__main__":
     main(sys.argv[1:])
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `venv/bin/pytest tests/test_train.py -q`
 Expected: `1 passed` (takes a few seconds — three MLP fits).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add airpoint/train.py tests/test_train.py && git commit -m "feat: pose MLP training with leave-one-user-out report"
+```
+
+- [x] **Step 6 (added during execution): single-user fallback**
+
+Leave-one-user-out has no training rows when only one person has recorded. `folds(users, rng)` in `train.py` yields the per-user folds when there are ≥ 2 users, else one 25% row hold-out fold named `"<user> (row hold-out)"`. Covered by `test_single_user_falls_back_to_row_holdout`. Commit: `feat: train falls back to row hold-out when only one user is recorded`.
+
+```bash
+# no further commands
 ```
 
 ---
@@ -1401,7 +1409,7 @@ git add airpoint/train.py tests/test_train.py && git commit -m "feat: pose MLP t
 - Delete: `airpoint_live_webcam_prototype_1_euro_filter_fsm_pinch.py`
 - Modify: `run.txt`
 
-- [ ] **Step 1: Write the app**
+- [x] **Step 1: Write the app**
 
 `airpoint/app.py`:
 ```python
@@ -1527,7 +1535,7 @@ def main(argv=None):
         cv2.destroyAllWindows()
 ```
 
-- [ ] **Step 2: Entry point**
+- [x] **Step 2: Entry point**
 
 `run_demo.py`:
 ```python
@@ -1537,7 +1545,7 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 3: Retire the old script and fix `run.txt`**
+- [x] **Step 3: Retire the old script and fix `run.txt`**
 
 ```bash
 git rm -q airpoint_live_webcam_prototype_1_euro_filter_fsm_pinch.py
@@ -1558,10 +1566,10 @@ venv/bin/python -m airpoint.train
 EOF
 ```
 
-- [ ] **Step 4: Full test suite**
+- [x] **Step 4: Full test suite**
 
 Run: `venv/bin/pytest -q`
-Expected: `33 passed`
+Expected: `34 passed`
 
 - [ ] **Step 5: Manual check — rules mode reproduces today's demo**
 
@@ -1575,7 +1583,7 @@ Verify, with the video window focused:
 5. `m` → mouse ON: cursor follows, pinch clicks in a real window, thumb scrolls a web page.
 6. `q` → exits, no stuck button.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add airpoint/app.py run_demo.py run.txt && git commit -m "feat: run_demo wires classifier, FSM and mouse; retire the single-file prototype"
@@ -1632,7 +1640,7 @@ git add data/*.csv models/pose_mlp.joblib models/labels.json && git commit -m "d
 
 ## Done when
 
-- `venv/bin/pytest -q` → `33 passed`.
+- `venv/bin/pytest -q` → `34 passed`.
 - `run_demo.py` with no flags boots on the MLP, all six poses produce the right events, `m` drives the real mouse, `k` swaps classifiers live.
 - `models/train_report.json` shows leave-one-user-out accuracy across four users.
 
