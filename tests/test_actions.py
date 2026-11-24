@@ -1,4 +1,9 @@
-from airpoint.actions import ActionRunner, FakeMouse
+import sys
+import time
+
+import pytest
+
+from airpoint.actions import PG_KEYS, ActionRunner, FakeMouse, PyAutoGuiMouse, typable
 from airpoint.fsm import Event
 
 
@@ -76,3 +81,66 @@ def test_double_click_event_is_one_os_double_click():
     r.toggle()
     r.apply([Event("double_click")])
     assert m.calls == [("double_click",)]
+
+
+class SlowKeys:
+    """Stands in for pyautogui: records what it is asked to press, as slowly as real keystrokes."""
+
+    def __init__(self, broken=()):
+        self.calls, self.broken = [], broken
+
+    def hotkey(self, *keys, interval=0.0):
+        time.sleep(0.05)
+        if keys in self.broken:
+            raise RuntimeError("no such key")
+        self.calls.append(("hotkey",) + keys)
+
+    def write(self, text, interval=0.0):
+        time.sleep(0.2)
+        self.calls.append(("write", text))
+
+
+def test_keystrokes_queue_in_order_and_never_hold_up_the_frame_loop():
+    pg = SlowKeys()
+    m = PyAutoGuiMouse(pg)
+    t0 = time.perf_counter()
+    m.write("hello there")
+    m.hotkey("control", "option", "d")
+    assert time.perf_counter() - t0 < 0.05 and pg.calls == []
+    assert m.flush(2.0)
+    assert pg.calls == [("write", "hello there"), ("hotkey", "ctrl", "option", "d")]      # control is pyautogui's ctrl
+
+
+def test_a_failing_keystroke_does_not_stop_the_ones_after_it(capsys):
+    pg = SlowKeys(broken=(("f13",),))
+    m = PyAutoGuiMouse(pg)
+    m.hotkey("f13")
+    m.hotkey("command", "c")
+    assert m.flush(2.0) and pg.calls == [("hotkey", "command", "c")]
+    assert "keystroke failed" in capsys.readouterr().out
+
+
+def test_flush_reports_keystrokes_that_are_still_going():
+    m = PyAutoGuiMouse(SlowKeys())
+    m.write("a long sentence")
+    assert m.flush(0.01) is False
+    assert m.flush(2.0)
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="checks pyautogui's macOS key table")
+def test_every_key_name_a_sign_may_use_is_one_pyautogui_can_press():
+    osx = pytest.importorskip("pyautogui._pyautogui_osx")
+    from airpoint.profile import KEY_NAMES
+    assert [k for k in sorted(KEY_NAMES) if osx.keyboardMapping.get(PG_KEYS.get(k, k)) is None] == []
+
+
+def test_typed_text_is_reduced_to_what_a_keyboard_can_type():
+    assert typable("I’ll be late — sorry… “ok”") == "I'll be late - sorry... \"ok\""
+    assert typable("café naïve now") == "cafe naive now"
+    assert typable("line one\nline two") == "line one\nline two"
+    assert typable("नमस्ते ok") == " ok"          # no key for these: left out
+
+
+def test_the_runner_can_wait_for_keystrokes():
+    m, r = make()
+    assert r.flush() is True

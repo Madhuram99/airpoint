@@ -1,4 +1,19 @@
+import queue
+import threading
+import unicodedata
+
 ACTIVE_REGION = (0.15, 0.15, 0.85, 0.80)  # inner frame box that maps to the whole screen
+PG_KEYS = {"control": "ctrl"}             # our key names -> pyautogui's, where they differ
+HOTKEY_GAP_S = 0.04                       # between the keys of a combo: macOS needs a moment to see a modifier go down
+PLAIN = str.maketrans({"\u2018": "'", "\u2019": "'", "\u201c": '"', "\u201d": '"', "\u2013": "-", "\u2014": "-",
+                       "\u2026": "...", "\u00a0": " "})
+
+
+def typable(text):
+    """Text as US-keyboard keystrokes can produce it: curly quotes and dashes straightened, accents
+    dropped, anything else that has no key left out (pyautogui would skip it silently anyway)."""
+    text = unicodedata.normalize("NFKD", text.translate(PLAIN))
+    return "".join(ch for ch in text if ch == "\n" or 32 <= ord(ch) < 127)
 
 
 class FakeMouse:
@@ -35,13 +50,30 @@ class FakeMouse:
     def write(self, text):
         self.calls.append(("write", text))
 
+    def flush(self, timeout=2.0):
+        return True
+
 
 class PyAutoGuiMouse:
-    def __init__(self):
-        import pyautogui
-        pyautogui.FAILSAFE = False
-        pyautogui.PAUSE = 0
-        self.pg = pyautogui
+    """Mouse calls go straight to the OS. Keystrokes take 10 ms or more each, so they queue for one
+    worker thread: in order, never two at once, and never holding up a frame."""
+
+    def __init__(self, pg=None):
+        if pg is None:
+            import pyautogui as pg
+            pg.FAILSAFE = False
+            pg.PAUSE = 0
+        self.pg = pg
+        self.keys = queue.Queue()
+        threading.Thread(target=self._press, daemon=True).start()
+
+    def _press(self):
+        while True:
+            work = self.keys.get()
+            try:
+                work()
+            except Exception as e:           # one bad keystroke must not end typing for the rest of the session
+                print(f"[AirPoint] keystroke failed: {type(e).__name__}: {e}")
 
     def size(self):
         return tuple(self.pg.size())
@@ -68,10 +100,17 @@ class PyAutoGuiMouse:
         self.pg.scroll(ticks)
 
     def hotkey(self, *keys):
-        self.pg.hotkey(*keys)
+        keys = [PG_KEYS.get(k, k) for k in keys]
+        self.keys.put(lambda: self.pg.hotkey(*keys, interval=HOTKEY_GAP_S))
 
     def write(self, text):
-        self.pg.write(text, interval=0.01)
+        self.keys.put(lambda: self.pg.write(typable(text), interval=0.0))
+
+    def flush(self, timeout=2.0):
+        """Wait for the keystrokes already queued. -> False if they did not finish in time."""
+        done = threading.Event()
+        self.keys.put(done.set)
+        return done.wait(timeout)
 
 
 class ActionRunner:
@@ -132,3 +171,7 @@ class ActionRunner:
         if self.button_down:
             self.mouse.mouse_up()
             self.button_down = False
+
+    def flush(self, timeout=2.0):
+        """Wait for keystrokes that are still on their way to the OS."""
+        return self.mouse.flush(timeout)
