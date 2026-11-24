@@ -66,3 +66,39 @@ def test_cursor_frozen_only_while_resting_or_scrolling():
     assert not fsm.cursor_frozen
     fsm.update("thumb_up", 0.1)
     assert fsm.cursor_frozen
+
+
+from airpoint.fsm import DwellDetector
+
+
+def dwell(seq, d=None):
+    d = d or DwellDetector()
+    out = []
+    for xy, t, active in seq:
+        e, p = d.update(xy, t, active)
+        out.append((e.kind if e else None, round(p, 2)))
+    return out, d
+
+
+def test_dwell_clicks_after_one_second_still():
+    out, _ = dwell([((100, 100), 0.0, True), ((104, 98), 0.5, True), ((102, 101), 1.0, True)])
+    assert out == [(None, 0.0), (None, 0.5), ("click", 1.0)]
+
+
+def test_dwell_moving_restarts_the_timer():
+    out, _ = dwell([((100, 100), 0.0, True), ((140, 100), 0.5, True),
+                    ((141, 100), 1.2, True), ((141, 100), 1.5, True)])
+    assert out[-2:] == [(None, 0.7), ("click", 1.0)]
+
+
+def test_dwell_rearms_only_after_moving_30px():
+    out, _ = dwell([((100, 100), 0.0, True), ((100, 100), 1.0, True),
+                    ((100, 100), 3.0, True), ((120, 100), 4.5, True),
+                    ((135, 100), 5.0, True), ((135, 100), 6.0, True)])
+    assert [e for e, _ in out] == [None, "click", None, None, None, "click"]
+
+
+def test_dwell_inactive_resets_progress():
+    out, _ = dwell([((100, 100), 0.0, True), ((100, 100), 0.8, False),
+                    ((100, 100), 0.9, True), ((100, 100), 1.5, True)])
+    assert out == [(None, 0.0), (None, 0.0), (None, 0.0), (None, 0.6)]
