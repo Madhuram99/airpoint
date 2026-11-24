@@ -97,3 +97,14 @@ def test_canceller_passes_through_until_locked_then_removes_the_tone():
     locked = Reading(status="tremor", hz=6.0, amp=10.0, fs=fs, locked=True, lock_hz=6.0)
     out = [c.step(xy, (30 + i) / fs, locked) for i, xy in enumerate(tone[30:])]
     assert max(abs(x - 320.0) for x, _ in out[60:]) < 1.5   # 14 px of shake, under 1.5 px left
+
+
+def test_a_smaller_comfort_box_means_more_smoothing_and_a_livelier_speed_term():
+    p = PointerPipeline(fc_min=0.8)
+    assert (p.gain, p.fx.beta) == (1.0, BETA) and p.cutoff(False) == 0.8 and p.cutoff(True) == 0.3
+    p.set_gain(2.0)                                           # box half as wide as the default
+    assert p.fx.beta == p.fy.beta == 2 * BETA and p.cutoff(False) == 0.4
+    p.set_gain(10.0)                                          # capped
+    assert p.gain == 3.0 and p.cutoff(False) == 0.3           # never below the floor
+    p.set_gain(0.7)                                           # a bigger box than the default
+    assert p.cutoff(False) == 1.0                             # 0.8 / 0.7, capped at 1.0

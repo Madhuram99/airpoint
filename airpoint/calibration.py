@@ -7,7 +7,9 @@ import numpy as np
 from .recorder import COUNTDOWN_S, RecordSession
 
 STILL_S = 5.0
+REACH_S = 6.0
 CALIB_CAPTURE_S = 5.0
+BOX_PAD, BOX_MIN, BOX_EDGE = 0.10, 0.25, 0.02    # comfort box: padding, smallest span, margin kept from the frame edge
 JITTER_STEADY_PX, JITTER_SHAKY_PX = 3.0, 12.0
 FC_STEADY, FC_SHAKY = 1.0, 0.3
 
@@ -27,18 +29,39 @@ def fc_min_from_jitter(std_px):
     return round(FC_STEADY + (FC_SHAKY - FC_STEADY) * f, 3)
 
 
-class CalibSession:
-    """Timing state machine: countdown (3 s) -> still (5 s) -> poses (RecordSession, 5 s each)
-    -> training -> done | failed.
+def comfort_box(points, w, h):
+    """Pointer samples from the reach step (px) -> [x0, y0, x1, y1] in frame fractions: the part of the
+    frame this user reaches comfortably, which then maps to the whole screen. None if too few samples."""
+    if len(points) < 30:
+        return None
+    p, spans = np.asarray(points, dtype=float), []
+    for axis, size in ((0, w), (1, h)):
+        lo, hi = np.percentile(p[:, axis] / size, [5, 95])
+        pad = BOX_PAD * (hi - lo)
+        lo, hi = lo - pad, hi + pad
+        if hi - lo < BOX_MIN:
+            mid = (lo + hi) / 2
+            lo, hi = mid - BOX_MIN / 2, mid + BOX_MIN / 2
+        if lo < BOX_EDGE:
+            lo, hi = BOX_EDGE, hi + (BOX_EDGE - lo)
+        if hi > 1 - BOX_EDGE:
+            lo, hi = lo - (hi - (1 - BOX_EDGE)), 1 - BOX_EDGE
+        spans.append((max(lo, BOX_EDGE), hi))
+    return [round(float(v), 3) for v in (spans[0][0], spans[1][0], spans[0][1], spans[1][1])]
 
-    The caller appends raw cursor points during `still`, writes landmark rows while
+
+class CalibSession:
+    """Timing state machine: countdown (3 s) -> still (5 s) -> reach (6 s) -> poses
+    (RecordSession, 5 s each) -> training -> done | failed.
+
+    The caller appends raw cursor points during `still` and `reach`, writes landmark rows while
     `capturing` (same `fresh` / `capturing` interface as RecordSession), starts the trainer
     when the phase becomes `training`, and sets `phase` + `message` when it finishes.
     """
 
     def __init__(self, poses, t):
         self.phase, self.t0 = "countdown", t
-        self.still_points = []
+        self.still_points, self.reach_points = [], []
         self.fc_min = None
         self.rec = RecordSession(poses, capture_s=CALIB_CAPTURE_S)
         self.message = ""
@@ -61,11 +84,13 @@ class CalibSession:
 
     def update(self, t):
         """-> (phase, pose, seconds_left); phase in
-        countdown | still | poses_countdown | capturing | training | done | failed."""
+        countdown | still | reach | poses_countdown | capturing | training | done | failed."""
         if self.phase == "countdown" and t - self.t0 >= COUNTDOWN_S:
             self.phase, self.t0 = "still", t
         elif self.phase == "still" and t - self.t0 >= STILL_S:
             self.fc_min = fc_min_from_jitter(jitter_px(self.still_points))
+            self.phase, self.t0 = "reach", t
+        elif self.phase == "reach" and t - self.t0 >= REACH_S:
             self.phase = "poses"
             self.rec.start(t)
         if self.phase == "poses":
@@ -74,7 +99,7 @@ class CalibSession:
                 self.phase = "training"
                 return self.phase, None, 0.0
             return ("capturing" if sub == "capturing" else "poses_countdown"), pose, left
-        total = {"countdown": COUNTDOWN_S, "still": STILL_S}.get(self.phase)
+        total = {"countdown": COUNTDOWN_S, "still": STILL_S, "reach": REACH_S}.get(self.phase)
         left = max(total - (t - self.t0), 0.0) if total else 0.0
         return self.phase, None, left
 

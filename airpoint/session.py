@@ -7,6 +7,7 @@ import numpy as np
 
 from . import features as F
 from . import hud
+from .actions import ACTIVE_REGION
 from .classifier import PoseClassifier, VoteSmoother
 from .fsm import AirPointFSM, DwellDetector
 from .modes import CalibrateMode, LiveMode, RecordMode
@@ -51,7 +52,7 @@ class Session:
         self.fsm = AirPointFSM(hold_events=hold, grip=grip, scroll=scroll)
         self.pointer = PointerPipeline(self.profile.fc_min)
         self.pointer.mode = self.profile.filter
-        self.runner.active_region = tuple(self.profile.region)
+        self.apply_region(self.profile.region)
         self.sim = TremorSim()
         self.dwell_on = self.profile.dwell if dwell_on is None else dwell_on
         self.mini, self.view_dirty = False, False
@@ -91,6 +92,11 @@ class Session:
                     votes=[label for label, _ in self.smoother.buf], label=live.label,
                     state=self.fsm.state, state_s=self.obs.t - self.fsm.t_enter, last_event=self.last_event,
                     trail=p.trail, reading=p.reading, left=p.left, mode=p.mode, sim=self.sim.on)
+
+    def apply_region(self, region):
+        """Use this comfort box: it maps to the whole screen, and the pointer filters follow its gain."""
+        self.runner.active_region = tuple(region)
+        self.pointer.set_gain((ACTIVE_REGION[2] - ACTIVE_REGION[0]) / (region[2] - region[0]))
 
     def state(self):
         """What is driving the cursor right now, for the lab to label a test block with."""

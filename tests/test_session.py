@@ -211,6 +211,9 @@ def test_calibration_measures_trains_hot_swaps_and_saves_a_profile(tmp_path):
     assert s.pointer.fc_min == 1.0            # a perfectly still synthetic hand
     profile = json.loads((tmp_path / "profiles" / "ana.json").read_text())
     assert profile["fc_min"] == 1.0 and profile["model"] == "models/personal_ana.joblib"
+    assert profile["region"] == [0.375, 0.475, 0.625, 0.725]      # the hand never moved: the minimum box around it
+    assert s.runner.active_region == (0.375, 0.475, 0.625, 0.725)
+    assert abs(s.pointer.gain - 0.70 / 0.25) < 1e-9               # default box is 0.70 wide
     assert (tmp_path / "models" / "personal_ana.joblib").exists()
     s.on_key(ord("c"), t)
     assert s.mode.name == "live"
