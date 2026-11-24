@@ -18,7 +18,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODELS_DIR = os.path.join(ROOT, "models")
 MODEL_PATH, LABELS_PATH = os.path.join(MODELS_DIR, "pose_mlp.joblib"), os.path.join(MODELS_DIR, "labels.json")
 WINDOW, MINI_MARGIN = "AirPoint", 20
-KEYS = ("q quit | m mouse | d dwell | b filter full/smooth/off | k rules/mlp | c calibrate | v mini | z zoom | "
+KEYS = ("q quit | m mouse | d dwell | b filter full/smooth/off | k rules/mlp | c calibrate | v mini | z zoom | x x-ray | "
         "t simulated tremor ([ ] size, { } speed) | r record | 1-6 pose | space start/redo")
 
 
@@ -80,8 +80,9 @@ def main(argv=None):
     try:
         for frame in camera.frames():
             t = time.time()
+            t0 = time.perf_counter()
             pts, hand = tracker.detect(frame)
-            shown = s.tick(frame, pts, hand, t)
+            shown = s.tick(frame, pts, hand, t, tracker_ms=(time.perf_counter() - t0) * 1000.0)
             if s.view_dirty:
                 show_window(s.mini, runner.screen_w)
                 s.view_dirty = False

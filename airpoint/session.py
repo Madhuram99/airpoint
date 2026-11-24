@@ -1,6 +1,8 @@
 import os
 from dataclasses import dataclass
 
+import numpy as np
+
 from . import features as F
 from . import hud
 from .classifier import PoseClassifier, VoteSmoother
@@ -43,13 +45,14 @@ class Session:
         self.pointer = PointerPipeline(fc_min)
         self.sim = TremorSim()
         self.dwell_on, self.mini, self.view_dirty = dwell_on, False, False
-        self.zoom = 1.5
+        self.zoom, self.xray, self.ms_tracker = 1.5, False, 0.0
         self.recorder, self.rejected = None, 0
         self.mode = LiveMode()
         self.last_event, self.mini_label, self.prev_t = "none", "", None
         self.obs = None
 
-    def tick(self, frame, pts, hand, t):
+    def tick(self, frame, pts, hand, t, tracker_ms=0.0):
+        self.ms_tracker = tracker_ms
         fps = 0.0 if self.prev_t is None else 1.0 / max(t - self.prev_t, 1e-5)
         self.prev_t = t
         view = hud.canon_view(frame)
@@ -62,9 +65,21 @@ class Session:
             raw = (float(pts[F.MIDDLE_MCP, 0] * w), float(pts[F.MIDDLE_MCP, 1] * h))
         self.obs = Obs(t, pts, hand, raw, w, h, fps)
         self.mode.tick(self, self.obs, view)
-        if self.mini and self.mode.name == "live":
-            return hud.mini_frame(view, self.mini_label)
+        if self.mode.name == "live":
+            if self.mini:
+                return hud.mini_frame(view, self.mini_label)
+            if self.xray:
+                view = np.hstack([view, hud.draw_xray(h, self.taps())])
         return hud.zoomed(view, self.zoom)
+
+    def taps(self):
+        """Everything the X-ray panel shows, read from where it already lives."""
+        p, live = self.pointer, self.mode
+        return dict(clf=self.clf.name, fps=self.obs.fps, ms_tracker=self.ms_tracker, ms_classifier=live.clf_ms,
+                    labels=self.clf.labels, probs=live.probs, gate=self.smoother.min_conf,
+                    votes=[label for label, _ in self.smoother.buf], label=live.label,
+                    state=self.fsm.state, state_s=self.obs.t - self.fsm.t_enter, last_event=self.last_event,
+                    trail=p.trail, reading=p.reading, left=p.left, mode=p.mode, sim=self.sim.on)
 
     def set_mode(self, mode):
         self.mode.close(self)
@@ -94,6 +109,8 @@ class Session:
         elif key == ord("z"):
             self.zoom = hud.ZOOMS[(hud.ZOOMS.index(self.zoom) + 1) % len(hud.ZOOMS)]
             self.view_dirty = True
+        elif key == ord("x"):
+            self.xray, self.view_dirty = not self.xray, True
         elif key == ord("b"):
             self.pointer.cycle_mode()
         elif key == ord("t") and self.mode.name == "live":

@@ -132,8 +132,8 @@ def test_the_pointer_keeps_sub_pixel_precision(tmp_path):
 class _Mlp:
     name, labels = "mlp", ["palm"]
 
-    def predict(self, pts):
-        return "palm", 1.0
+    def proba(self, pts):
+        return np.array([1.0])
 
 
 def test_k_switches_classifier_and_clears_the_vote_buffer(tmp_path):
@@ -297,3 +297,30 @@ def test_mini_label_carries_the_simulator_and_lock_tags(tmp_path):
     s.on_key(ord("t"), 0.0)
     feed(s, "palm", 6.0, 0.0)
     assert " | SIM" in s.mini_label and " | LOCK " in s.mini_label
+
+
+def test_x_adds_the_xray_panel_in_live_mode_only(tmp_path):
+    s, _ = make(tmp_path)
+    s.zoom = 1.0
+    s.on_key(ord("x"), 0.0)
+    assert s.view_dirty
+    t = feed(s, "palm", 0.5, 0.0)
+    assert s.tick(blank(), BY_POSE["palm"], "Right", t).shape == (360, 640 + 400, 3)
+    assert s.tick(blank(), None, None, t + DT).shape == (360, 1040, 3)          # no hand: still draws
+    s.on_key(ord("v"), t)
+    assert s.tick(blank(), BY_POSE["palm"], "Right", t + 2 * DT).shape == (240, 320, 3)   # mini wins
+    s.on_key(ord("v"), t)
+    s.on_key(ord("r"), t)
+    assert s.tick(blank(), BY_POSE["palm"], "Right", t + 3 * DT).shape == (360, 640, 3)   # not while recording
+    s.close()
+
+
+def test_xray_taps_report_the_live_pipeline(tmp_path):
+    s, _ = make(tmp_path)
+    t = feed(s, "palm", 0.5, 0.0)
+    feed(s, "pinch", 0.2, t)
+    x = s.taps()
+    assert x["labels"][int(np.argmax(x["probs"]))] == "pinch" and x["label"] == "pinch"
+    assert x["state"] == "PRESSING" and 0.0 < x["state_s"] < 0.2
+    assert x["votes"][-3:] == ["pinch"] * 3 and x["gate"] == 0.75
+    assert len(x["trail"]) == 21 and x["mode"] == "full" and not x["sim"]

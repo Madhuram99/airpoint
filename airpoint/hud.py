@@ -1,4 +1,5 @@
 import cv2
+import numpy as np
 
 HAND_CONNECTIONS = [
     (0, 1), (1, 2), (2, 3), (3, 4),
@@ -15,7 +16,10 @@ ACCENT_ON, ACCENT_OFF, WHITE, MINT = (0, 200, 255), (90, 90, 90), (255, 255, 255
 PANEL, ALERT = (25, 35, 30), (60, 60, 255)
 MINI_SIZE = (320, 240)
 ZOOMS = (1.0, 1.5, 2.0)
-KEY_HINT = "keys q k c v z t r"
+XRAY_W = 400
+STATES = ("RESTING", "MOVING", "PRESSING", "DRAGGING", "HOLD", "SCROLLING")
+RAW_C, OUT_C, DIM, GRID_C = (80, 80, 255), (120, 230, 120), (150, 150, 150), (60, 70, 65)
+KEY_HINT = "keys q k c v z x t r"
 
 
 def canon_view(frame):
@@ -106,3 +110,75 @@ def mini_frame(frame, label):
     cv2.rectangle(small, (0, h - 24), (w, h), PANEL, -1)
     put_fit(small, label, (8, h - 8), 0.45, MINT)
     return small
+
+
+def _plot(panel, box, curves):
+    """Draw each (x 0..1, y 0..1, color) curve inside box = (left, top, width, height)."""
+    x0, y0, w, h = box
+    cv2.rectangle(panel, (x0, y0), (x0 + w, y0 + h), GRID_C, 1)
+    for xs, ys, color in curves:
+        if len(xs) < 2:
+            continue
+        pts = np.stack([x0 + np.asarray(xs) * w, y0 + h - np.clip(ys, 0.0, 1.0) * h], axis=1)
+        cv2.polylines(panel, [pts.astype(np.int32)], False, color, 1, cv2.LINE_AA)
+
+
+def draw_xray(height, x):
+    """The X-ray panel: what the system saw and decided this frame. `x` is Session.taps()."""
+    panel = np.full((height, XRAY_W, 3), PANEL, np.uint8)
+    put_fit(panel, f"X-RAY | {x['clf']} | {x['fps']:.0f} fps | tracker {x['ms_tracker']:.0f} ms | "
+                   f"classifier {x['ms_classifier']:.1f} ms", (8, 15), 0.40, WHITE)
+
+    probs = x["probs"]                                         # 1. class probabilities
+    best = -1 if probs is None else int(np.argmax(probs))
+    for i, name in enumerate(x["labels"]):
+        y, p = 24 + 16 * i, 0.0 if probs is None else float(probs[i])
+        put_fit(panel, name, (8, y + 12), 0.40, MINT if i == best else DIM)
+        cv2.rectangle(panel, (100, y + 3), (100 + int(220 * p), y + 13), ACCENT_ON if i == best else ACCENT_OFF, -1)
+        put_fit(panel, f"{p:.2f}", (334, y + 12), 0.40, WHITE)
+    gate_x, y = 100 + int(220 * x["gate"]), 24 + 16 * len(x["labels"])
+    cv2.line(panel, (gate_x, 24), (gate_x, y), WHITE, 1)
+
+    votes = " ".join(v.replace("thumb_", "")[:6] for v in x["votes"])   # 2. the vote buffer
+    put_fit(panel, f"votes: {votes}  =>  {x['label']}", (8, y + 14), 0.40, WHITE)
+
+    y += 22                                                    # 3. the state machine
+    for i, name in enumerate(STATES):
+        bx, by, on = 8 + (i % 3) * 130, y + (i // 3) * 22, name == x["state"]
+        cv2.rectangle(panel, (bx, by), (bx + 124, by + 18), ACCENT_ON if on else ACCENT_OFF, -1 if on else 1)
+        put_fit(panel, name, (bx + 6, by + 13), 0.38, (0, 0, 0) if on else DIM)
+    put_fit(panel, f"in state {x['state_s']:.1f} s | last: {x['last_event']}", (8, y + 54), 0.40, WHITE)
+
+    y += 70                                                    # 4. scope: pointer x, raw vs output
+    put_fit(panel, "pointer x, last 4 s: raw red, output green", (8, y), 0.38, DIM)
+    trail = list(x["trail"])
+    curves = []
+    if len(trail) >= 2:
+        raw, out = np.array([r[0] for _, r, _ in trail]), np.array([o[0] for _, _, o in trail])
+        mid = float(np.median(out))
+        span = max(25.0, 1.2 * float(np.abs(raw - mid).max()))
+        ts = np.linspace(0.0, 1.0, len(trail))
+        curves = [(ts, (raw - mid) / (2 * span) + 0.5, RAW_C), (ts, (out - mid) / (2 * span) + 0.5, OUT_C)]
+    _plot(panel, (8, y + 4, XRAY_W - 16, 48), curves)
+
+    y += 66                                                    # 5. spectrum: raw vs output
+    r, left = x["reading"], x["left"]
+    put_fit(panel, "shake by frequency: raw red, output green", (8, y), 0.38, DIM)
+    box, curves = (8, y + 4, XRAY_W - 16, 44), []
+    if r.spectrum:
+        top = float(np.max(r.spectrum[1])) + 1e-12
+        for spec, color in ((r.spectrum, RAW_C), (left.spectrum, OUT_C)):
+            if spec:
+                curves.append(((spec[0] - 3.0) / 9.0, np.sqrt(spec[1] / top), color))
+    _plot(panel, box, curves)
+    for hz in (3, 6, 9, 12):
+        put_fit(panel, str(hz), (box[0] + int((hz - 3) / 9 * box[2]) - (12 if hz == 12 else 0), y + 60), 0.34, DIM)
+    if r.locked:
+        lx = box[0] + int((r.lock_hz - 3.0) / 9.0 * box[2])
+        cv2.line(panel, (lx, box[1]), (lx, box[1] + box[3]), ACCENT_ON, 1)
+        put_fit(panel, f"{r.lock_hz:.1f} Hz", (min(lx + 4, XRAY_W - 60), box[1] + 12), 0.38, ACCENT_ON)
+
+    foot = (f"shake {r.amp:.1f} px -> {left.amp:.1f} px | filter {x['mode']} | "       # 6. numbers
+            f"sees up to {r.max_hz:.0f} Hz" + (" | SIMULATED" if x["sim"] else ""))
+    put_fit(panel, foot, (8, y + 77), 0.40, ALERT if x["sim"] else WHITE)
+    return panel

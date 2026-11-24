@@ -1,3 +1,7 @@
+import time
+
+import numpy as np
+
 from .. import features as F
 from .. import hud
 from ..pointer import PRECLICK_RATIO
@@ -24,12 +28,20 @@ class LiveMode:
 
     name = "live"
 
+    def __init__(self):
+        self.probs, self.label, self.clf_ms = None, "none", 0.0     # kept for the X-ray panel
+
     def tick(self, s, o, frame):
         if o.pts is None:
-            label, conf, ratio = s.smoother.update(None, 0.0), 0.0, 1.0
+            self.probs, label, conf, ratio = None, s.smoother.update(None, 0.0), 0.0, 1.0
         else:
-            raw_label, conf = s.clf.predict(o.pts)
-            label, ratio = s.smoother.update(raw_label, conf), F.pinch_ratio(o.pts)
+            t0 = time.perf_counter()
+            self.probs = s.clf.proba(o.pts)
+            self.clf_ms = (time.perf_counter() - t0) * 1000.0
+            i = int(np.argmax(self.probs))
+            conf = float(self.probs[i])
+            label, ratio = s.smoother.update(s.clf.labels[i], conf), F.pinch_ratio(o.pts)
+        self.label = label
         state, events = s.fsm.update(label, o.t)
         smooth = None
         if o.raw is not None:

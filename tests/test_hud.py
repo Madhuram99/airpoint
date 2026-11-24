@@ -60,3 +60,39 @@ def test_banner_and_prompt_draw_inside_the_frame():
     frame = np.zeros((360, 640, 3), np.uint8)
     hud.draw_prompt(frame, "HOLD palm   7s", "tilt | kept 12", "SIGN LOST")
     assert frame[:86].any() and not frame[88:].any()      # top strip: never over the hand
+
+
+def _taps(**over):
+    from airpoint.tremor import Reading
+    x = dict(clf="mlp/ana", fps=30.0, ms_tracker=5.0, ms_classifier=0.2,
+             labels=["palm", "pinch", "fist", "v_sign", "thumb_up", "thumb_down"],
+             probs=np.array([0.02, 0.9, 0.03, 0.02, 0.02, 0.01]), gate=0.75,
+             votes=["palm", "pinch", "pinch", "pinch", "pinch"], label="pinch",
+             state="PRESSING", state_s=0.21, last_event="click", trail=[],
+             reading=Reading(), left=Reading(), mode="full", sim=False)
+    x.update(over)
+    return x
+
+
+def test_xray_panel_draws_at_both_common_heights_and_with_nothing_to_show():
+    for h in (360, 480):
+        assert hud.draw_xray(h, _taps()).shape == (h, hud.XRAY_W, 3)
+    empty = hud.draw_xray(360, _taps(probs=None, votes=[], label="none", state="RESTING"))
+    assert empty.shape == (360, 400, 3)
+
+
+def test_xray_panel_shows_the_winning_bar_the_active_state_and_the_curves():
+    from airpoint.tremor import Reading
+    freqs = np.arange(3.0, 12.01, 0.1)
+    power = np.exp(-((freqs - 6.0) ** 2) / 0.1)
+    trail = [(i / 30, (320 + 14 * np.sin(2 * np.pi * 6 * i / 30), 180.0), (320.0, 180.0)) for i in range(120)]
+    locked = Reading(status="tremor", hz=6.0, amp=12.0, fs=30.0, max_hz=12.0, locked=True, lock_hz=6.0,
+                     spectrum=(freqs, power))
+    left = Reading(status="steady", amp=0.8, fs=30.0, max_hz=12.0, spectrum=(freqs, power * 0.01))
+    panel = hud.draw_xray(360, _taps(trail=trail, reading=locked, left=left, sim=True))
+    plain = hud.draw_xray(360, _taps())
+    accent = np.array(hud.ACCENT_ON, np.uint8)
+    assert (panel[44:52, 100:260] == accent).all(axis=2).all()            # the pinch bar (gate tick is at x 265)
+    assert (panel[143:159, 270:390] == accent).all(axis=2).mean() > 0.5   # the PRESSING box is filled
+    assert (panel[217:263] != plain[217:263]).any()                        # the scope has curves
+    assert (panel[283:325] != plain[283:325]).any()                        # the spectrum has curves
