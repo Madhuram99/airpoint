@@ -1,4 +1,6 @@
+import json
 import os
+import time
 from dataclasses import dataclass
 
 import numpy as np
@@ -13,6 +15,7 @@ from .train import train_personal
 from .tremor import TremorSim
 
 
+LIVE_EVERY_S = 1.0   # how often results/live.json is rewritten for the lab
 SIM_NUDGES = {ord("["): (0.0, -0.05), ord("]"): (0.0, 0.05), ord("{"): (-0.5, 0.0), ord("}"): (0.5, 0.0)}
 
 
@@ -49,7 +52,7 @@ class Session:
         self.recorder, self.rejected = None, 0
         self.mode = LiveMode()
         self.last_event, self.mini_label, self.prev_t = "none", "", None
-        self.obs = None
+        self.obs, self.live_t = None, None
 
     def tick(self, frame, pts, hand, t, tracker_ms=0.0):
         self.ms_tracker = tracker_ms
@@ -65,6 +68,7 @@ class Session:
             raw = (float(pts[F.MIDDLE_MCP, 0] * w), float(pts[F.MIDDLE_MCP, 1] * h))
         self.obs = Obs(t, pts, hand, raw, w, h, fps)
         self.mode.tick(self, self.obs, view)
+        self._write_live(t)
         if self.mode.name == "live":
             if self.mini:
                 return hud.mini_frame(view, self.mini_label)
@@ -80,6 +84,28 @@ class Session:
                     votes=[label for label, _ in self.smoother.buf], label=live.label,
                     state=self.fsm.state, state_s=self.obs.t - self.fsm.t_enter, last_event=self.last_event,
                     trail=p.trail, reading=p.reading, left=p.left, mode=p.mode, sim=self.sim.on)
+
+    def state(self):
+        """What is driving the cursor right now, for the lab to label a test block with."""
+        r = self.pointer.reading
+        return dict(ts=time.time(), user=self.user, mode=self.mode.name, mouse=self.runner.enabled,
+                    dwell=self.dwell_on, filter=self.pointer.mode,
+                    sim=dict(on=self.sim.on, hz=self.sim.hz, amp=self.sim.amp),
+                    locked=r.locked, lock_hz=round(r.lock_hz, 2), classifier=self.clf.name,
+                    fps=round(self.obs.fps, 1) if self.obs else 0.0)
+
+    def _write_live(self, t):
+        if self.live_t is not None and t - self.live_t < LIVE_EVERY_S:
+            return
+        self.live_t = t
+        path = os.path.join(self.root, "results", "live.json")
+        try:                                   # the lab hook must never break the frame loop
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path + ".tmp", "w") as f:
+                json.dump(self.state(), f)
+            os.replace(path + ".tmp", path)
+        except OSError:
+            pass
 
     def set_mode(self, mode):
         self.mode.close(self)
@@ -134,3 +160,7 @@ class Session:
         self.mode.close(self)
         if self.recorder is not None:
             self.recorder.close()
+        try:
+            os.remove(os.path.join(self.root, "results", "live.json"))
+        except OSError:
+            pass

@@ -324,3 +324,22 @@ def test_xray_taps_report_the_live_pipeline(tmp_path):
     assert x["state"] == "PRESSING" and 0.0 < x["state_s"] < 0.2
     assert x["votes"][-3:] == ["pinch"] * 3 and x["gate"] == 0.75
     assert len(x["trail"]) == 21 and x["mode"] == "full" and not x["sim"]
+
+
+def test_live_state_file_tells_the_lab_what_is_driving_the_cursor(tmp_path):
+    path = tmp_path / "results" / "live.json"
+    s, _ = make(tmp_path, dwell_on=True)
+    t = feed(s, "palm", 0.5, 0.0)
+    live = json.loads(path.read_text())
+    assert live["mouse"] and live["dwell"] and live["filter"] == "full" and live["mode"] == "live"
+    assert live["sim"] == {"on": False, "hz": 6.0, "amp": 0.2} and live["user"] == "ana"
+    assert live["classifier"] == "rules" and abs(live["ts"] - time.time()) < 5
+    s.on_key(ord("t"), t)
+    s.on_key(ord("b"), t)
+    t = feed(s, "palm", 0.3, t)                      # under a second since the last write
+    assert json.loads(path.read_text())["filter"] == "full"
+    feed(s, "palm", 0.5, t)
+    live = json.loads(path.read_text())
+    assert live["filter"] == "smooth" and live["sim"]["on"]
+    s.close()
+    assert not path.exists()                          # a closed AirPoint is "not running" at once
