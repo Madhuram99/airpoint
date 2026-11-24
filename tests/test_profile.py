@@ -33,9 +33,29 @@ def test_roles_are_checked():
 
 
 def test_fsm_parts_turn_roles_into_what_the_state_machine_takes():
-    grip, scroll, hold = P.fsm_parts({"grip": ["pinch"], "right_click": ["fist"], "scroll_up": ["thumb_up"], "scroll_down": []})
+    grip, scroll, hold, hold_s = P.fsm_parts({"grip": ["pinch"], "right_click": ["fist"], "scroll_up": ["thumb_up"], "scroll_down": []})
     assert grip == frozenset({"pinch"}) and scroll == {"thumb_up": 1}
-    assert hold == {"fist": Event("right_click")}
+    assert hold == {"fist": Event("right_click")} and hold_s == {}
+
+
+def test_taught_signs_become_one_shot_events_with_their_own_hold_time():
+    signs = {"water": {"action": "say", "arg": "I need water", "hold_s": 0.6},
+             "copy": {"action": "hotkey", "arg": ["command", "c"], "hold_s": 0.6},
+             "stop": {"action": "pause", "arg": None, "hold_s": 0.8}}
+    _, _, hold, hold_s = P.fsm_parts(P.default_roles(), signs)
+    assert hold["water"] == Event("say", "I need water") and hold["copy"] == Event("hotkey", ("command", "c"))
+    assert hold["stop"] == Event("pause") and hold["v_sign"] == Event("right_click")
+    assert hold_s == {"water": 0.6, "copy": 0.6, "stop": 0.8}
+
+
+def test_sign_names_and_key_combos_are_checked():
+    assert P.check_sign_name("water", {}) is None
+    assert "built-in" in P.check_sign_name("fist", {})
+    assert "letters" in P.check_sign_name("my sign!", {})
+    assert "letters" in P.check_sign_name("", {})
+    assert P.parse_keys("cmd+shift+4") == ("command", "shift", "4")
+    assert P.parse_keys("Option + Cmd + F5") == ("option", "command", "f5")
+    assert P.parse_keys("ctrl+alt+del") is None and P.parse_keys("") is None
 
 
 def test_dropping_poses_removes_them_from_every_role():

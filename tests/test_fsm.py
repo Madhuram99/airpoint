@@ -119,3 +119,13 @@ def test_a_pose_with_no_role_is_neutral_it_moves_and_rearms():
     assert events == [] and fsm.state == "MOVING" and not fsm.cursor_frozen
     events, _ = run([("v_sign", 0.6), ("v_sign", 1.0), ("thumb_up", 1.1), ("v_sign", 1.2), ("v_sign", 1.6)], fsm)
     assert events == [("right_click", None), ("right_click", None)]    # thumb_up re-armed it, as palm would
+
+
+def test_each_held_pose_can_have_its_own_hold_time():
+    from airpoint.fsm import Event
+    fsm = AirPointFSM(hold_events={"v_sign": Event("right_click"), "water": Event("say", "I need water")},
+                      hold_s={"water": 0.6})
+    events, _ = run([("palm", 0.0), ("water", 0.1), ("water", 0.5), ("palm", 0.6),       # 0.4 s: too short for a taught sign
+                     ("water", 0.7), ("water", 1.3), ("water", 2.0), ("palm", 2.1),       # 0.6 s: fires once
+                     ("v_sign", 2.2), ("v_sign", 2.6)], fsm)                              # built-in keeps 0.3 s
+    assert events == [("say", "I need water"), ("right_click", None)]

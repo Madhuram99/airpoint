@@ -29,6 +29,9 @@ class FakeMouse:
     def hotkey(self, *keys):
         self.calls.append(("hotkey",) + keys)
 
+    def write(self, text):
+        self.calls.append(("write", text))
+
 
 class PyAutoGuiMouse:
     def __init__(self):
@@ -60,6 +63,9 @@ class PyAutoGuiMouse:
 
     def hotkey(self, *keys):
         self.pg.hotkey(*keys)
+
+    def write(self, text):
+        self.pg.write(text, interval=0.01)
 
 
 class ActionRunner:
@@ -111,6 +117,8 @@ class ActionRunner:
                 self.mouse.scroll(e.arg)
             elif e.kind == "hotkey":
                 self.mouse.hotkey(*e.arg)
+            elif e.kind == "type":
+                self.mouse.write(e.arg)
 
     def release(self):
         if self.button_down:

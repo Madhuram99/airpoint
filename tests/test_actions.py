@@ -60,3 +60,12 @@ def test_a_locked_runner_sends_nothing_and_lets_go_of_the_button():
     r.unlock()
     r.apply([Event("click")])
     assert m.calls[-1] == ("click",)
+
+
+def test_type_event_writes_text_through_the_mouse_object():
+    m, r = make()
+    r.apply([Event("type", "hello")])
+    assert m.calls == []                              # mouse off: nothing is typed
+    r.toggle()
+    r.apply([Event("type", "hello"), Event("say", "spoken elsewhere")])
+    assert m.calls == [("write", "hello")]

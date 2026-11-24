@@ -68,6 +68,13 @@ class LiveMode:
             if s.runner.enabled:
                 for e in events:
                     s.sounds.play(e.kind)
+            for e in events:                           # what a taught sign can do beyond the mouse
+                if e.kind == "say":
+                    s.effects.say(e.arg)               # speech does not need mouse control
+                elif e.kind == "open" and s.runner.enabled:
+                    s.effects.open(e.arg)
+                elif e.kind == "pause":
+                    s.set_locked(True)
         hud.draw_region(frame, s.runner.active_region, s.runner.enabled)
         s.hint = None
         if s.hints_on:

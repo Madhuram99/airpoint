@@ -70,7 +70,7 @@ class CalibrateMode:
         s.apply_region(prof.region)
         prof.skipped = [p for p in POSES if self.kept[p] < max(SKIP_MIN_FRAMES, SKIP_SHARE * (self.kept[p] + self.lost[p]))]
         prof.roles = profiles.drop_poses(prof.roles, prof.skipped)
-        s.apply_roles(prof.roles)
+        s.apply_bindings()
         no_grip = not prof.roles["grip"]
         if no_grip:                                    # no sign left to click with: hold-still clicking takes over
             prof.dwell = s.dwell_on = True

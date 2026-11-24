@@ -14,8 +14,8 @@ DWELL_REARM_PX = 30.0   # after a dwell click, move this far before the next one
 
 @dataclass(frozen=True)
 class Event:
-    kind: str          # click | right_click | drag_start | drag_end | scroll | hotkey
-    arg: object = None  # scroll: signed ticks; hotkey: tuple of keys
+    kind: str          # click | right_click | drag_start | drag_end | scroll | hotkey | type | say | open | pause
+    arg: object = None  # scroll: signed ticks; hotkey: tuple of keys; type / say / open: text
 
 
 DEFAULT_HOLD_EVENTS = {V_SIGN: Event("right_click")}
@@ -24,13 +24,14 @@ DEFAULT_HOLD_EVENTS = {V_SIGN: Event("right_click")}
 class AirPointFSM:
     """Pure: update(pose, t) -> (state, [Event]). Clock is a parameter."""
 
-    def __init__(self, hold_events=None, grip=GRIP, scroll=None):
+    def __init__(self, hold_events=None, grip=GRIP, scroll=None, hold_s=None):
         """Roles come from the user's profile: `grip` poses click and drag, `scroll` maps a pose to a
         direction, `hold_events` maps a pose to a one-shot event. A pose with no role is neutral:
         it moves the cursor and re-arms the one-shots, as the open palm does."""
         self.hold_events = dict(DEFAULT_HOLD_EVENTS if hold_events is None else hold_events)
         self.grip = frozenset(grip)
         self.scroll = dict(SCROLL if scroll is None else scroll)
+        self.hold_s = dict(hold_s or {})     # per-pose hold time; HOLD_FIRE_S when a pose is not listed
         self.state = "RESTING"
         self.t_enter = 0.0
         self.hold_pose = None
@@ -91,7 +92,7 @@ class AirPointFSM:
                 if self.neutral(pose):
                     self.hold_armed = True
                 self._to("MOVING", t)
-            elif not self.hold_fired and t - self.t_enter >= HOLD_FIRE_S:
+            elif not self.hold_fired and t - self.t_enter >= self.hold_s.get(pose, HOLD_FIRE_S):
                 events.append(self.hold_events[pose])
                 self.hold_fired, self.hold_armed = True, False
         elif s == "SCROLLING":

@@ -7,11 +7,13 @@
 import argparse
 import json
 import os
+import re
 from dataclasses import asdict, dataclass, field, fields
 
 from .actions import ACTIVE_REGION
 from .fsm import Event
 from .pointer import FC_MIN, MODES
+from .poses import POSES
 
 VERSION = 2
 DEFAULT_REGION = ACTIVE_REGION
@@ -36,6 +38,8 @@ class Profile:
     sounds: bool = True
     hints: bool = True
     filter: str = "full"
+    signs: dict = field(default_factory=dict)      # taught signs: name -> {"action", "arg", "hold_s"}
+    voice: str = None                              # `say` voice for spoken phrases; None = the system voice
     version: int = VERSION
 
 
@@ -83,12 +87,41 @@ def drop_poses(roles, poses):
     return {name: [p for p in roles.get(name, []) if p not in poses] for name in ROLE_NAMES}
 
 
-def fsm_parts(roles):
-    """Profile roles -> (grip set, scroll map, hold events) for AirPointFSM."""
+SIGN_ACTIONS = ("say", "hotkey", "type", "open", "pause")
+SIGN_HOLD_S = 0.6        # longer than the built-in 0.3 s: a taught sign must be meant
+KEY_ALIASES = {"cmd": "command", "ctrl": "control", "opt": "option", "alt": "option", "return": "enter", "esc": "escape"}
+KEY_NAMES = ({"command", "control", "option", "shift", "enter", "escape", "space", "tab", "backspace", "delete",
+              "left", "right", "up", "down", "home", "end", "pageup", "pagedown"}
+             | {f"f{i}" for i in range(1, 13)})
+
+
+def check_sign_name(name, signs):
+    """-> what is wrong with a name for a taught sign, or None. Re-teaching an existing sign is allowed."""
+    if not re.fullmatch(r"[a-z0-9_]{1,20}", name or ""):
+        return "use 1-20 lower-case letters, digits or _"
+    if name in POSES:
+        return f"'{name}' is a built-in pose"
+    return None
+
+
+def parse_keys(text):
+    """'cmd+shift+4' -> ('command', 'shift', '4'), or None if a key is not recognised."""
+    keys = [KEY_ALIASES.get(k.strip().lower(), k.strip().lower()) for k in text.split("+")]
+    ok = all(k in KEY_NAMES or (len(k) == 1 and k.isprintable() and k != " ") for k in keys)
+    return tuple(keys) if text.strip() and ok else None
+
+
+def fsm_parts(roles, signs=None):
+    """Profile roles and taught signs -> (grip set, scroll map, hold events, hold seconds) for AirPointFSM."""
     scroll = {p: 1 for p in roles.get("scroll_up", [])}
     scroll.update({p: -1 for p in roles.get("scroll_down", [])})
-    return (frozenset(roles.get("grip", [])), scroll,
-            {p: Event("right_click") for p in roles.get("right_click", [])})
+    hold = {p: Event("right_click") for p in roles.get("right_click", [])}
+    hold_s = {}
+    for name, spec in (signs or {}).items():
+        arg = tuple(spec["arg"]) if spec["action"] == "hotkey" else spec.get("arg")
+        hold[name] = Event(spec["action"], arg)
+        hold_s[name] = spec.get("hold_s", SIGN_HOLD_S)
+    return frozenset(roles.get("grip", [])), scroll, hold, hold_s
 
 
 def _on_off(text):
@@ -111,6 +144,7 @@ def main(argv=None, root=None):
     ap.add_argument("--sounds", type=_on_off, metavar="on|off")
     ap.add_argument("--hints", type=_on_off, metavar="on|off")
     ap.add_argument("--filter", choices=MODES)
+    ap.add_argument("--voice", help="voice for spoken phrases, e.g. Rishi, Tara, Lekha (see: say -v '?')")
     args = ap.parse_args(argv)
 
     prof = load(root, args.user) or Profile(user=args.user)
@@ -132,7 +166,7 @@ def main(argv=None, root=None):
         if len(box) != 4 or not (0 <= box[0] < box[2] <= 1 and 0 <= box[1] < box[3] <= 1):
             raise SystemExit("region needs x0,y0,x1,y1 with 0 <= x0 < x1 <= 1 and 0 <= y0 < y1 <= 1")
         prof.region = box
-    for name in ("dwell", "sounds", "hints", "filter"):
+    for name in ("dwell", "sounds", "hints", "filter", "voice"):
         if getattr(args, name) is not None:
             setattr(prof, name, getattr(args, name))
     if asdict(prof) != before or not os.path.exists(path(root, args.user)):

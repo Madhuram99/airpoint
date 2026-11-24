@@ -9,6 +9,7 @@ from . import features as F
 from . import hud
 from .actions import ACTIVE_REGION
 from .classifier import PoseClassifier, VoteSmoother
+from .effects import Effects
 from .fsm import AirPointFSM, DwellDetector
 from .hints import Hinter
 from .modes import CalibrateMode, LiveMode, RecordMode
@@ -45,7 +46,7 @@ class Session:
     """
 
     def __init__(self, runner, rules, mlp, *, root, user=None, profile=None, dwell_on=None,
-                 train_fn=train_personal, sounds=None):
+                 train_fn=train_personal, sounds=None, effects=None):
         self.runner, self.rules, self.mlp = runner, rules, mlp
         self.clf = mlp or rules
         self.root, self.user, self.train_fn = root, user, train_fn
@@ -53,8 +54,9 @@ class Session:
         self.profile = profile or Profile(user=user or "guest")      # a guest profile is never saved
         self.smoother, self.dwell = VoteSmoother(), DwellDetector()
         self.unlock_dwell = DwellDetector(dwell_s=UNLOCK_S, still_px=UNLOCK_STILL_PX)
-        self.apply_roles(self.profile.roles)
+        self.apply_bindings()
         self.sounds = sounds or Sounds(enabled=self.profile.sounds)
+        self.effects = effects or Effects(voice=self.profile.voice)
         self.hinter, self.hints_on, self.hint = Hinter(), self.profile.hints, None
         self.pointer = PointerPipeline(self.profile.fc_min)
         self.pointer.mode = self.profile.filter
@@ -100,10 +102,10 @@ class Session:
                     state=self.fsm.state, state_s=self.obs.t - self.fsm.t_enter, last_event=self.last_event,
                     trail=p.trail, reading=p.reading, left=p.left, mode=p.mode, sim=self.sim.on)
 
-    def apply_roles(self, roles):
-        """Which poses click, scroll and right-click for this user. Restarts the state machine."""
-        grip, scroll, hold = fsm_parts(roles)
-        self.fsm = AirPointFSM(hold_events=hold, grip=grip, scroll=scroll)
+    def apply_bindings(self):
+        """The profile's roles and taught signs decide which pose does what. Restarts the state machine."""
+        grip, scroll, hold, hold_s = fsm_parts(self.profile.roles, self.profile.signs)
+        self.fsm = AirPointFSM(hold_events=hold, grip=grip, scroll=scroll, hold_s=hold_s)
 
     def set_locked(self, locked):
         """The user's pause. Locking lets go of a held button; a still open palm unlocks (live mode)."""

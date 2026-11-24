@@ -7,6 +7,8 @@ import numpy as np
 
 from airpoint.actions import ActionRunner, FakeMouse
 from airpoint.classifier import RuleClassifier
+from airpoint.effects import Effects
+from airpoint.profile import Profile
 from airpoint.modes.live import shake_line
 from airpoint.tremor import Reading, TremorSim
 from airpoint.session import Session
@@ -23,9 +25,11 @@ def make(tmp_path, user="ana", mouse_on=True, **kw):
     if mouse_on:
         runner.toggle()
     played = []                                     # sound files the session asked for; nothing is played
+    done = []                                       # commands the session asked to run; none is executed
+    kw.setdefault("effects", Effects(run=lambda cmd: done.append(cmd)))
     s = Session(runner, RuleClassifier(), None, root=str(tmp_path), user=user,
                 sounds=Sounds(player=lambda path: played.append(path.rsplit("/", 1)[1])), **kw)
-    s.played = played
+    s.played, s.done = played, done
     return s, mouse
 
 
@@ -432,3 +436,38 @@ def test_calibration_notices_what_the_hand_cannot_do_and_falls_back_to_dwell(tmp
     assert "skipped" in s.mode.calib.message and "dwell" in s.mode.calib.message
     assert s.fsm.grip == frozenset() and s.fsm.scroll == {"thumb_up": 1}
     s.close()
+
+
+def _speaking_profile():
+    p = Profile(user="ana")
+    p.roles["right_click"] = []                      # free the V-sign so it can stand in for a taught sign
+    p.signs = {"v_sign": {"action": "say", "arg": "I need water", "hold_s": 0.6}}
+    return p
+
+
+def test_a_bound_sign_speaks_once_per_hold_even_with_the_mouse_off(tmp_path):
+    s, mouse = make(tmp_path, mouse_on=False, profile=_speaking_profile())
+    t = feed(s, "palm", 0.5, 0.0)
+    t = feed(s, "v_sign", 0.5, t)                    # under the 0.6 s hold (plus the vote delay)
+    assert s.done == []
+    t = feed(s, "v_sign", 1.0, t)
+    assert s.done == [["say", "I need water"]] and mouse.calls == []
+    t = feed(s, "palm", 0.3, t)
+    feed(s, "v_sign", 1.0, t)
+    assert s.done == [["say", "I need water"]] * 2
+
+
+def test_nothing_is_spoken_while_paused_and_a_pause_sign_pauses(tmp_path):
+    s, _ = make(tmp_path, profile=_speaking_profile())
+    s.on_key(ord("p"), 0.0)
+    t = feed(s, "palm", 0.2, 0.0)
+    feed(s, "v_sign", 1.2, t)
+    assert s.done == []
+
+    p = Profile(user="ana")
+    p.roles["right_click"] = []
+    p.signs = {"v_sign": {"action": "pause", "arg": None, "hold_s": 0.6}}
+    s, _ = make(tmp_path, profile=p)
+    t = feed(s, "palm", 0.5, 0.0)
+    feed(s, "v_sign", 1.0, t)
+    assert s.runner.locked and s.played == ["Submarine.aiff"]
