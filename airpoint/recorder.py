@@ -22,14 +22,14 @@ def looks_like(pose, pts):
     idx, mid, ring = ext(INDEX_TIP), ext(MIDDLE_TIP), ext(RING_TIP)
     gap = np.linalg.norm(p[THUMB_TIP, :2] - p[INDEX_TIP, :2]) / palm
     thumb_above_wrist = p[THUMB_TIP, 1] < p[WRIST, 1]
-    return {
+    return {            # a label with no rule here (a taught sign) is always let through
         PALM: idx > 1.2 and mid > 1.2,
         PINCH: gap < 0.5,
         FIST: idx < 1.1 and mid < 1.1,
         V_SIGN: idx > 1.2 and mid > 1.2 and ring < 1.2,
         THUMB_UP: thumb_above_wrist and idx < 1.7,
         THUMB_DOWN: not thumb_above_wrist,
-    }[pose]
+    }.get(pose, True)
 
 
 class Recorder:

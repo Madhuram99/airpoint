@@ -35,3 +35,6 @@ THUMB_DOWN = hand(thumb=(0.50, 1.18), **CURLED)
 
 BY_POSE = {"palm": OPEN_PALM, "pinch": PINCH, "fist": FIST, "v_sign": V_SIGN,
            "thumb_up": THUMB_UP, "thumb_down": THUMB_DOWN}
+
+# A seventh sign, for teaching tests only (not one of the six built-in poses): index and pinky up.
+ROCK = hand(thumb=(0.45, 0.66), index=(0.40, 0.38), middle=(0.50, 0.67), ring=(0.56, 0.68), pinky=(0.68, 0.48))

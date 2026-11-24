@@ -108,3 +108,7 @@ def test_session_capture_length_is_configurable():
     assert s.update(3.0) == ("capturing", "palm", 5.0)
     assert s.update(7.9)[0] == "capturing"
     assert s.update(8.0)[0] == "done"
+
+
+def test_the_guard_has_no_opinion_on_a_sign_it_has_no_rule_for():
+    assert looks_like("rock", OPEN_PALM) and looks_like("water", FIST)

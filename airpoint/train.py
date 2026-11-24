@@ -21,7 +21,8 @@ TILT_MAX_RAD = 0.60   # +/- 34 degrees in-plane
 NOISE_SIGMA = 0.12    # palm units
 AUG_COPIES = 3
 PERSONAL_WEIGHT = 3        # calibration rows duplicated this many times
-CALIB_SUFFIX = "_calib.csv"
+CALIB_SUFFIX, SIGNS_SUFFIX = "_calib.csv", "_signs.csv"   # one user's own rows: calibration, taught signs
+MIN_PERSONAL_FRAMES = 60
 
 
 def read_csv_rows(path):
@@ -40,10 +41,10 @@ def read_csv_rows(path):
 
 
 def load_rows(data_dir):
-    """Base dataset: data/*.csv minus *_calib.csv (one person's calibration, used by train_personal)."""
+    """The shared dataset: data/*.csv minus each person's own files (calibration, taught signs)."""
     X, y, users, dropped = [], [], [], 0
     for path in sorted(glob.glob(os.path.join(data_dir, "*.csv"))):
-        if path.endswith(CALIB_SUFFIX):
+        if path.endswith((CALIB_SUFFIX, SIGNS_SUFFIX)):
             continue
         x_, y_, u_, d_ = read_csv_rows(path)
         X += x_; y += y_; users += u_; dropped += d_
@@ -137,25 +138,47 @@ def train_and_save(data_dir, models_dir, seed=42):
     return report
 
 
-def train_personal(data_dir, calib_path, models_dir, user, seed=42, weight=PERSONAL_WEIGHT):
-    """Base rows + this user's calibration rows x`weight` -> models/personal_<user>.joblib.
-    Accuracy is on a 25% hold-out of the calibration rows, which the fit never sees."""
+def personal_paths(data_dir, user):
+    """This user's own files that exist: calibration captures and taught signs."""
+    paths = [os.path.join(data_dir, user + suffix) for suffix in (CALIB_SUFFIX, SIGNS_SUFFIX)]
+    return [p for p in paths if os.path.exists(p)]
+
+
+def train_personal(data_dir, models_dir, user, seed=42, weight=PERSONAL_WEIGHT):
+    """Shared rows + this user's own rows x`weight` -> models/personal_<user>.joblib.
+
+    Scores come from a 25% hold-out of the user's rows, which the fit never sees: overall accuracy,
+    and per label the recall and the label it is most confused with. For each taught sign,
+    `false_reads` is the share of the shared recordings wrongly read as that sign."""
     rng = np.random.default_rng(seed)
     X_base, y_base, _ = load_rows(data_dir)
-    Xc, yc, _, _ = read_csv_rows(calib_path)
-    if len(Xc) < 60:
-        raise ValueError(f"only {len(Xc)} usable calibration frames; redo calibration")
-    Xc, yc = np.array(Xc), np.array(yc)
-    te = rng.random(len(yc)) < 0.25
-    Xn_base, Xn_c = normalize_rows(X_base), normalize_rows(Xc)
-    X_tr = np.concatenate([Xn_base] + [Xn_c[~te]] * weight)
-    y_tr = np.concatenate([y_base] + [yc[~te]] * weight)
+    Xp, yp = [], []
+    for path in personal_paths(data_dir, user):
+        x_, y_, _, _ = read_csv_rows(path)
+        Xp += x_
+        yp += y_
+    if len(Xp) < MIN_PERSONAL_FRAMES:
+        raise ValueError(f"only {len(Xp)} usable frames of your own; calibrate or teach a sign first")
+    Xp, yp = np.array(Xp), np.array(yp)
+    te = rng.random(len(yp)) < 0.25
+    Xn_base, Xn_p = normalize_rows(X_base), normalize_rows(Xp)
+    X_tr = np.concatenate([Xn_base] + [Xn_p[~te]] * weight)
+    y_tr = np.concatenate([y_base] + [yp[~te]] * weight)
     X_aug, y_aug = augment(X_tr, y_tr, AUG_COPIES, rng)
 
     t0 = time.perf_counter()
     model = make_model(seed).fit(X_aug, y_aug)
     fit_s = time.perf_counter() - t0
-    acc = float(np.mean(model.predict(Xn_c[te]) == yc[te]))
+    pred = model.predict(Xn_p[te])
+    per_label = {}
+    for label in sorted(set(yp)):
+        mine = yp[te] == label
+        wrong = pred[mine][pred[mine] != label]
+        per_label[label] = {"frames": int(np.sum(yp == label)),
+                            "recall": float(np.mean(pred[mine] == label)) if mine.any() else 0.0,
+                            "confused_with": max(set(wrong), key=list(wrong).count) if len(wrong) else None}
+    custom = sorted(set(yp) - set(y_base))
+    base_pred = model.predict(Xn_base)
 
     os.makedirs(models_dir, exist_ok=True)
     model_path = os.path.join(models_dir, f"personal_{user}.joblib")
@@ -163,7 +186,9 @@ def train_personal(data_dir, calib_path, models_dir, user, seed=42, weight=PERSO
     joblib.dump(model, model_path)
     with open(labels_path, "w") as f:
         json.dump(list(model.classes_), f)
-    return {"user": user, "n_calib": int(len(yc)), "acc_on_own_frames": acc,
+    return {"user": user, "n_personal": int(len(yp)), "acc_on_own_frames": float(np.mean(pred == yp[te])),
+            "per_label": per_label, "custom": custom,
+            "false_reads": {c: float(np.mean(base_pred == c)) for c in custom},
             "fit_seconds": fit_s, "model": model_path, "labels": labels_path}
 
 

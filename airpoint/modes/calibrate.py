@@ -38,8 +38,7 @@ class CalibrateMode:
         if phase == "training":
             if self.trainer is None:
                 self.rec.close()
-                path = self.rec.path
-                self.trainer = Trainer(lambda: s.train_fn(s.data_dir, path, s.models_dir, s.user))
+                self.trainer = Trainer(lambda: s.train_fn(s.data_dir, s.models_dir, s.user))
                 self.trainer.start()
             elif self.trainer.done:
                 self._finish(s)

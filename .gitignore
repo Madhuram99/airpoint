@@ -10,3 +10,4 @@ profiles/
 
 models/train_report.json
 models/personal_*
+data/*_signs.csv
