@@ -102,3 +102,20 @@ def test_dwell_inactive_resets_progress():
     out, _ = dwell([((100, 100), 0.0, True), ((100, 100), 0.8, False),
                     ((100, 100), 0.9, True), ((100, 100), 1.5, True)])
     assert out == [(None, 0.0), (None, 0.0), (None, 0.0), (None, 0.6)]
+
+
+def test_roles_can_be_remapped():
+    from airpoint.fsm import Event
+    fsm = AirPointFSM(hold_events={"fist": Event("right_click")}, grip={"pinch"})
+    events, _ = run([("palm", 0.0), ("fist", 0.1), ("fist", 0.5), ("palm", 0.6),      # fist held = right click now
+                     ("pinch", 0.7), ("palm", 0.9),                                    # pinch still clicks
+                     ("v_sign", 1.0), ("v_sign", 1.5), ("palm", 1.6)], fsm)            # v_sign has no role any more
+    assert events == [("right_click", None), ("click", None)]
+
+
+def test_a_pose_with_no_role_is_neutral_it_moves_and_rearms():
+    fsm = AirPointFSM(scroll={})                      # this user cannot make the thumb signs
+    events, fsm = run([("palm", 0.0), ("thumb_up", 0.1), ("thumb_up", 0.5)], fsm)
+    assert events == [] and fsm.state == "MOVING" and not fsm.cursor_frozen
+    events, _ = run([("v_sign", 0.6), ("v_sign", 1.0), ("thumb_up", 1.1), ("v_sign", 1.2), ("v_sign", 1.6)], fsm)
+    assert events == [("right_click", None), ("right_click", None)]    # thumb_up re-armed it, as palm would

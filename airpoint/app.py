@@ -6,11 +6,10 @@ import cv2
 
 from . import hud
 from .actions import ActionRunner, PyAutoGuiMouse
-from .calibration import load_profile
+from . import profile as profiles
 from .camera import Camera
 from .classifier import PoseClassifier, RuleClassifier
 from .modes import RecordMode
-from .pointer import FC_MIN
 from .session import Session
 from .tracker import HandTracker
 
@@ -26,13 +25,13 @@ def load_classifiers(force_rules, profile=None):
     """-> (rules, mlp | None). A profile with an existing personal model wins over models/pose_mlp."""
     rules = RuleClassifier()
     model, labels = MODEL_PATH, LABELS_PATH
-    if profile is not None and os.path.exists(os.path.join(ROOT, profile["model"])):
-        model, labels = os.path.join(ROOT, profile["model"]), os.path.join(ROOT, profile["labels"])
+    if profile is not None and profile.model and os.path.exists(os.path.join(ROOT, profile.model)):
+        model, labels = os.path.join(ROOT, profile.model), os.path.join(ROOT, profile.labels)
     if force_rules or not os.path.exists(model):
         return rules, None
     mlp = PoseClassifier.load(model, labels)
     if model != MODEL_PATH:
-        mlp.name = f"mlp/{profile['user']}"
+        mlp.name = f"mlp/{profile.user}"
     return rules, mlp
 
 
@@ -62,14 +61,14 @@ def main(argv=None):
     if args.record and not args.user:
         ap.error("--record needs --user")
 
-    profile = load_profile(ROOT, args.user) if args.user else None
+    profile = profiles.load(ROOT, args.user) if args.user else None
     rules, mlp = load_classifiers(args.rules, profile)
     mouse = PyAutoGuiMouse()
     runner = ActionRunner(mouse, mouse.size())
     if args.mouse:
         runner.toggle()
-    s = Session(runner, rules, mlp, root=ROOT, user=args.user,
-                fc_min=profile["fc_min"] if profile else FC_MIN, dwell_on=args.dwell)
+    s = Session(runner, rules, mlp, root=ROOT, user=args.user, profile=profile,
+                dwell_on=True if args.dwell else None)
     if args.record:
         s.set_mode(RecordMode(s))
     camera, tracker = Camera(), HandTracker()

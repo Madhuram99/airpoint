@@ -1,7 +1,8 @@
 import os
 
 from .. import hud
-from ..calibration import CalibSession, Trainer, save_profile
+from .. import profile as profiles
+from ..calibration import CalibSession, Trainer
 from ..poses import POSES
 from ..recorder import Recorder, capture
 
@@ -54,7 +55,10 @@ class CalibrateMode:
         r = trainer.result
         s.use_model(r["model"], r["labels"])
         s.pointer.fc_min = calib.fc_min
-        save_profile(s.root, s.user, calib.fc_min, r["model"], r["labels"], r["acc_on_own_frames"])
+        prof = s.profile
+        prof.model, prof.labels = os.path.relpath(r["model"], s.root), os.path.relpath(r["labels"], s.root)
+        prof.acc_on_own_frames, prof.fc_min = r["acc_on_own_frames"], calib.fc_min
+        profiles.save(s.root, prof)
         calib.phase = "done"
         calib.message = f"{r['acc_on_own_frames'] * 100:.0f}% on your frames, fc_min {calib.fc_min}"
 

@@ -10,7 +10,8 @@ from . import hud
 from .classifier import PoseClassifier, VoteSmoother
 from .fsm import AirPointFSM, DwellDetector
 from .modes import CalibrateMode, LiveMode, RecordMode
-from .pointer import FC_MIN, PointerPipeline
+from .pointer import PointerPipeline
+from .profile import Profile, fsm_parts
 from .train import train_personal
 from .tremor import TremorSim
 
@@ -38,16 +39,22 @@ class Session:
     on_key() handles a key: the mode gets it first, then the global keys.
     """
 
-    def __init__(self, runner, rules, mlp, *, root, user=None, fc_min=FC_MIN, dwell_on=False,
+    def __init__(self, runner, rules, mlp, *, root, user=None, profile=None, dwell_on=None,
                  train_fn=train_personal):
         self.runner, self.rules, self.mlp = runner, rules, mlp
         self.clf = mlp or rules
         self.root, self.user, self.train_fn = root, user, train_fn
         self.data_dir, self.models_dir = os.path.join(root, "data"), os.path.join(root, "models")
-        self.smoother, self.fsm, self.dwell = VoteSmoother(), AirPointFSM(), DwellDetector()
-        self.pointer = PointerPipeline(fc_min)
+        self.profile = profile or Profile(user=user or "guest")      # a guest profile is never saved
+        grip, scroll, hold = fsm_parts(self.profile.roles)
+        self.smoother, self.dwell = VoteSmoother(), DwellDetector()
+        self.fsm = AirPointFSM(hold_events=hold, grip=grip, scroll=scroll)
+        self.pointer = PointerPipeline(self.profile.fc_min)
+        self.pointer.mode = self.profile.filter
+        self.runner.active_region = tuple(self.profile.region)
         self.sim = TremorSim()
-        self.dwell_on, self.mini, self.view_dirty = dwell_on, False, False
+        self.dwell_on = self.profile.dwell if dwell_on is None else dwell_on
+        self.mini, self.view_dirty = False, False
         self.zoom, self.xray, self.ms_tracker = 1.5, False, 0.0
         self.recorder, self.rejected = None, 0
         self.mode = LiveMode()

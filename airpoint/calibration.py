@@ -1,6 +1,5 @@
-"""Calibration (`c` key): tremor -> fc_min, six short pose captures, personal retrain, profile."""
-import json
-import os
+"""Calibration (`c` key): tremor -> fc_min, six short pose captures, personal retrain.
+The result is saved through airpoint.profile."""
 import threading
 
 import numpy as np
@@ -96,27 +95,3 @@ class Trainer(threading.Thread):
             self.result = self.fn()
         except Exception as e:
             self.error = f"{type(e).__name__}: {e}"
-
-
-def profile_path(root, user):
-    return os.path.join(root, "profiles", f"{user}.json")
-
-
-def save_profile(root, user, fc_min, model_path, labels_path, acc):
-    """profiles/<user>.json: filter cutoff and personal model, paths relative to the project root."""
-    path = profile_path(root, user)
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    data = {"user": user, "fc_min": fc_min,
-            "model": os.path.relpath(model_path, root), "labels": os.path.relpath(labels_path, root),
-            "acc_on_own_frames": acc}
-    with open(path, "w") as f:
-        json.dump(data, f, indent=2)
-    return path
-
-
-def load_profile(root, user):
-    path = profile_path(root, user)
-    if not os.path.exists(path):
-        return None
-    with open(path) as f:
-        return json.load(f)
