@@ -5,13 +5,20 @@ from pathlib import Path
 import numpy as np
 
 from . import features as F
-from .poses import FIST, NONE, PALM, PINCH, THUMB_DOWN, THUMB_UP, UNKNOWN, V_SIGN
+from .poses import FIST, NONE, PALM, PINCH, POSES, THUMB_DOWN, THUMB_UP, UNKNOWN, V_SIGN
 
 
 class RuleClassifier:
     """Scale-free 2-D ratio rules. Zero dependencies; the fallback and the on-stage baseline."""
 
     name = "rules"
+    labels = list(POSES)
+
+    def proba(self, landmarks):
+        """One-hot over `labels`: rules have no confidence."""
+        p = np.zeros(len(self.labels))
+        p[self.labels.index(self.predict(landmarks)[0])] = 1.0
+        return p
 
     def predict(self, landmarks):
         p = F.to_array(landmarks)
@@ -47,8 +54,12 @@ class PoseClassifier:
         import joblib
         return cls(joblib.load(model_path), json.loads(Path(labels_path).read_text()))
 
+    def proba(self, landmarks):
+        """Class probabilities in `labels` order."""
+        return self.model.predict_proba(F.normalize_63(landmarks).reshape(1, -1))[0]
+
     def predict(self, landmarks):
-        proba = self.model.predict_proba(F.normalize_63(landmarks).reshape(1, -1))[0]
+        proba = self.proba(landmarks)
         i = int(np.argmax(proba))
         return self.labels[i], float(proba[i])
 
