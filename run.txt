@@ -3,8 +3,11 @@
 # 1. Web dashboard
 open index.html
 
-# 2. Benchmarks (writes results.js for the dashboard, ~5 s)
-venv/bin/python airpoint_offline_training_filter_fitts_law_benchmark_suite.py
+# 2. Numbers for the dashboard (real data + labelled simulation, ~10 s) and the lab
+venv/bin/python -m airpoint.results            # writes results.js
+venv/bin/python -m airpoint.lab                # tutorial + pointing test at http://127.0.0.1:8765
+#    in the lab: enter a code, pick AirPoint / mouse / trackpad, run the test; results/trials.jsonl keeps every block
+#    (the midterm benchmark is kept at legacy/midterm_benchmark_suite.py; the dashboard no longer reads it)
 
 # 3. Live demo (q quit | m mouse | d dwell | b filter | k rules/mlp | c calibrate | v mini | z zoom | x x-ray |
 #               t simulated tremor, [ ] size, { } speed | r record | 1-6 pose | space start/redo)

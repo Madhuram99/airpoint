@@ -4,6 +4,7 @@ __pycache__/
 .DS_Store
 results/live.json
 results/live.json.tmp
+legacy/midterm_results.js
 data/*_calib.csv
 profiles/
 

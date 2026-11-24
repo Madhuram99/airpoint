@@ -41,6 +41,10 @@ Relation to the 2026-11-13 spec:
 
 ## 2. Stages
 
+Status (kept current): Stage 1 built 2026-11-25 (`26edce2`). Stage 2 built 2026-11-25. From Stage 2 on
+the user approved every stage in advance and tests them all in one session; that session's checklist is
+`docs/camera-checklist.md`.
+
 Size is relative: S, M, L. "You" = work only the user can do (camera, people).
 
 ### Stage 1 — Tremor switch, tremor canceller, X-ray view (M)

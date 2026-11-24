@@ -14,9 +14,11 @@ source venv/bin/activate
 
 ## 2. Run the Experiment Suite
 ```bash
-python airpoint_offline_training_filter_fitts_law_benchmark_suite.py
+python legacy/midterm_benchmark_suite.py
 ```
-Every number printed is computed live and saved to `results.js`, which the dashboard reads.
+Every number printed is computed live and saved to `legacy/midterm_results.js`. (Since Stage 2 the dashboard
+reads `results.js` from `python -m airpoint.results`, built on the real recordings; this midterm script is kept
+as it was presented.)
 
 1. **Experiment 1 — Rules vs. MLP:** 4-fold *leave-one-recording-out* cross-validation (test hands are never seen in training), with ±34° hand tilt and landmark noise. Geometric rules ≈ **85.8%**, 63-input MLP ≈ **99.9%**, inference ≈ **0.06 ms/frame** on CPU. Rules fail most on Pinch (≈64%) because noise pushes the thumb–index gap across the fixed threshold.
 2. **Experiment 2 — 1-Euro Filter:** at rest, jitter drops from ±9.1 px to ±2.2 px (**−76%**), as smooth as a heavy fixed low-pass filter — but during a fast reach the 1-Euro filter lags only 21 px vs. 185 px (**89% less lag**). That trade-off is exactly the point of Casiez et al. (CHI 2012).

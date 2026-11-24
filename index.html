@@ -312,6 +312,7 @@
             <li><a href="#filter">1€ Filter</a></li>
             <li><a href="#fsm">FSM</a></li>
             <li><a href="#results">Results</a></li>
+            <li><a href="lab/index.html">Practice</a></li>
             <li><a href="#team">Team</a></li>
         </ul>
     </div>
@@ -334,9 +335,9 @@
                 <span class="hero-badge">ISO 9241-411</span>
             </div>
             <div class="hero-stats">
-                <div class="hero-stat"><div class="num" id="stat-acc">0%</div><div class="label">MLP Accuracy</div></div>
-                <div class="hero-stat"><div class="num" id="stat-jitter">0%</div><div class="label">Jitter Reduction</div></div>
-                <div class="hero-stat"><div class="num" id="stat-latency">0ms</div><div class="label">Inference Latency</div></div>
+                <div class="hero-stat"><div class="num" id="stat-acc">–</div><div class="label" id="stat-acc-label">Pose accuracy</div></div>
+                <div class="hero-stat"><div class="num" id="stat-jitter">–</div><div class="label">Less shake than smoothing alone<br>(simulated severe tremor)</div></div>
+                <div class="hero-stat"><div class="num" id="stat-latency">–</div><div class="label">Classifier time per frame</div></div>
             </div>
         </div>
         <div class="hero-visual">
@@ -515,18 +516,19 @@
         </div>
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:1.2rem; margin-top:1.5rem;">
             <div class="glass-card" style="text-align:center;">
-                <div style="font-size:2rem; font-weight:800; color:var(--accent-red);" id="res-raw-jitter">±9.05px</div>
-                <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.3rem;">Raw Jitter at Rest</div>
+                <div style="font-size:2rem; font-weight:800; color:var(--accent-red);" id="res-shake-smooth">–</div>
+                <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.3rem;">Shake left with smoothing alone</div>
             </div>
             <div class="glass-card" style="text-align:center;">
-                <div style="font-size:2rem; font-weight:800; color:var(--accent-green);" id="res-euro-jitter">±2.16px</div>
-                <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.3rem;">1-Euro Filtered Jitter</div>
+                <div style="font-size:2rem; font-weight:800; color:var(--accent-green);" id="res-shake-full">–</div>
+                <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.3rem;">Shake left with the tremor canceller</div>
             </div>
             <div class="glass-card" style="text-align:center;">
-                <div style="font-size:2rem; font-weight:800; color:var(--accent-cyan);" id="res-jitter-red">-76.2%</div>
-                <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.3rem;">Jitter Reduction</div>
+                <div style="font-size:2rem; font-weight:800; color:var(--accent-cyan);" id="res-shake-less">–</div>
+                <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.3rem;">Less shake</div>
             </div>
         </div>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.8rem; text-align:center;">Simulated moderate tremor (14 px at 6 Hz). The full table is under Results.</p>
     </div>
 </section>
 
@@ -557,123 +559,63 @@
 <!-- ===== RESULTS ===== -->
 <section id="results">
     <div class="fade-in">
-        <div class="section-badge">Benchmarks</div>
-        <h2 class="section-title">Experiment Results</h2>
-        <p class="section-subtitle">Performance benchmarks from our HaGRID + Local webcam dataset across all evaluation metrics.</p>
+        <div class="section-badge">Measured</div>
+        <h2 class="section-title">Results</h2>
+        <p class="section-subtitle">Every number here is produced by <code>python -m airpoint.results</code> from this project's own recordings and test sessions. Simulations are labelled as simulations. Where nothing has been measured, the page says so.</p>
+        <p class="section-subtitle" id="res-stamp" style="font-size:0.85rem;"></p>
+    </div>
+    <div class="glass-card fade-in" id="res-missing" style="display:none; margin-top:2rem; border-color:rgba(248,113,113,0.5);">
+        <strong>results.js was not found.</strong> Run <code>venv/bin/python -m airpoint.results</code> in the project folder and reload.
     </div>
     <div class="results-grid fade-in">
         <div class="result-card glass-card">
-            <div class="result-value" id="res-mlp-acc">99.9%</div>
-            <div class="result-label">MLP Classifier Accuracy</div>
-            <div class="result-sub" id="res-mlp-sub">63→128→64→5 | Held-out hands | Rules: 85.8%</div>
+            <div class="result-value" id="res-mlp-acc">–</div>
+            <div class="result-label">Pose accuracy, trained model</div>
+            <div class="result-sub" id="res-mlp-sub">not measured yet</div>
         </div>
         <div class="result-card glass-card">
-            <div class="result-value" id="res-tp">2.58</div>
-            <div class="result-label">Fitts's Law Throughput (bits/s)</div>
-            <div class="result-sub" id="res-tp-sub">ISO 9241-411 | +83.5% vs Raw</div>
+            <div class="result-value" id="res-rule-acc">–</div>
+            <div class="result-label">Hand-written rules, same frames</div>
+            <div class="result-sub">the baseline the model replaced</div>
         </div>
         <div class="result-card glass-card">
-            <div class="result-value" id="res-latency">&lt;1ms</div>
-            <div class="result-label">CPU Inference Latency</div>
-            <div class="result-sub">Per-frame | No GPU Required</div>
+            <div class="result-value" id="res-tp">–</div>
+            <div class="result-label">Pointing throughput (bits/s)</div>
+            <div class="result-sub" id="res-tp-sub">not measured yet</div>
         </div>
     </div>
 
     <div class="fade-in" style="margin-top:3rem;">
-        <h3 style="font-size:1.2rem; margin-bottom:1rem;">Classifier Comparison — Rule Baseline vs. MLP</h3>
+        <h3 style="font-size:1.2rem; margin-bottom:1rem;">Pose by pose: rules against the trained model, on recorded hands</h3>
         <div style="overflow-x:auto;">
             <table class="comparison-table">
-                <thead>
-                    <tr>
-                        <th>Gesture</th>
-                        <th>Rule Baseline Accuracy</th>
-                        <th>MLP Accuracy</th>
-                        <th>MLP Precision</th>
-                        <th>MLP Recall</th>
-                        <th>MLP F1-Score</th>
-                    </tr>
-                </thead>
-                <tbody id="res-class-body">
-                    <tr>
-                        <td>Move (Open Palm)</td>
-                        <td class="dimmed">88.3%</td>
-                        <td class="highlight">97.2%</td>
-                        <td>0.965</td>
-                        <td>0.978</td>
-                        <td>0.972</td>
-                    </tr>
-                    <tr>
-                        <td>Click (Pinch)</td>
-                        <td class="dimmed">82.1%</td>
-                        <td class="highlight">95.8%</td>
-                        <td>0.961</td>
-                        <td>0.955</td>
-                        <td>0.958</td>
-                    </tr>
-                    <tr>
-                        <td>Alt Click (Fist)</td>
-                        <td class="dimmed">86.7%</td>
-                        <td class="highlight">96.5%</td>
-                        <td>0.958</td>
-                        <td>0.971</td>
-                        <td>0.964</td>
-                    </tr>
-                    <tr>
-                        <td>Right Click (V-Sign)</td>
-                        <td class="dimmed">84.4%</td>
-                        <td class="highlight">95.3%</td>
-                        <td>0.947</td>
-                        <td>0.959</td>
-                        <td>0.953</td>
-                    </tr>
-                    <tr>
-                        <td>Scroll (Thumb)</td>
-                        <td class="dimmed">83.6%</td>
-                        <td class="highlight">97.1%</td>
-                        <td>0.972</td>
-                        <td>0.969</td>
-                        <td>0.971</td>
-                    </tr>
-                    <tr style="font-weight:700; border-top:2px solid rgba(255,255,255,0.1);">
-                        <td>Overall (Weighted Avg)</td>
-                        <td class="dimmed">85.2%</td>
-                        <td class="highlight">96.4%</td>
-                        <td class="highlight">0.961</td>
-                        <td class="highlight">0.966</td>
-                        <td class="highlight">0.964</td>
-                    </tr>
-                </tbody>
+                <thead><tr><th>Pose</th><th>Frames</th><th>Rules correct</th><th>Model precision</th><th>Model recall</th><th>Model F1</th></tr></thead>
+                <tbody id="res-class-body"><tr><td colspan="6" class="dimmed">Not measured yet.</td></tr></tbody>
             </table>
         </div>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.8rem;" id="res-class-note"></p>
     </div>
 
     <div class="fade-in" style="margin-top:3rem;">
-        <h3 style="font-size:1.2rem; margin-bottom:1rem;">Fitts's Law Throughput Analysis</h3>
+        <h3 style="font-size:1.2rem; margin-bottom:1rem;">Tremor: smoothing alone against the tremor canceller (simulation)</h3>
         <div style="overflow-x:auto;">
             <table class="comparison-table">
-                <thead>
-                    <tr>
-                        <th>Distance D (px)</th>
-                        <th>Width W (px)</th>
-                        <th>ID (bits)</th>
-                        <th>Raw MT (s)</th>
-                        <th>AirPoint MT (s)</th>
-                        <th>Raw TP (bits/s)</th>
-                        <th>AirPoint TP (bits/s)</th>
-                    </tr>
-                </thead>
-                <tbody id="res-fitts-body">
-                    <tr><td>240</td><td>80</td><td>2.00</td><td>1.45</td><td class="highlight">0.78</td><td>1.38</td><td class="highlight">2.56</td></tr>
-                    <tr><td>480</td><td>60</td><td>3.17</td><td>2.15</td><td class="highlight">1.18</td><td>1.48</td><td class="highlight">2.69</td></tr>
-                    <tr><td>600</td><td>40</td><td>4.00</td><td>2.94</td><td class="highlight">1.61</td><td>1.36</td><td class="highlight">2.48</td></tr>
-                    <tr style="font-weight:700; border-top:2px solid rgba(255,255,255,0.1);">
-                        <td colspan="5">Mean Throughput</td>
-                        <td class="dimmed">1.40 bits/s</td>
-                        <td class="highlight">2.58 bits/s (+83.5%)</td>
-                    </tr>
-                </tbody>
+                <thead><tr><th>Simulated tremor</th><th>Shake left, smoothing</th><th>Shake left, canceller</th><th>Dwell click works, smoothing</th><th>Dwell click works, canceller</th></tr></thead>
+                <tbody id="res-tremor-body"><tr><td colspan="5" class="dimmed">Not computed yet.</td></tr></tbody>
             </table>
         </div>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.8rem;" id="res-tremor-note"></p>
+    </div>
+
+    <div class="fade-in" style="margin-top:3rem;">
+        <h3 style="font-size:1.2rem; margin-bottom:1rem;">Pointing test: ISO 9241-411, measured</h3>
+        <div style="overflow-x:auto;">
+            <table class="comparison-table">
+                <thead><tr><th>Condition</th><th>People</th><th>Selections</th><th>Throughput (bits/s)</th><th>Errors</th><th>Time per target (s)</th><th>Path / straight</th></tr></thead>
+                <tbody id="res-point-body"><tr><td colspan="7" class="dimmed">Not measured yet. Run <code>python -m airpoint.lab</code> and take the pointing test.</td></tr></tbody>
+            </table>
+        </div>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.8rem;">Throughput uses the effective target width, 4.133 × the spread of the clicks along the movement (Soukoreff &amp; MacKenzie, 2004). Each person counts once per condition.</p>
     </div>
 </section>
 
@@ -722,42 +664,55 @@
 // 0. LIVE EXPERIMENT RESULTS (written by the benchmark suite)
 // ============================================================
 const R = window.AIRPOINT_RESULTS || null;
-const HERO = { acc: 99.9, jitter: 76.2, latency: 0.06 };
-if (R) {
+const HERO = { acc: null, jitter: null, latency: null };   // nothing is shown until results.js supplies it
+(function () {
     const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
-    const c = R.classifier, f = R.filter, ft = R.fitts;
+    const pct = (x, d = 1) => (100 * x).toFixed(d) + '%';
+    if (!R) { document.getElementById('res-missing').style.display = 'block'; return; }
+    set('res-stamp', `Generated ${R.generated_at}` + (R.commit ? ` at commit ${R.commit}` : ''));
+
+    const c = R.classifier;
     if (c) {
-        HERO.acc = +c.mlp_acc.toFixed(1);
-        HERO.latency = +c.inference_ms.toFixed(2);
-        set('res-mlp-acc', c.mlp_acc.toFixed(1) + '%');
-        set('res-mlp-sub', `63→128→64→5 | Held-out hands | Rules: ${c.rule_acc.toFixed(1)}%`);
-        set('res-latency', c.inference_ms < 1 ? `${c.inference_ms.toFixed(2)}ms` : `${c.inference_ms.toFixed(1)}ms`);
-        const rows = c.per_class.map(g => `<tr><td>${g.name.replace(/^\d+: /, '')}</td>` +
-            `<td class="dimmed">${g.rule_acc.toFixed(1)}%</td><td class="highlight">${g.mlp_acc.toFixed(1)}%</td>` +
-            `<td>${g.precision.toFixed(3)}</td><td>${g.recall.toFixed(3)}</td><td>${g.f1.toFixed(3)}</td></tr>`);
-        rows.push(`<tr style="font-weight:700; border-top:2px solid rgba(255,255,255,0.1);"><td>Overall (Weighted Avg)</td>` +
-            `<td class="dimmed">${c.rule_acc.toFixed(1)}%</td><td class="highlight">${c.mlp_acc.toFixed(1)}%</td>` +
-            `<td class="highlight">${c.weighted.precision.toFixed(3)}</td><td class="highlight">${c.weighted.recall.toFixed(3)}</td>` +
-            `<td class="highlight">${c.weighted.f1.toFixed(3)}</td></tr>`);
-        document.getElementById('res-class-body').innerHTML = rows.join('');
+        HERO.acc = +(100 * c.accuracy).toFixed(1);
+        set('stat-acc-label', c.generalizes ? 'Pose accuracy on hands it never saw' : 'Pose accuracy (one-user hold-out)');
+        set('res-mlp-acc', pct(c.accuracy));
+        set('res-mlp-sub', `${c.method} | ${c.trained_rows} frames`);
+        set('res-rule-acc', pct(c.rule_acc));
+        document.getElementById('res-class-body').innerHTML = c.per_pose.map(p =>
+            `<tr><td>${p.pose}</td><td>${p.rows}</td><td class="dimmed">${p.rule_acc === null ? '–' : pct(p.rule_acc)}</td>` +
+            `<td>${p.precision.toFixed(3)}</td><td class="highlight">${p.recall.toFixed(3)}</td><td>${p.f1.toFixed(3)}</td></tr>`).join('');
+        set('res-class-note', (c.generalizes ? '' : 'One person recorded so far, so the model score is a hold-out of that person\'s own frames. It does not show how the model does on a new hand. ') +
+            (c.stale ? 'The recordings have changed since the model was trained; retrain to refresh these numbers.' : ''));
     }
-    if (f) {
-        HERO.jitter = +f.jitter_reduction_pct.toFixed(1);
-        set('res-raw-jitter', `±${f.raw_jitter_px.toFixed(2)}px`);
-        set('res-euro-jitter', `±${f.euro_jitter_px.toFixed(2)}px`);
-        set('res-jitter-red', `-${f.jitter_reduction_pct.toFixed(1)}%`);
+    if (R.latency) HERO.latency = +R.latency.classifier_ms.toFixed(2);
+
+    const t = R.tremor;
+    if (t) {
+        document.getElementById('res-tremor-body').innerHTML = t.levels.map(l =>
+            `<tr><td>${l.name}, ${l.amp_px} px at ${l.hz} Hz</td><td class="dimmed">${l.smooth.shake_px.toFixed(1)} px</td>` +
+            `<td class="highlight">${l.full.shake_px.toFixed(1)} px</td><td class="dimmed">${pct(l.smooth.dwell_ok, 0)}</td>` +
+            `<td class="highlight">${pct(l.full.dwell_ok, 0)}</td></tr>`).join('');
+        set('res-tremor-note', t.note);
+        const mod = t.levels.find(l => l.name === 'moderate'), sev = t.levels.find(l => l.name === 'severe');
+        if (mod) {
+            set('res-shake-smooth', mod.smooth.shake_px.toFixed(1) + ' px');
+            set('res-shake-full', mod.full.shake_px.toFixed(1) + ' px');
+            set('res-shake-less', '-' + pct(1 - mod.full.shake_px / mod.smooth.shake_px, 0));
+        }
+        if (sev) HERO.jitter = +(100 * (1 - sev.full.shake_px / sev.smooth.shake_px)).toFixed(0);
     }
-    if (ft) {
-        set('res-tp', ft.tp_airpoint.toFixed(2));
-        set('res-tp-sub', `ISO 9241-411 | +${ft.tp_gain_pct.toFixed(1)}% vs Raw`);
-        const rows = ft.trials.map(t => `<tr><td>${t.D}</td><td>${t.W}</td><td>${t.ID.toFixed(2)}</td>` +
-            `<td>${t.mt_raw.toFixed(2)}</td><td class="highlight">${t.mt_airpoint.toFixed(2)}</td>` +
-            `<td>${t.tp_raw.toFixed(2)}</td><td class="highlight">${t.tp_airpoint.toFixed(2)}</td></tr>`);
-        rows.push(`<tr style="font-weight:700; border-top:2px solid rgba(255,255,255,0.1);"><td colspan="5">Mean Throughput</td>` +
-            `<td class="dimmed">${ft.tp_raw.toFixed(2)} bits/s</td><td class="highlight">${ft.tp_airpoint.toFixed(2)} bits/s (+${ft.tp_gain_pct.toFixed(1)}%)</td></tr>`);
-        document.getElementById('res-fitts-body').innerHTML = rows.join('');
+
+    const p = R.pointing;
+    if (p && p.conditions.length) {
+        document.getElementById('res-point-body').innerHTML = p.conditions.map(r =>
+            `<tr><td>${r.condition.replace(/[&<>]/g, ch => ({'&': '&amp;', '<': '&lt;', '>': '&gt;'}[ch]))}</td><td>${r.participants}</td><td>${r.trials}</td>` +
+            `<td class="highlight">${r.tp.toFixed(2)}${r.tp_sd === null ? '' : ' ± ' + r.tp_sd.toFixed(2)}</td>` +
+            `<td>${pct(r.error_rate, 0)}</td><td>${r.mt.toFixed(2)}</td><td>${r.path_ratio.toFixed(2)}</td></tr>`).join('');
+        const air = p.conditions.filter(r => r.condition.startsWith('airpoint')).sort((x, y) => y.tp - x.tp)[0];
+        if (air) { set('res-tp', air.tp.toFixed(2)); set('res-tp-sub', `${air.condition} | ${air.participants} ${air.participants === 1 ? 'person' : 'people'}`); }
+        else set('res-tp-sub', 'no AirPoint session yet');
     }
-}
+})();
 </script>
 <script>
 // ============================================================
@@ -1230,9 +1185,9 @@ function animateCounter(el, target, suffix = '', duration = 2000, decimals = nul
 // Trigger counters when hero is visible
 const heroObserver = new IntersectionObserver((entries) => {
     if (entries[0].isIntersecting) {
-        animateCounter(document.getElementById('stat-acc'), HERO.acc, '%');
-        animateCounter(document.getElementById('stat-jitter'), HERO.jitter, '%');
-        animateCounter(document.getElementById('stat-latency'), HERO.latency, 'ms', 2000, 2);
+        if (HERO.acc !== null) animateCounter(document.getElementById('stat-acc'), HERO.acc, '%', 2000, 1);
+        if (HERO.jitter !== null) animateCounter(document.getElementById('stat-jitter'), HERO.jitter, '%');
+        if (HERO.latency !== null) animateCounter(document.getElementById('stat-latency'), HERO.latency, 'ms', 2000, 2);
         heroObserver.unobserve(entries[0].target);
     }
 }, { threshold: 0.5 });

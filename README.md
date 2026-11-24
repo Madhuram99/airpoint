@@ -40,6 +40,20 @@ the class probabilities, the state machine, the pointer before and after, and th
 Limits: the numbers come from simulation, there is no patient data, a 30 fps webcam cannot see
 tremor above about 12 Hz, and none of this is a medical measurement.
 
+### Measuring it
+
+`python -m airpoint.lab` serves two pages on this machine only. The tutorial walks a new user
+through move, click, double-click, drag, scroll and right-click. The test is the ISO 9241-411
+multi-directional tapping task: nine targets on a ring, three difficulty levels, 27 selections.
+The page records raw events; Python computes effective throughput (Soukoreff & MacKenzie, 2004),
+error rate and two path measures. Because AirPoint moves the real cursor, the same test scores a
+mouse, a trackpad and every AirPoint mode. While AirPoint runs it reports its own settings to the
+lab, so a block is labelled with what was really driving the cursor.
+
+The dashboard shows only what `python -m airpoint.results` can back: accuracy on the recorded
+hands with the method named, the hand-written rules on the same frames, the tremor simulation
+labelled as a simulation, and measured pointing results. Anything not yet measured says so.
+
 ## Run
 
 ```bash
@@ -55,7 +69,8 @@ venv/bin/python run_demo.py --record --user you  # record your hand: space = all
 venv/bin/python -m airpoint.train                # retrain on data/*.csv, leave-one-user-out report
 venv/bin/pytest -q                               # unit tests (no camera needed)
 
-venv/bin/python airpoint_offline_training_filter_fitts_law_benchmark_suite.py   # benchmarks -> results.js
+venv/bin/python -m airpoint.lab                  # practice pages + pointing test at http://127.0.0.1:8765
+venv/bin/python -m airpoint.results              # rebuild results.js, the dashboard's numbers, from real data
 open index.html                                  # dashboard
 ```
 
@@ -65,7 +80,11 @@ macOS: allow your terminal under System Settings → Privacy & Security → Came
 
 ```
 airpoint/        package — camera, tracker, features, filters, tremor, pointer, classifier, fsm, actions, hud,
-                 recorder, calibration, train, session, modes/ (live, record, calibrate), app
+                 recorder, calibration, train, session, modes/ (live, record, calibrate), app,
+                 lab/ (server, stats, store), results, sim_pointer
+lab/             practice pages and the pointing test (plain HTML/JS, served by airpoint.lab)
+results/         saved test sessions (trials.jsonl)
+legacy/          the midterm benchmark script, kept as presented
 data/            recorded landmark CSVs, one per person
 models/          trained pose classifier + labels
 profiles/        per-user calibration: filter cutoff + personal model (gitignored)

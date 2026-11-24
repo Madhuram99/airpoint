@@ -1,4 +1,10 @@
 """
+KEPT AS THE MIDTERM DELIVERABLE. The dashboard no longer reads this script's output: since
+Stage 2 its numbers come from `python -m airpoint.results`, which uses the real recordings and
+measured test sessions. Two things to know before quoting anything from here: the accuracy below
+is measured on augmented copies of 20 seed rows, and the Fitts movement times are configured
+pilot values, not measurements. This script now writes `legacy/midterm_results.js`.
+
 AirPoint Midterm Evaluation — Offline Training & Research Benchmark Pipeline
 Department of Computer Science & Engineering, PEC Chandigarh
 Authors: Madhuram Rathi, Ishan Gupta, Dakshmeet Singh, Bhuvi Kansal
@@ -73,7 +79,7 @@ NOISE_SIGMA = 0.12     # landmark jitter in palm units (MediaPipe noise + tremor
 
 def load_seed_dataset(csv_path=None):
     """Loads the seed HaGRID + Local PEC webcam CSV as normalized 63-D vectors."""
-    csv_path = csv_path or os.path.join(os.path.dirname(os.path.abspath(__file__)),
+    csv_path = csv_path or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                                         "hagrid_airpoint_landmarks_sample.csv")
     seed_X, seed_y = [], []
     with open(csv_path, "r", encoding="utf-8") as f:
@@ -423,8 +429,9 @@ if __name__ == "__main__":
     results["fitts"] = run_fitts_law_benchmark()
 
     # 5. Publish results for the web dashboard (index.html loads results.js)
-    out_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results.js")
+    out_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "midterm_results.js")
     with open(out_path, "w", encoding="utf-8") as f:
-        f.write("window.AIRPOINT_RESULTS = " + json.dumps(results, indent=2) + ";\n")
-    print(f"\n[DASHBOARD] Results written to {os.path.basename(out_path)} — refresh index.html to see them.")
+        f.write("window.AIRPOINT_MIDTERM_RESULTS = " + json.dumps(results, indent=2) + ";\n")
+    print(f"\n[MIDTERM] Results written to legacy/{os.path.basename(out_path)}. The dashboard reads results.js, "
+          "built by `python -m airpoint.results`.")
     print("[SUCCESS] All AirPoint Midterm experiments completed successfully.")
