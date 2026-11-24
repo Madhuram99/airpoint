@@ -12,6 +12,7 @@ BANNER_H = 82
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 ACCENT_ON, ACCENT_OFF, WHITE, MINT = (0, 200, 255), (90, 90, 90), (255, 255, 255), (167, 243, 208)
 MINI_SIZE = (320, 240)
+KEY_HINT = "keys q m d k c v r"
 
 
 def draw_skeleton(frame, pts):

@@ -122,3 +122,17 @@ class RecordSession:
         total = {"countdown": COUNTDOWN_S, "capturing": self.capture_s}.get(self.phase)
         left = max(total - (t - self.t0), 0.0) if total else 0.0
         return self.phase, self.pose, left
+
+
+def capture(session, recorder, pose, pts, hand, t):
+    """Write this frame if the session is capturing and it passes the guard. -> True if rejected.
+    `session` is anything with `fresh` and `capturing` (RecordSession, CalibSession)."""
+    if session.fresh:
+        recorder.drop(pose)
+        session.fresh = False
+    if not session.capturing or pts is None:
+        return False
+    if looks_like(pose, pts):
+        recorder.write(pose, t, hand, pts)
+        return False
+    return True
