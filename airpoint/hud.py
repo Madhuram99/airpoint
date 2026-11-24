@@ -11,6 +11,7 @@ HAND_CONNECTIONS = [
 BANNER_H = 82
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 ACCENT_ON, ACCENT_OFF, WHITE, MINT = (0, 200, 255), (90, 90, 90), (255, 255, 255), (167, 243, 208)
+MINI_SIZE = (320, 240)
 
 
 def draw_skeleton(frame, pts):
@@ -46,3 +47,19 @@ def draw_prompt(frame, title, subtitle):
     cv2.rectangle(frame, (0, h // 2 - 70), (w, h // 2 + 50), (25, 35, 30), -1)
     cv2.putText(frame, title, (30, h // 2 - 10), FONT, 1.1, MINT, 2)
     cv2.putText(frame, subtitle, (30, h // 2 + 30), FONT, 0.6, WHITE, 1)
+
+
+def draw_dwell_ring(frame, xy, progress):
+    """Arc that fills clockwise from 12 o'clock as the dwell timer runs."""
+    if progress <= 0.0:
+        return
+    cv2.ellipse(frame, xy, (22, 22), -90, 0, int(360 * min(progress, 1.0)), ACCENT_ON, 3)
+
+
+def mini_frame(frame, label):
+    """320x240 copy with a one-line strip at the bottom; for the always-on-top corner view."""
+    small = cv2.resize(frame, MINI_SIZE, interpolation=cv2.INTER_AREA)
+    w, h = MINI_SIZE
+    cv2.rectangle(small, (0, h - 24), (w, h), (25, 35, 30), -1)
+    cv2.putText(small, label, (8, h - 8), FONT, 0.45, MINT, 1)
+    return small
