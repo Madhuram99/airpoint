@@ -34,16 +34,17 @@ class CalibrateMode:
                 self.trainer.start()
             elif self.trainer.done:
                 self._finish(s)
-        title = {
-            "countdown": f"CALIBRATE: open palm, hold still   {left:.0f}",
-            "still": f"HOLD STILL   {left:.0f}s",
-            "poses_countdown": f"make {pose}   {left:.0f}",
-            "capturing": f"HOLD {pose}   {left:.0f}s" + ("   << SIGN LOST" if lost else ""),
-            "training": "Learning your hand...",
-            "done": f"done - {calib.message}",
-            "failed": f"retrain failed, old model kept - {calib.message}",
+        title, sub = {
+            "countdown": (f"CALIBRATE   {left:.0f}", "open palm, hold still"),
+            "still": (f"HOLD STILL   {left:.0f}s", "measuring how steady your hand is"),
+            "poses_countdown": (f"make {pose}   {left:.0f}", "raise your hand"),
+            "capturing": (f"HOLD {pose}   {left:.0f}s", "tilt a little, keep the sign"),
+            "training": ("Learning your hand...", "a few seconds"),
+            "done": ("done", calib.message),
+            "failed": ("retrain failed", f"old model kept: {calib.message}"),
         }[phase]
-        hud.draw_prompt(frame, title, f"kept {self.rec.count} | c = close | {hud.KEY_HINT}")
+        hud.draw_prompt(frame, title, f"{sub} | kept {self.rec.count} | c = close",
+                        "SIGN LOST - this frame was not saved" if lost else None)
 
     def _finish(self, s):
         calib, trainer, self.trainer = self.calib, self.trainer, None

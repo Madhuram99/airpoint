@@ -16,7 +16,7 @@ class Obs:
     t: float
     pts: object    # (21, 3) landmarks in normalized image coords, or None
     hand: object   # "Left" | "Right" | None
-    raw: object    # pointer (x, y) in frame pixels, or None
+    raw: object    # pointer (x, y) in canonical view pixels (floats), or None
     w: int
     h: int
     fps: float
@@ -38,6 +38,7 @@ class Session:
         self.smoother, self.fsm, self.dwell = VoteSmoother(), AirPointFSM(), DwellDetector()
         self.pointer = PointerPipeline(fc_min)
         self.dwell_on, self.mini, self.view_dirty = dwell_on, False, False
+        self.zoom = 1.5
         self.recorder, self.rejected = None, 0
         self.mode = LiveMode()
         self.last_event, self.mini_label, self.prev_t = "none", "", None
@@ -45,13 +46,16 @@ class Session:
     def tick(self, frame, pts, hand, t):
         fps = 0.0 if self.prev_t is None else 1.0 / max(t - self.prev_t, 1e-5)
         self.prev_t = t
-        h, w = frame.shape[:2]
+        view = hud.canon_view(frame)
+        h, w = view.shape[:2]
         raw = None
         if pts is not None:
-            hud.draw_skeleton(frame, pts)
-            raw = (int(pts[F.MIDDLE_MCP, 0] * w), int(pts[F.MIDDLE_MCP, 1] * h))
-        self.mode.tick(self, Obs(t, pts, hand, raw, w, h, fps), frame)
-        return hud.mini_frame(frame, self.mini_label) if self.mini and self.mode.name == "live" else frame
+            hud.draw_skeleton(view, pts)
+            raw = (float(pts[F.MIDDLE_MCP, 0] * w), float(pts[F.MIDDLE_MCP, 1] * h))
+        self.mode.tick(self, Obs(t, pts, hand, raw, w, h, fps), view)
+        if self.mini and self.mode.name == "live":
+            return hud.mini_frame(view, self.mini_label)
+        return hud.zoomed(view, self.zoom)
 
     def set_mode(self, mode):
         self.mode.close(self)
@@ -76,6 +80,9 @@ class Session:
             self.smoother.reset()
         elif key == ord("v"):
             self.mini, self.view_dirty = not self.mini, True
+        elif key == ord("z"):
+            self.zoom = hud.ZOOMS[(hud.ZOOMS.index(self.zoom) + 1) % len(hud.ZOOMS)]
+            self.view_dirty = True
         elif key == ord("r") and self.user and self.mode.name != "calibrate":
             self.runner.release()
             self.set_mode(RecordMode(self) if self.mode.name == "live" else LiveMode())

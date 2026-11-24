@@ -92,7 +92,39 @@ def test_mini_view_is_320x240_in_live_mode_only(tmp_path):
     assert s.view_dirty
     assert s.tick(blank(), BY_POSE["palm"], "Right", 0.0).shape == (240, 320, 3)
     s.on_key(ord("r"), 0.1)
-    assert s.tick(blank(), BY_POSE["palm"], "Right", 0.2).shape == (360, 640, 3)
+    assert s.tick(blank(), BY_POSE["palm"], "Right", 0.2).shape == (540, 960, 3)   # full view at zoom 1.5
+
+
+def test_z_cycles_the_zoom_of_the_full_view(tmp_path):
+    s, _ = make(tmp_path)
+    shapes = []
+    for i in range(3):
+        shapes.append(s.tick(blank(), None, None, i * DT).shape[:2])
+        s.view_dirty = False
+        s.on_key(ord("z"), i * DT)
+        assert s.view_dirty
+    assert shapes == [(540, 960), (720, 1280), (360, 640)]
+
+
+def test_the_pointer_does_not_depend_on_camera_resolution(tmp_path):
+    def run(w, h):
+        s, mouse = make(tmp_path)
+        t = 0.0
+        for i in range(60):
+            pts = BY_POSE["palm"] + np.array([0.002 * i, -0.001 * i, 0.0])   # hand drifting right and up
+            s.tick(blank(w, h), pts, "Right", t)
+            t += DT
+        return mouse.calls
+
+    assert run(640, 360) == run(1920, 1080) == run(1280, 720)
+
+
+def test_the_pointer_keeps_sub_pixel_precision(tmp_path):
+    s, _ = make(tmp_path)
+    pts = BY_POSE["palm"] + np.array([0.00037, 0.0, 0.0])
+    for i in range(45):
+        s.tick(blank(), pts, "Right", i * DT)
+    assert abs(s.pointer.out[0] - (0.50037 * 640)) < 0.01      # 320.2368, not 320
 
 
 class _Mlp:

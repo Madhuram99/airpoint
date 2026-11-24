@@ -17,14 +17,14 @@ class RecordMode:
         phase, pose, left = self.session.update(o.t)
         lost = capture(self.session, s.recorder, pose, o.pts, o.hand, o.t)
         s.rejected += lost
-        title = {
-            "idle": f"RECORD {s.user}: SPACE = all poses, 1-6 = one pose",
-            "countdown": f"raise hand, make {pose}   {left:.0f}",
-            "capturing": f"HOLD {pose}   {left:.0f}s" + ("   << SIGN LOST" if lost else ""),
-            "done": "done - q to quit, 1-6 to redo one pose",
+        title, sub = {
+            "idle": (f"RECORD {s.user}", "SPACE = all six poses | 1-6 = one pose | r = back"),
+            "countdown": (f"make {pose}   {left:.0f}", "raise your hand"),
+            "capturing": (f"HOLD {pose}   {left:.0f}s", "tilt, move closer, move away"),
+            "done": ("done", "1-6 = redo one pose | r = back | q = quit"),
         }[phase]
-        hud.draw_prompt(frame, title, f"tilt, move closer, move away | kept {s.recorder.count} | "
-                                      f"rejected {s.rejected} | {hud.KEY_HINT}")
+        hud.draw_prompt(frame, title, f"{sub} | kept {s.recorder.count} | rejected {s.rejected}",
+                        "SIGN LOST - this frame was not saved" if lost else None)
 
     def on_key(self, s, key, t):
         if key == ord(" "):

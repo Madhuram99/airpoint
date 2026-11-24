@@ -18,7 +18,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODELS_DIR = os.path.join(ROOT, "models")
 MODEL_PATH, LABELS_PATH = os.path.join(MODELS_DIR, "pose_mlp.joblib"), os.path.join(MODELS_DIR, "labels.json")
 WINDOW, MINI_MARGIN = "AirPoint", 20
-KEYS = "q quit | m mouse | d dwell | k rules/mlp | c calibrate | v mini | r record | 1-6 pose | space start/redo"
+KEYS = "q quit | m mouse | d dwell | k rules/mlp | c calibrate | v mini | z zoom | r record | 1-6 pose | space start/redo"
 
 
 def load_classifiers(force_rules, profile=None):
@@ -72,8 +72,9 @@ def main(argv=None):
     if args.record:
         s.set_mode(RecordMode(s))
     camera, tracker = Camera(), HandTracker()
-    print(f"[AirPoint] camera {camera.index} {camera.size[0]}x{camera.size[1]} @ {camera.fps:.0f} fps | "
-          f"classifier {s.clf.name} | fc_min {s.pointer.fc_min} | {KEYS}")
+    view_h = round(camera.size[1] * hud.CANON_W / camera.size[0])
+    print(f"[AirPoint] camera {camera.index} {camera.size[0]}x{camera.size[1]} @ {camera.fps:.0f} fps -> "
+          f"view {hud.CANON_W}x{view_h} | classifier {s.clf.name} | fc_min {s.pointer.fc_min} | {KEYS}")
 
     try:
         for frame in camera.frames():
