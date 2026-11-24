@@ -47,7 +47,7 @@ class Session:
     """
 
     def __init__(self, runner, rules, mlp, *, root, user=None, profile=None, dwell_on=None,
-                 train_fn=train_personal, sounds=None, effects=None):
+                 train_fn=train_personal, sounds=None, effects=None, overlay=None):
         self.runner, self.rules, self.mlp, self.base_mlp = runner, rules, mlp, mlp
         self.clf = mlp or rules
         self.root, self.user, self.train_fn = root, user, train_fn
@@ -58,6 +58,7 @@ class Session:
         self.apply_bindings()
         self.sounds = sounds or Sounds(enabled=self.profile.sounds)
         self.effects = effects or Effects(voice=self.profile.voice)
+        self.overlay, self.overlay_on = overlay, overlay is not None     # the cursor glow; None = none
         self.hinter, self.hints_on, self.hint = Hinter(), self.profile.hints, None
         self.pointer = PointerPipeline(self.profile.fc_min)
         self.pointer.mode = self.profile.filter
@@ -147,10 +148,16 @@ class Session:
         except OSError:
             pass
 
+    def _hide_overlay(self):
+        if self.overlay is not None and self.overlay_on:
+            self.overlay.send({"show": False})
+
     def set_mode(self, mode):
         self.runner.apply(self.wheel.reset())       # a wheel drag does not survive leaving the live view
         self.mode.close(self)
         self.mode = mode
+        if mode.name != "live":
+            self._hide_overlay()
         if mode.name != "live":
             self.sim.on = False      # simulated shake never reaches recordings, calibration or a profile
 
@@ -196,6 +203,9 @@ class Session:
             self.xray, self.view_dirty = not self.xray, True
         elif key == ord("p"):
             self.set_locked(not self.runner.locked)
+        elif key == ord("o") and self.overlay is not None:
+            self._hide_overlay()
+            self.overlay_on = not self.overlay_on
         elif key == ord("n") and self.mode.name == "live":
             if not self.user:
                 print("[AirPoint] teaching a sign needs --user <name>")
@@ -229,6 +239,8 @@ class Session:
         self.mode.close(self)
         if self.recorder is not None:
             self.recorder.close()
+        if self.overlay is not None:
+            self.overlay.close()
         try:
             os.remove(os.path.join(self.root, "results", "live.json"))
         except OSError:

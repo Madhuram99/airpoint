@@ -526,3 +526,73 @@ def test_wheel_drag_is_dropped_when_wheel_mode_or_live_mode_ends(tmp_path):
         s.on_key(leave, t)
         assert kinds(mouse) == ["down", "up"] and s.wheel.mode == "idle"
         s.close()
+
+
+class FakeOverlay:
+    alive = True
+
+    def __init__(self):
+        self.states, self.closed = [], False
+
+    def send(self, state):
+        self.states.append(state)
+        return True
+
+    def close(self):
+        self.closed = True
+
+
+def test_overlay_gets_the_cursor_position_ring_and_pulses(tmp_path):
+    ov = FakeOverlay()
+    s, mouse = make(tmp_path, overlay=ov, dwell_on=True)
+    t = feed(s, "palm", 0.6, 0.0)
+    last = ov.states[-1]
+    move = [c for c in mouse.calls if c[0] == "move"][-1]
+    assert last["show"] and abs(last["x"] - move[1]) <= 1 and abs(last["y"] - move[2]) <= 1
+    assert 0.4 < last["ring"] < 0.7 and last["tag"] is None and "wheel" not in last
+    t = feed(s, "palm", 0.6, t)
+    assert [st["pulse"] for st in ov.states if "pulse" in st] == ["click"]      # the dwell click, reported once
+    s.on_key(ord("p"), t)
+    t = feed(s, "palm", 0.2, t)
+    assert ov.states[-1]["tag"] == "PAUSED"
+
+
+def test_overlay_is_hidden_when_the_mouse_is_off_outside_live_mode_and_after_o(tmp_path):
+    ov = FakeOverlay()
+    s, _ = make(tmp_path, overlay=ov, mouse_on=False)
+    t = feed(s, "palm", 0.3, 0.0)
+    assert ov.states[-1] == {"show": False}
+    s.on_key(ord("m"), t)
+    t = feed(s, "palm", 0.3, t)
+    assert ov.states[-1]["show"]
+    s.on_key(ord("r"), t)                                # record mode: no glow
+    assert ov.states[-1] == {"show": False}
+    s.on_key(ord("r"), t)
+    t = feed(s, "palm", 0.2, t)
+    assert ov.states[-1]["show"]
+    s.on_key(ord("o"), t)                                # overlay off
+    n = len(ov.states)
+    assert ov.states[-1] == {"show": False}
+    feed(s, "palm", 0.3, t)
+    assert len(ov.states) == n
+    s.close()
+    assert ov.closed
+
+
+def test_overlay_shows_the_wheel_at_its_anchor_and_scroll_and_simulated_tags(tmp_path):
+    ov = FakeOverlay()
+    s, _ = make(tmp_path, overlay=ov)
+    s.on_key(ord("w"), 0.0)
+    t = open_wheel(s, 0, 0, 0.0)
+    anchor = (ov.states[-1]["x"], ov.states[-1]["y"])
+    t = feed_at(s, 26, -15, 0.3, t)
+    st = ov.states[-1]
+    assert (st["x"], st["y"]) == anchor                  # the glow stays where the cursor waits
+    assert st["wheel"]["pick"] == 1 and 0.0 < st["wheel"]["progress"] < 1.0 and len(st["wheel"]["items"]) == 6
+    s.on_key(ord("w"), t)
+    s.on_key(ord("t"), t)
+    t = feed(s, "palm", 0.2, t)
+    assert ov.states[-1]["tag"] == "SIMULATED" and "wheel" not in ov.states[-1]
+    s.on_key(ord("t"), t)
+    t = feed(s, "thumb_up", 0.5, t)
+    assert ov.states[-1]["tag"] == "SCROLL"

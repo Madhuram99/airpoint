@@ -10,6 +10,7 @@ from . import profile as profiles
 from .camera import Camera
 from .classifier import PoseClassifier, RuleClassifier
 from .modes import RecordMode
+from .overlay import Overlay
 from .session import Session
 from .tracker import HandTracker
 
@@ -17,7 +18,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODELS_DIR = os.path.join(ROOT, "models")
 MODEL_PATH, LABELS_PATH = os.path.join(MODELS_DIR, "pose_mlp.joblib"), os.path.join(MODELS_DIR, "labels.json")
 WINDOW, MINI_MARGIN = "AirPoint", 20
-KEYS = ("q quit | m mouse | d dwell | w wheel | b filter full/smooth/off | k rules/mlp | c calibrate | v mini | z zoom | x x-ray | "
+KEYS = ("q quit | m mouse | d dwell | w wheel | b filter full/smooth/off | k rules/mlp | c calibrate | v mini | z zoom | x x-ray | o cursor glow | "
         "t simulated tremor ([ ] size, { } speed) | p pause | h hints | s sounds | n new sign | r record | 1-6 pose | "
         "space start/redo")
 
@@ -58,6 +59,7 @@ def main(argv=None):
     ap.add_argument("--rules", action="store_true", help="force the rule classifier")
     ap.add_argument("--mouse", action="store_true", help="start with OS mouse control ON")
     ap.add_argument("--dwell", action="store_true", help="start with dwell click ON")
+    ap.add_argument("--no-overlay", action="store_true", help="no glow at the cursor (the overlay is macOS only)")
     args = ap.parse_args(argv)
     if args.record and not args.user:
         ap.error("--record needs --user")
@@ -69,7 +71,7 @@ def main(argv=None):
     if args.mouse:
         runner.toggle()
     s = Session(runner, rules, mlp, root=ROOT, user=args.user, profile=profile,
-                dwell_on=True if args.dwell else None)
+                dwell_on=True if args.dwell else None, overlay=None if args.no_overlay else Overlay())
     if args.record:
         s.set_mode(RecordMode(s))
     camera, tracker = Camera(), HandTracker()

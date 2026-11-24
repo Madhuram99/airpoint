@@ -34,11 +34,42 @@ def test_main_runs_frames_through_the_session_and_quits_on_q(monkeypatch, capsys
     monkeypatch.setattr(app.cv2, "waitKey", lambda ms: next(keys))
     monkeypatch.setattr(app.cv2, "destroyAllWindows", lambda: None)
     monkeypatch.setattr(app, "show_window", lambda mini, screen_w: None)
+    overlays = []
+
+    class NoOverlay:
+        alive = True
+
+        def __init__(self):
+            overlays.append(self)
+            self.sent, self.closed = 0, False
+
+        def send(self, state):
+            self.sent += 1
+            return True
+
+        def close(self):
+            self.closed = True
+
+    monkeypatch.setattr(app, "Overlay", NoOverlay)          # the real one would draw on the screen
 
     app.main(["--rules"])
 
     assert len(shown) == 6                                  # q on the sixth frame ends the loop
     assert shown[0] == (540, 960, 3)                        # 1080p camera -> 640-wide view at zoom 1.5
     assert shown[2] == (540, 1560, 3)                       # x added the X-ray panel
+    assert len(overlays) == 1 and overlays[0].sent >= 6 and overlays[0].closed
     out = capsys.readouterr().out
     assert "1920x1080 @ 30 fps -> view 640x360" in out and "classifier rules" in out
+
+
+def test_no_overlay_flag_starts_without_one(monkeypatch):
+    made = []
+    monkeypatch.setattr(app, "Camera", FakeCamera)
+    monkeypatch.setattr(app, "HandTracker", FakeTracker)
+    monkeypatch.setattr(app, "PyAutoGuiMouse", FakeMouse)
+    monkeypatch.setattr(app.cv2, "imshow", lambda name, img: None)
+    monkeypatch.setattr(app.cv2, "waitKey", lambda ms: ord("q"))
+    monkeypatch.setattr(app.cv2, "destroyAllWindows", lambda: None)
+    monkeypatch.setattr(app, "Overlay", lambda: made.append(1))
+    app.main(["--rules", "--no-overlay"])
+    assert made == []

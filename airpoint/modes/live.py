@@ -24,6 +24,29 @@ def shake_line(sim, reading, left):
     return " | ".join(parts) or None
 
 
+PULSES = ("click", "double_click", "right_click", "drag_start", "drag_end")
+
+
+def overlay_state(s, o, smooth, progress, events):
+    """One line for the cursor glow: where the real cursor is and what to show around it."""
+    if not s.runner.enabled or smooth is None:
+        return {"show": False}
+    wheel = s.wheel.view if s.wheel_on else None
+    at = wheel["anchor"] if wheel and s.wheel.frozen else smooth       # a frozen cursor waits at the anchor
+    x, y = s.runner.to_screen(at[0] / o.w, at[1] / o.h)
+    scrolling = s.fsm.state == "SCROLLING" or (wheel is not None and wheel["mode"] == "scroll")
+    tag = ("PAUSED" if s.runner.locked else "DRAG" if s.runner.button_down else
+           "SCROLL" if scrolling else "SIMULATED" if s.sim.on else None)
+    state = {"show": True, "x": round(x, 1), "y": round(y, 1), "ring": round(progress, 3), "tag": tag, "hint": s.hint}
+    pulse = next((e.kind for e in events if e.kind in PULSES), None)
+    if pulse:
+        state["pulse"] = pulse
+    if wheel and wheel["mode"] == "open":
+        state["wheel"] = {"items": wheel["items"], "pick": wheel["pick"], "progress": round(wheel["progress"], 3),
+                          "dot": [round(v, 3) for v in wheel["dot"]]}
+    return state
+
+
 class LiveMode:
     """Classify -> vote -> state machine -> pointer -> dwell -> OS."""
 
@@ -58,7 +81,7 @@ class LiveMode:
                 s.set_locked(False)
         elif s.wheel_on:                           # point-only: a dwell opens the wheel of actions
             events = events + s.wheel.update(smooth, o.t, state == "MOVING")
-            progress = s.wheel.progress if s.wheel.mode in ("idle", "drag") else 0.0
+            progress = 0.0 if s.wheel.mode == "open" else s.wheel.progress     # the open wheel draws its own countdown
             hud.draw_wheel(frame, s.wheel.view)
         else:
             dwell_event, progress = s.dwell.update(smooth, o.t, s.dwell_on and state == "MOVING")
@@ -85,6 +108,8 @@ class LiveMode:
             centre = (0.5, 0.5) if o.raw is None else (o.raw[0] / o.w, o.raw[1] / o.h)
             s.hint = s.hinter.update(o.t, o.luma, None if o.pts is None else F.palm_px(o.pts, o.w, o.h),
                                      centre, label, o.fps)
+        if s.overlay is not None and s.overlay_on:
+            s.overlay.send(overlay_state(s, o, smooth, progress, events))
         shake = shake_line(s.sim, s.pointer.reading, s.pointer.left)
         if s.runner.locked:
             line3 = ("PAUSED [p]: hold an open palm still for 2 s to resume", hud.ACCENT_ON)
