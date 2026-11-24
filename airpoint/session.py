@@ -94,6 +94,8 @@ class Session:
         elif key == ord("z"):
             self.zoom = hud.ZOOMS[(hud.ZOOMS.index(self.zoom) + 1) % len(hud.ZOOMS)]
             self.view_dirty = True
+        elif key == ord("b"):
+            self.pointer.cycle_mode()
         elif key == ord("t") and self.mode.name == "live":
             self.sim.on = not self.sim.on
         elif key in SIM_NUDGES:

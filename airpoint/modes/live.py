@@ -3,6 +3,9 @@ from .. import hud
 from ..pointer import PRECLICK_RATIO
 
 
+FILTER_NAMES = {"full": "full", "smooth": "smooth only", "off": "OFF"}
+
+
 class LiveMode:
     """Classify -> vote -> state machine -> pointer -> dwell -> OS."""
 
@@ -38,7 +41,8 @@ class LiveMode:
                 frame,
                 f"{state} | pose {label} {conf:.2f} | ratio {ratio:.2f} | {s.clf.name} | {o.fps:.0f} fps",
                 f"last: {s.last_event} | mouse [m] {'ON' if s.runner.enabled else 'OFF'} | "
-                f"dwell [d] {'ON' if s.dwell_on else 'OFF'} | {hud.KEY_HINT}",
+                f"dwell [d] {'ON' if s.dwell_on else 'OFF'} | filter [b] {FILTER_NAMES[s.pointer.mode]} | "
+                f"{hud.KEY_HINT}",
                 s.runner.enabled,
                 line3=(sim, hud.ALERT) if sim else None,
             )

@@ -44,7 +44,7 @@ def test_fit_scale_shrinks_only_when_needed():
 
 def test_worst_case_hud_lines_stay_legible_on_the_640_canvas():
     line1 = "SCROLLING | pose thumb_down 0.99 | ratio 1.23 | mlp/madhuramrathi | 30 fps"
-    line2 = "last: drag_end, click | mouse [m] OFF | dwell [d] OFF | " + hud.KEY_HINT
+    line2 = "last: drag_end, click | mouse [m] OFF | dwell [d] OFF | filter [b] smooth only | " + hud.KEY_HINT
     title = "HOLD thumb_down   10s"
     sub = "tilt, move closer, move away | kept 1508 | rejected 1508"
     assert hud.fit_scale(line1, 0.50, 620) >= 0.42

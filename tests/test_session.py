@@ -261,3 +261,18 @@ def test_simulated_tremor_cannot_follow_you_into_record_or_calibrate(tmp_path):
     s.on_key(ord("c"), 0.0)
     assert s.mode.name == "calibrate" and not s.sim.on
     s.close()
+
+
+def test_simulated_tremor_is_locked_and_cancelled_in_the_live_loop(tmp_path):
+    s, _ = make(tmp_path)
+    s.on_key(ord("t"), 0.0)
+    t = feed(s, "palm", 6.0, 0.0)
+    r = s.pointer.reading
+    assert r.locked and abs(r.lock_hz - 6.0) < 0.8 and r.amp > 5.0
+    assert s.pointer.left.amp < 0.5 * r.amp
+    s.on_key(ord("b"), t)
+    assert s.pointer.mode == "smooth"
+    s.on_key(ord("b"), t)
+    assert s.pointer.mode == "off"
+    feed(s, "palm", 0.1, t)
+    assert s.pointer.out == s.obs.raw                        # off = the raw pointer

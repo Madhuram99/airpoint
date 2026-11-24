@@ -15,7 +15,7 @@ ACCENT_ON, ACCENT_OFF, WHITE, MINT = (0, 200, 255), (90, 90, 90), (255, 255, 255
 PANEL, ALERT = (25, 35, 30), (60, 60, 255)
 MINI_SIZE = (320, 240)
 ZOOMS = (1.0, 1.5, 2.0)
-KEY_HINT = "keys q m d k c v z t r"
+KEY_HINT = "keys q k c v z t r"
 
 
 def canon_view(frame):

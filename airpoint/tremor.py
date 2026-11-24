@@ -135,3 +135,51 @@ class TremorMeter:
                 self.lock_hz = 0.6 * self.lock_hz + 0.4 * r.hz
         self.reading = replace(r, locked=self.locked, lock_hz=self.lock_hz if self.locked else 0.0)
         return self.reading
+
+
+class TremorCanceller:
+    """A notch at the locked tremor frequency, blended in while the meter is locked.
+
+    A low-pass must choose between shake and lag; a notch removes only the band the tremor
+    lives in. It steps on every sample so its state is warm the moment a lock arrives."""
+
+    Q, RAMP_S, IDLE_HZ = 1.5, 0.3, 6.0
+
+    def __init__(self):
+        self.z = np.zeros((2, 2))          # filter state: [stage, axis]
+        self.tuned, self.b, self.a = None, None, None
+        self.g, self.t = 0.0, None         # g: how much of the notch output is used, 0..1
+
+    def _tune(self, hz, fs):
+        tuned = (round(hz, 1), round(fs))
+        if tuned == self.tuned:
+            return
+        self.tuned = tuned
+        w0 = 2 * math.pi * tuned[0] / tuned[1]
+        alpha = math.sin(w0) / (2 * self.Q)
+        self.b = np.array([1.0, -2 * math.cos(w0), 1.0]) / (1 + alpha)
+        self.a = np.array([1.0, -2 * math.cos(w0) / (1 + alpha), (1 - alpha) / (1 + alpha)])
+
+    def reset(self, xy):
+        """Settle the filter at `xy` (after a gap), so the next output equals its input."""
+        if self.b is not None:
+            x = np.asarray(xy, dtype=float)
+            self.z[0], self.z[1] = x * (1.0 - self.b[0]), x * (self.b[2] - self.a[2])
+
+    def step(self, xy, t, reading):
+        """-> the pointer with the tremor band removed in proportion to `g`."""
+        x = np.asarray(xy, dtype=float)
+        dt, self.t = (0.0 if self.t is None else t - self.t), t
+        if reading.fs <= 0.0:              # the meter does not know the frame rate yet
+            return float(x[0]), float(x[1])
+        fresh = self.b is None
+        hz = reading.lock_hz if reading.locked else (self.tuned[0] if self.tuned else self.IDLE_HZ)
+        self._tune(min(hz, 0.45 * reading.fs), reading.fs)
+        if fresh:
+            self.reset(x)
+        y = self.b[0] * x + self.z[0]
+        self.z[0] = self.b[1] * x - self.a[1] * y + self.z[1]
+        self.z[1] = self.b[2] * x - self.a[2] * y
+        self.g += ((1.0 if reading.locked else 0.0) - self.g) * min(dt / self.RAMP_S, 1.0)
+        out = x + self.g * (y - x)
+        return float(out[0]), float(out[1])

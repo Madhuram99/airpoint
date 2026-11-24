@@ -1,20 +1,51 @@
+from collections import deque
+
 from .filters import OneEuroFilter
+from .tremor import Reading, TremorCanceller, TremorMeter
 
 FC_MIN, FC_MIN_PRECLICK, PRECLICK_RATIO = 0.80, 0.30, 0.42
 BETA = 0.030   # 1-Euro speed gain per canonical px/s: Week 1's 0.010 at a 1920-wide frame, x 1920 / 640
+MODES = ("full", "smooth", "off")   # tremor canceller + smoothing | smoothing only | raw pointer
+GAP_S, STALE_S, TRAIL_S = 0.25, 2.0, 4.0
 
 
 class PointerPipeline:
-    """Raw pointer -> the pointer the cursor follows. Owns the filter chain."""
+    """Raw pointer -> the pointer the cursor follows:  canceller -> 1-Euro smoothing.
+
+    With no tremor lock the canceller passes its input through untouched, so `full` is then
+    exactly `smooth`. All filters are fed in every mode, so switching modes never jumps."""
 
     def __init__(self, fc_min=FC_MIN):
-        self.fc_min = fc_min
+        self.fc_min, self.mode = fc_min, "full"
         self.fx, self.fy = OneEuroFilter(FC_MIN, BETA), OneEuroFilter(FC_MIN, BETA)
-        self.out = None
+        self.meter, self.out_meter, self.canceller = TremorMeter(), TremorMeter(), TremorCanceller()
+        self.reading, self.left = Reading(), Reading()   # shake going in, shake left in the output
+        self.trail = deque()                             # (t, raw, out) for the last TRAIL_S seconds
+        self.t, self.out = None, None
+
+    def cycle_mode(self):
+        self.mode = MODES[(MODES.index(self.mode) + 1) % len(MODES)]
 
     def update(self, raw, t, preclick=False):
         """`preclick` = fingers closing for a pinch: smooth harder so the click lands where aimed.
         Floats in, floats out: rounding here would step the cursor 3 screen points at a time."""
+        gap = None if self.t is None else t - self.t
+        self.t = t
+        if gap is None or gap > GAP_S:                   # hand was away: old samples no longer apply
+            self.meter.reset() if gap is None or gap > STALE_S else self.meter.clear()
+            self.out_meter.reset()
+            self.canceller.reset(raw)
+            self.trail.clear()
+        self.meter.add(t, raw)
+        self.reading = self.meter.read(t)
+        cancelled = self.canceller.step(raw, t, self.reading)
+        x = cancelled if self.mode == "full" else raw
         fc = min(FC_MIN_PRECLICK, self.fc_min) if preclick else self.fc_min
-        self.out = (self.fx.filter(raw[0], t, fc), self.fy.filter(raw[1], t, fc))
+        smooth = (self.fx.filter(x[0], t, fc), self.fy.filter(x[1], t, fc))
+        self.out = raw if self.mode == "off" else smooth
+        self.out_meter.add(t, self.out)
+        self.left = self.out_meter.read(t)
+        self.trail.append((t, raw, self.out))
+        while t - self.trail[0][0] > TRAIL_S:
+            self.trail.popleft()
         return self.out

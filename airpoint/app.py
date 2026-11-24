@@ -18,7 +18,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODELS_DIR = os.path.join(ROOT, "models")
 MODEL_PATH, LABELS_PATH = os.path.join(MODELS_DIR, "pose_mlp.joblib"), os.path.join(MODELS_DIR, "labels.json")
 WINDOW, MINI_MARGIN = "AirPoint", 20
-KEYS = "q quit | m mouse | d dwell | k rules/mlp | c calibrate | v mini | z zoom | r record | 1-6 pose | space start/redo"
+KEYS = ("q quit | m mouse | d dwell | b filter full/smooth/off | k rules/mlp | c calibrate | v mini | z zoom | "
+        "t simulated tremor ([ ] size, { } speed) | r record | 1-6 pose | space start/redo")
 
 
 def load_classifiers(force_rules, profile=None):
