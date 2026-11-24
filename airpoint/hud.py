@@ -12,10 +12,10 @@ CANON_W = 640           # every pixel threshold, the pointer and all drawing liv
 BANNER_LINE_H = 20
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 ACCENT_ON, ACCENT_OFF, WHITE, MINT = (0, 200, 255), (90, 90, 90), (255, 255, 255), (167, 243, 208)
-PANEL = (25, 35, 30)
+PANEL, ALERT = (25, 35, 30), (60, 60, 255)
 MINI_SIZE = (320, 240)
 ZOOMS = (1.0, 1.5, 2.0)
-KEY_HINT = "keys q m d k c v z r"
+KEY_HINT = "keys q m d k c v z t r"
 
 
 def canon_view(frame):
@@ -89,7 +89,7 @@ def draw_prompt(frame, title, subtitle, alert=None):
     put_fit(frame, title, (16, 34), 0.95, MINT, 2)
     put_fit(frame, subtitle, (16, 58), 0.45, WHITE)
     if alert:
-        put_fit(frame, alert, (16, 78), 0.45, (60, 60, 255))
+        put_fit(frame, alert, (16, 78), 0.45, ALERT)
 
 
 def draw_dwell_ring(frame, xy, progress):

@@ -30,7 +30,9 @@ class LiveMode:
         if events:
             s.last_event = ", ".join(e.kind + ("" if e.arg is None else f" {e.arg}") for e in events)
         hud.draw_region(frame, s.runner.active_region, s.runner.enabled)
-        s.mini_label = f"{state} | {label} {conf:.2f} | mouse {'ON' if s.runner.enabled else 'OFF'}"
+        sim = f"SIMULATED TREMOR {s.sim.hz:.1f} Hz, {s.sim.amp:.2f} palm" if s.sim.on else None
+        s.mini_label = (f"{state} | {label} {conf:.2f} | mouse {'ON' if s.runner.enabled else 'OFF'}"
+                        + (" | SIM" if sim else ""))
         if not s.mini:
             hud.draw_banner(
                 frame,
@@ -38,6 +40,7 @@ class LiveMode:
                 f"last: {s.last_event} | mouse [m] {'ON' if s.runner.enabled else 'OFF'} | "
                 f"dwell [d] {'ON' if s.dwell_on else 'OFF'} | {hud.KEY_HINT}",
                 s.runner.enabled,
+                line3=(sim, hud.ALERT) if sim else None,
             )
 
     def on_key(self, s, key, t):

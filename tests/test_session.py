@@ -232,3 +232,32 @@ def test_failed_retrain_keeps_the_old_model(tmp_path):
     assert s.mode.calib.phase == "failed" and "only 3 usable" in s.mode.calib.message
     assert s.clf is old
     s.close()
+
+
+def test_t_shakes_the_pointer_but_not_the_sign(tmp_path):
+    s, mouse = make(tmp_path)
+    s.on_key(ord("t"), 0.0)
+    xs, t = [], 0.0
+    for _ in range(90):
+        s.tick(blank(), BY_POSE["palm"], "Right", t)
+        xs.append(s.obs.raw[0])
+        t += DT
+    assert s.sim.on and np.std(xs) > 5.0
+    assert s.fsm.state == "MOVING" and kinds(mouse) == []
+    s.on_key(ord("]"), t)
+    s.on_key(ord("}"), t)
+    assert (s.sim.amp, s.sim.hz) == (0.25, 6.5)
+
+
+def test_simulated_tremor_cannot_follow_you_into_record_or_calibrate(tmp_path):
+    s, _ = make(tmp_path)
+    s.on_key(ord("t"), 0.0)
+    s.on_key(ord("r"), 0.0)
+    assert s.mode.name == "record" and not s.sim.on
+    s.on_key(ord("t"), 0.0)
+    assert not s.sim.on                       # t only works in live mode
+    s.on_key(ord("r"), 0.0)
+    s.on_key(ord("t"), 0.0)
+    s.on_key(ord("c"), 0.0)
+    assert s.mode.name == "calibrate" and not s.sim.on
+    s.close()
