@@ -1,4 +1,5 @@
-from airpoint.calibration import CalibSession, fc_min_from_jitter, jitter_px
+from airpoint.calibration import (CalibSession, Trainer, fc_min_from_jitter, jitter_px,
+                                  load_profile, save_profile)
 
 
 def test_fc_min_maps_jitter_linearly_and_clamps():
@@ -30,3 +31,33 @@ def test_calib_session_phases():
     assert s.update(19.0)[0] == "capturing"
     assert s.update(24.0) == ("training", None, 0.0)
     assert not s.capturing
+
+
+def test_trainer_reports_result_or_error_off_thread():
+    ok = Trainer(lambda: {"acc": 1.0})
+    ok.start()
+    ok.join(2.0)
+    assert ok.done and ok.result == {"acc": 1.0} and ok.error is None
+
+    bad = Trainer(lambda: 1 / 0)
+    bad.start()
+    bad.join(2.0)
+    assert bad.done and bad.result is None
+    assert bad.error == "ZeroDivisionError: division by zero"
+
+
+def test_trainer_is_not_done_before_it_runs():
+    assert not Trainer(lambda: {}).done
+
+
+def test_profile_round_trip(tmp_path):
+    root = str(tmp_path)
+    model = str(tmp_path / "models" / "personal_ana.joblib")
+    labels = str(tmp_path / "models" / "personal_ana_labels.json")
+    path = save_profile(root, "ana", 0.55, model, labels, 0.97)
+    assert path == str(tmp_path / "profiles" / "ana.json")
+    p = load_profile(root, "ana")
+    assert p["user"] == "ana" and p["fc_min"] == 0.55 and p["acc_on_own_frames"] == 0.97
+    assert p["model"] == "models/personal_ana.joblib"
+    assert p["labels"] == "models/personal_ana_labels.json"
+    assert load_profile(root, "nobody") is None

@@ -78,3 +78,45 @@ class CalibSession:
         total = {"countdown": COUNTDOWN_S, "still": STILL_S}.get(self.phase)
         left = max(total - (t - self.t0), 0.0) if total else 0.0
         return self.phase, None, left
+
+
+class Trainer(threading.Thread):
+    """Runs `fn` off the camera loop. When `done`, exactly one of `result` / `error` is set."""
+
+    def __init__(self, fn):
+        super().__init__(daemon=True)
+        self.fn, self.result, self.error = fn, None, None
+
+    @property
+    def done(self):
+        return not self.is_alive() and (self.result is not None or self.error is not None)
+
+    def run(self):
+        try:
+            self.result = self.fn()
+        except Exception as e:
+            self.error = f"{type(e).__name__}: {e}"
+
+
+def profile_path(root, user):
+    return os.path.join(root, "profiles", f"{user}.json")
+
+
+def save_profile(root, user, fc_min, model_path, labels_path, acc):
+    """profiles/<user>.json: filter cutoff and personal model, paths relative to the project root."""
+    path = profile_path(root, user)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    data = {"user": user, "fc_min": fc_min,
+            "model": os.path.relpath(model_path, root), "labels": os.path.relpath(labels_path, root),
+            "acc_on_own_frames": acc}
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2)
+    return path
+
+
+def load_profile(root, user):
+    path = profile_path(root, user)
+    if not os.path.exists(path):
+        return None
+    with open(path) as f:
+        return json.load(f)
