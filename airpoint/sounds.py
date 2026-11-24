@@ -4,7 +4,7 @@ import shutil
 import subprocess
 
 FOLDER = "/System/Library/Sounds"
-FILES = {"click": "Tink", "right_click": "Pop", "drag_start": "Bottle", "drag_end": "Purr",
+FILES = {"click": "Tink", "double_click": "Tink", "right_click": "Pop", "drag_start": "Bottle", "drag_end": "Purr",
          "lock": "Submarine", "unlock": "Glass"}
 
 

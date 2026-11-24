@@ -69,3 +69,10 @@ def test_type_event_writes_text_through_the_mouse_object():
     r.toggle()
     r.apply([Event("type", "hello"), Event("say", "spoken elsewhere")])
     assert m.calls == [("write", "hello")]
+
+
+def test_double_click_event_is_one_os_double_click():
+    m, r = make()
+    r.toggle()
+    r.apply([Event("double_click")])
+    assert m.calls == [("double_click",)]

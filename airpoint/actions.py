@@ -17,6 +17,9 @@ class FakeMouse:
     def right_click(self):
         self.calls.append(("right_click",))
 
+    def double_click(self):
+        self.calls.append(("double_click",))
+
     def mouse_down(self):
         self.calls.append(("down",))
 
@@ -51,6 +54,9 @@ class PyAutoGuiMouse:
 
     def right_click(self):
         self.pg.rightClick()
+
+    def double_click(self):
+        self.pg.doubleClick()
 
     def mouse_down(self):
         self.pg.mouseDown()
@@ -108,6 +114,8 @@ class ActionRunner:
                 self.mouse.click()
             elif e.kind == "right_click":
                 self.mouse.right_click()
+            elif e.kind == "double_click":
+                self.mouse.double_click()
             elif e.kind == "drag_start":
                 self.mouse.mouse_down()
                 self.button_down = True
