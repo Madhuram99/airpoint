@@ -19,6 +19,7 @@ webcam → MediaPipe Hands (21 points) → wrist-centred, palm-scaled 63-d vecto
 | pinch / fist, held | drag |
 | V-sign, held 0.3 s | right click |
 | thumb up / down | scroll, no hand motion needed |
+| open palm, still 1 s (dwell mode, `d`) | click with no finger motion at all |
 | hand out of frame | rest, anything held is dropped |
 
 ## Run
@@ -29,6 +30,8 @@ venv/bin/pip install numpy scikit-learn opencv-python mediapipe pyautogui pytest
 
 venv/bin/python run_demo.py                      # live demo; m = mouse on/off, k = rules/mlp, q = quit
 venv/bin/python run_demo.py --mouse              # start with the mouse already on
+venv/bin/python run_demo.py --user you           # loads profiles/you.json once calibrated; c = calibrate (~1 min)
+#   d = dwell click on/off | v = mini always-on-top view | c = hold still 5 s, 6 poses x 5 s, retrain, hot-swap
 venv/bin/python run_demo.py --record --user you  # record your hand: space = all poses, 1-6 = one pose
 venv/bin/python -m airpoint.train                # retrain on data/*.csv, leave-one-user-out report
 venv/bin/pytest -q                               # unit tests (no camera needed)
@@ -42,9 +45,10 @@ macOS: allow your terminal under System Settings → Privacy & Security → Came
 ## Layout
 
 ```
-airpoint/        package — camera, tracker, features, filters, classifier, fsm, actions, hud, recorder, train, app
+airpoint/        package — camera, tracker, features, filters, classifier, fsm, actions, hud, recorder, calibration, train, app
 data/            recorded landmark CSVs, one per person
 models/          trained pose classifier + labels
+profiles/        per-user calibration: filter cutoff + personal model (gitignored)
 tests/           pytest suite
 docs/superpowers specs and implementation plans
 ```

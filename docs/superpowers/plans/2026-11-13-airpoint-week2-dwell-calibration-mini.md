@@ -46,7 +46,7 @@ Expected after Task 7: `55 passed`.
 - Modify: `airpoint/fsm.py`
 - Test: `tests/test_fsm.py`
 
-- [ ] **Step 1: Write the failing tests** — append to `tests/test_fsm.py`:
+- [x] **Step 1: Write the failing tests** — append to `tests/test_fsm.py`:
 
 ```python
 from airpoint.fsm import DwellDetector
@@ -85,12 +85,12 @@ def test_dwell_inactive_resets_progress():
     assert out == [(None, 0.0), (None, 0.0), (None, 0.0), (None, 0.6)]
 ```
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `venv/bin/pytest tests/test_fsm.py -q`
 Expected: `ImportError: cannot import name 'DwellDetector'`
 
-- [ ] **Step 3: Implement** — in `airpoint/fsm.py`, add `import math` at the top, these constants after `SCROLL_TICKS = 2`, and the class at the end of the file:
+- [x] **Step 3: Implement** — in `airpoint/fsm.py`, add `import math` at the top, these constants after `SCROLL_TICKS = 2`, and the class at the end of the file:
 
 ```python
 DWELL_S = 1.0           # still this long -> click
@@ -136,12 +136,12 @@ class DwellDetector:
         return None, progress
 ```
 
-- [ ] **Step 4: Run to verify they pass**
+- [x] **Step 4: Run to verify they pass**
 
 Run: `venv/bin/pytest tests/test_fsm.py -q`
 Expected: `13 passed`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add airpoint/fsm.py tests/test_fsm.py
@@ -156,7 +156,7 @@ git commit -m "feat(fsm): DwellDetector — still cursor 1 s -> click, re-arms a
 - Modify: `airpoint/hud.py`
 - Create: `tests/test_hud.py`
 
-- [ ] **Step 1: Write the failing tests** — create `tests/test_hud.py`:
+- [x] **Step 1: Write the failing tests** — create `tests/test_hud.py`:
 
 ```python
 import numpy as np
@@ -179,12 +179,12 @@ def test_dwell_ring_draws_only_with_progress():
     assert frame.any()
 ```
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `venv/bin/pytest tests/test_hud.py -q`
 Expected: `AttributeError: module 'airpoint.hud' has no attribute 'mini_frame'`
 
-- [ ] **Step 3: Implement** — in `airpoint/hud.py`, add after the colour constants:
+- [x] **Step 3: Implement** — in `airpoint/hud.py`, add after the colour constants:
 
 ```python
 MINI_SIZE = (320, 240)
@@ -209,12 +209,12 @@ def mini_frame(frame, label):
     return small
 ```
 
-- [ ] **Step 4: Run to verify they pass**
+- [x] **Step 4: Run to verify they pass**
 
 Run: `venv/bin/pytest tests/test_hud.py -q`
 Expected: `2 passed`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add airpoint/hud.py tests/test_hud.py
@@ -229,7 +229,7 @@ git commit -m "feat(hud): dwell ring and 320x240 mini frame"
 - Modify: `airpoint/recorder.py:71-123`
 - Test: `tests/test_recorder.py`
 
-- [ ] **Step 1: Write the failing test** — append to `tests/test_recorder.py`:
+- [x] **Step 1: Write the failing test** — append to `tests/test_recorder.py`:
 
 ```python
 def test_session_capture_length_is_configurable():
@@ -240,12 +240,12 @@ def test_session_capture_length_is_configurable():
     assert s.update(8.0)[0] == "done"
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `venv/bin/pytest tests/test_recorder.py -q`
 Expected: `TypeError: RecordSession.__init__() got an unexpected keyword argument 'capture_s'`
 
-- [ ] **Step 3: Implement** — in `RecordSession`:
+- [x] **Step 3: Implement** — in `RecordSession`:
 
 ```python
     def __init__(self, poses=POSES, capture_s=CAPTURE_S):
@@ -268,12 +268,12 @@ and in `update`, replace the two uses of `CAPTURE_S`:
         total = {"countdown": COUNTDOWN_S, "capturing": self.capture_s}.get(self.phase)
 ```
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `venv/bin/pytest tests/test_recorder.py -q`
 Expected: `9 passed`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add airpoint/recorder.py tests/test_recorder.py
@@ -288,7 +288,7 @@ git commit -m "feat(recorder): RecordSession takes capture_s"
 - Modify: `airpoint/train.py`
 - Test: `tests/test_train.py`
 
-- [ ] **Step 1: Write the failing tests** — in `tests/test_train.py`, change the import line to `from airpoint.train import train_and_save, train_personal` and append:
+- [x] **Step 1: Write the failing tests** — in `tests/test_train.py`, change the import line to `from airpoint.train import train_and_save, train_personal` and append:
 
 ```python
 def test_personal_model_scores_calibration_holdout(tmp_path):
@@ -317,12 +317,12 @@ def test_base_training_ignores_calibration_files(tmp_path):
     assert report["users"] == ["a"] and report["n_rows"] == 180
 ```
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `venv/bin/pytest tests/test_train.py -q`
 Expected: `ImportError: cannot import name 'train_personal'`
 
-- [ ] **Step 3: Implement** — in `airpoint/train.py`, add after `AUG_COPIES = 3`:
+- [x] **Step 3: Implement** — in `airpoint/train.py`, add after `AUG_COPIES = 3`:
 
 ```python
 PERSONAL_WEIGHT = 3        # calibration rows duplicated this many times
@@ -408,17 +408,17 @@ def main(argv=None):
 
 (rest of `main` unchanged.)
 
-- [ ] **Step 4: Run to verify they pass**
+- [x] **Step 4: Run to verify they pass**
 
 Run: `venv/bin/pytest tests/test_train.py -q`
 Expected: `4 passed`
 
-- [ ] **Step 5: Confirm the real retrain still works**
+- [x] **Step 5: Confirm the real retrain still works**
 
 Run: `venv/bin/python -m airpoint.train | head -2`
 Expected: `rows 1508 | users madhuram | fit ...s` (same numbers as before: calib files do not exist yet).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add airpoint/train.py tests/test_train.py
@@ -433,7 +433,7 @@ git commit -m "feat(train): train_personal — base + one user's calibration row
 - Create: `airpoint/calibration.py`
 - Create: `tests/test_calibration.py`
 
-- [ ] **Step 1: Write the failing tests** — create `tests/test_calibration.py`:
+- [x] **Step 1: Write the failing tests** — create `tests/test_calibration.py`:
 
 ```python
 from airpoint.calibration import CalibSession, fc_min_from_jitter, jitter_px
@@ -470,12 +470,12 @@ def test_calib_session_phases():
     assert not s.capturing
 ```
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `venv/bin/pytest tests/test_calibration.py -q`
 Expected: `ModuleNotFoundError: No module named 'airpoint.calibration'`
 
-- [ ] **Step 3: Implement** — create `airpoint/calibration.py`:
+- [x] **Step 3: Implement** — create `airpoint/calibration.py`:
 
 ```python
 """Calibration (`c` key): tremor -> fc_min, six short pose captures, personal retrain, profile."""
@@ -560,12 +560,12 @@ class CalibSession:
         return self.phase, None, left
 ```
 
-- [ ] **Step 4: Run to verify they pass**
+- [x] **Step 4: Run to verify they pass**
 
 Run: `venv/bin/pytest tests/test_calibration.py -q`
 Expected: `3 passed`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add airpoint/calibration.py tests/test_calibration.py
@@ -580,7 +580,7 @@ git commit -m "feat(calibration): tremor -> fc_min mapping and CalibSession timi
 - Modify: `airpoint/calibration.py`
 - Test: `tests/test_calibration.py`
 
-- [ ] **Step 1: Write the failing tests** — change the import in `tests/test_calibration.py` to:
+- [x] **Step 1: Write the failing tests** — change the import in `tests/test_calibration.py` to:
 
 ```python
 from airpoint.calibration import (CalibSession, Trainer, fc_min_from_jitter, jitter_px,
@@ -620,12 +620,12 @@ def test_profile_round_trip(tmp_path):
     assert load_profile(root, "nobody") is None
 ```
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `venv/bin/pytest tests/test_calibration.py -q`
 Expected: `ImportError: cannot import name 'Trainer'`
 
-- [ ] **Step 3: Implement** — append to `airpoint/calibration.py`:
+- [x] **Step 3: Implement** — append to `airpoint/calibration.py`:
 
 ```python
 class Trainer(threading.Thread):
@@ -670,12 +670,12 @@ def load_profile(root, user):
         return json.load(f)
 ```
 
-- [ ] **Step 4: Run to verify they pass**
+- [x] **Step 4: Run to verify they pass**
 
 Run: `venv/bin/pytest tests/test_calibration.py -q`
 Expected: `6 passed`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add airpoint/calibration.py tests/test_calibration.py
@@ -690,7 +690,7 @@ git commit -m "feat(calibration): Trainer thread wrapper and per-user profile fi
 - Rewrite: `airpoint/app.py`
 - Modify: `.gitignore`
 
-- [ ] **Step 1: Replace `airpoint/app.py` with:**
+- [x] **Step 1: Replace `airpoint/app.py` with:**
 
 ```python
 import argparse
@@ -928,13 +928,13 @@ def main(argv=None):
         cv2.destroyAllWindows()
 ```
 
-- [ ] **Step 2: Ignore personal models** — append to `.gitignore`:
+- [x] **Step 2: Ignore personal models** — append to `.gitignore`:
 
 ```
 models/personal_*
 ```
 
-- [ ] **Step 3: Import check and full suite**
+- [x] **Step 3: Import check and full suite**
 
 Run: `venv/bin/python -c "import airpoint.app" && venv/bin/pytest -q`
 Expected: `55 passed`
@@ -958,7 +958,7 @@ Still running: press `m` (mouse on), `d` (dwell on; banner shows `dwell [d] ON`)
 
 Press `v`: window becomes 320×240 in the top-right corner with the strip `MOVING | palm 0.98 | mouse ON`. Open Chrome full-screen behind it: the mini window stays on top (if it does not, the launch log says `always-on-top not supported`; note it in the commit and keep going). Press `v` again: full window returns.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add airpoint/app.py .gitignore
@@ -972,7 +972,7 @@ git commit -m "feat(app): d dwell click, c calibration with hot-swapped personal
 **Files:**
 - Modify: `README.md`, `run.txt`, this plan
 
-- [ ] **Step 1: README** — in the pose table add a row after the `thumb up / down` row:
+- [x] **Step 1: README** — in the pose table add a row after the `thumb up / down` row:
 
 ```
 | open palm, still 1 s (dwell mode, `d`) | click with no finger motion at all |
@@ -991,14 +991,14 @@ In Layout add:
 profiles/        per-user calibration: filter cutoff + personal model (gitignored)
 ```
 
-- [ ] **Step 2: run.txt** — replace the live-demo key line and add the profile line:
+- [x] **Step 2: run.txt** — replace the live-demo key line and add the profile line:
 
 ```
 # 3. Live demo (q quit | m mouse | d dwell | k rules/mlp | c calibrate | v mini | r record | 1-6 pose | space start/redo)
 venv/bin/python run_demo.py --user <name>      # loads profiles/<name>.json (fc_min + personal model) if calibrated
 ```
 
-- [ ] **Step 3: Tick the boxes in this plan, run the suite one last time, commit, push**
+- [x] **Step 3: Tick the boxes in this plan, run the suite one last time, commit, push**
 
 ```bash
 venv/bin/pytest -q
