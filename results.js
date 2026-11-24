@@ -1,6 +1,6 @@
 window.AIRPOINT_RESULTS = {
-  "generated_at": "2026-11-25 02:44",
-  "commit": "aef3263",
+  "generated_at": "2026-11-25 02:50",
+  "commit": "d391d55",
   "dataset": {
     "rows": 1508,
     "users": [
@@ -20,11 +20,12 @@ window.AIRPOINT_RESULTS = {
     "generalizes": false,
     "accuracy": 1.0,
     "rule_acc": 0.5086,
+    "mirrored_acc": 1.0,
     "users": [
       "madhuram"
     ],
     "trained_rows": 1508,
-    "trained_at": "2026-11-24 23:38:10",
+    "trained_at": "2026-11-25 02:50:03",
     "stale": false,
     "per_pose": [
       {
@@ -79,7 +80,7 @@ window.AIRPOINT_RESULTS = {
   },
   "latency": {
     "classifier_ms": 0.0407,
-    "features_ms": 0.0031,
+    "features_ms": 0.003,
     "frames": 300
   },
   "tremor": {

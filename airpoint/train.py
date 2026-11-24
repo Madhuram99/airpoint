@@ -58,8 +58,16 @@ def normalize_rows(X_raw):
     return np.array([normalize_63(r) for r in X_raw])
 
 
-def augment(Xn, y, copies, rng):
-    """Rotate each normalized hand in-plane, add landmark noise, re-normalize."""
+def mirrored(Xn):
+    """Normalized hands flipped left to right: the other hand, or this hand seen from its other face."""
+    pts = Xn.reshape(-1, 21, 3).copy()
+    pts[:, :, 0] *= -1.0
+    return pts.reshape(len(Xn), 63)
+
+
+def augment(Xn, y, copies, rng, mirror=True):
+    """Rotate each normalized hand in-plane, add landmark noise, re-normalize. With `mirror`, every
+    example also appears flipped, so one model serves both hands without trusting a handedness label."""
     out_X, out_y = [Xn], [y]
     for _ in range(copies):
         pts = Xn.reshape(-1, 21, 3).copy()
@@ -70,7 +78,10 @@ def augment(Xn, y, copies, rng):
         pts += rng.normal(0.0, NOISE_SIGMA, size=pts.shape)
         out_X.append(np.array([normalize_63(p) for p in pts]))
         out_y.append(y)
-    return np.concatenate(out_X), np.concatenate(out_y)
+    X, labels = np.concatenate(out_X), np.concatenate(out_y)
+    if mirror:
+        X, labels = np.concatenate([X, mirrored(X)]), np.concatenate([labels, labels])
+    return X, labels
 
 
 def make_model(seed):
@@ -95,13 +106,14 @@ def train_and_save(data_dir, models_dir, seed=42):
     Xn = normalize_rows(X_raw)
     labels = sorted(set(y))
 
-    louo, y_true, y_pred = {}, [], []
+    louo, y_true, y_pred, flipped = {}, [], [], []
     for name, tr, te in folds(users, rng):
         X_tr, y_tr = augment(Xn[tr], y[tr], AUG_COPIES, rng)
         m = make_model(seed).fit(X_tr, y_tr)
         p = m.predict(Xn[te])
         louo[name] = float(np.mean(p == y[te]))
         y_true.extend(y[te]); y_pred.extend(p)
+        flipped.extend(m.predict(mirrored(Xn[te])) == y[te])
     prec, rec, _, _ = precision_recall_fscore_support(y_true, y_pred, labels=labels, zero_division=0)
 
     t0 = time.perf_counter()
@@ -116,6 +128,7 @@ def train_and_save(data_dir, models_dir, seed=42):
     report = {
         "n_rows": int(len(y)), "users": sorted(set(users)), "labels": labels,
         "louo": louo, "louo_acc": float(np.mean(list(louo.values()))),
+        "mirrored_acc": float(np.mean(flipped)),      # the same held-out frames, flipped: the other hand
         "per_pose": {l: {"precision": float(p), "recall": float(r)} for l, p, r in zip(labels, prec, rec)},
         "fit_seconds": fit_s, "trained_at": time.strftime("%Y-%m-%d %H:%M:%S"),
     }
@@ -161,8 +174,10 @@ def main(argv=None):
     except FileNotFoundError as e:
         raise SystemExit(e)
     print(f"rows {r['n_rows']} | users {', '.join(r['users'])} | fit {r['fit_seconds']:.1f}s")
-    print(f"leave-one-user-out accuracy: {r['louo_acc'] * 100:.1f}%  "
+    kind = "leave-one-user-out" if len(r["users"]) >= 2 else "row hold-out of one user (not generalization)"
+    print(f"{kind} accuracy: {r['louo_acc'] * 100:.1f}%  "
           + "  ".join(f"{u} {a * 100:.0f}%" for u, a in r["louo"].items()))
+    print(f"same held-out frames mirrored (the other hand): {r['mirrored_acc'] * 100:.1f}%")
     print(f"{'pose':<12}{'precision':>10}{'recall':>8}")
     for l, m in r["per_pose"].items():
         print(f"{l:<12}{m['precision']:>10.3f}{m['recall']:>8.3f}")

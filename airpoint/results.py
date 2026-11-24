@@ -51,6 +51,7 @@ def _classifier(models_dir, dataset, X, y):
     return {"method": (f"leave-one-user-out over {len(report['users'])} users" if many
                        else "25% row hold-out of one user (not a generalization number)"),
             "generalizes": many, "accuracy": report["louo_acc"], "rule_acc": float(right.mean()),
+            "mirrored_acc": report.get("mirrored_acc"),
             "users": report["users"], "trained_rows": report["n_rows"], "trained_at": report["trained_at"],
             "stale": report["n_rows"] != dataset["rows"], "per_pose": per_pose}
 

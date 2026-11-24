@@ -682,6 +682,7 @@ const HERO = { acc: null, jitter: null, latency: null };   // nothing is shown u
             `<tr><td>${p.pose}</td><td>${p.rows}</td><td class="dimmed">${p.rule_acc === null ? '–' : pct(p.rule_acc)}</td>` +
             `<td>${p.precision.toFixed(3)}</td><td class="highlight">${p.recall.toFixed(3)}</td><td>${p.f1.toFixed(3)}</td></tr>`).join('');
         set('res-class-note', (c.generalizes ? '' : 'One person recorded so far, so the model score is a hold-out of that person\'s own frames. It does not show how the model does on a new hand. ') +
+            (c.mirrored_acc === null || c.mirrored_acc === undefined ? '' : `The same held-out frames flipped left to right, as the other hand would look: ${pct(c.mirrored_acc)}. `) +
             (c.stale ? 'The recordings have changed since the model was trained; retrain to refresh these numbers.' : ''));
     }
     if (R.latency) HERO.latency = +R.latency.classifier_ms.toFixed(2);

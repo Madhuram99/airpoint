@@ -72,3 +72,21 @@ def test_base_training_ignores_calibration_files(tmp_path):
     report = train_and_save(str(data), str(models), seed=0)
 
     assert report["users"] == ["a"] and report["n_rows"] == 180
+
+
+def test_training_makes_one_model_read_either_hand(tmp_path):
+    from airpoint.classifier import PoseClassifier
+    rng = np.random.default_rng(4)
+    data, models = tmp_path / "data", tmp_path / "models"
+    data.mkdir()
+    _write_user(data / "a.csv", "a", rng, 1.0, np.array([0.0, 0.0, 0.0]))
+    _write_user(data / "b.csv", "b", rng, 1.25, np.array([0.1, -0.05, 0.0]))
+
+    report = train_and_save(str(data), str(models), seed=0)
+
+    assert report["mirrored_acc"] >= 0.9
+    clf = PoseClassifier.load(str(models / "pose_mlp.joblib"), str(models / "labels.json"))
+    for pose, pts in BY_POSE.items():
+        left = pts.copy()
+        left[:, 0] = 1.0 - left[:, 0]                 # the same sign made by the other hand
+        assert clf.predict(left)[0] == pose, pose
