@@ -5,7 +5,7 @@ import numpy as np
 from airpoint.filters import OneEuroFilter
 from airpoint.pointer import BETA, FC_MIN, PointerPipeline
 from airpoint.tremor import Reading, TremorCanceller
-from tests.pointer_sim import dwell_rate, pointer_session, shake_left
+from airpoint.sim_pointer import dwell_rate, pointer_session, shake_left
 
 
 def run(s, mode):

@@ -1,5 +1,6 @@
-"""Synthetic pointer sessions for the tremor tests: reaches and holds, landmark noise, optional tremor.
+"""Synthetic pointer sessions: reaches and holds, landmark noise, optional tremor.
 
+Used by the tremor tests and by `airpoint.results` for the simulation table on the dashboard.
 Space is the 640-wide canonical frame. The tremor model matches airpoint.tremor.TremorSim:
 fundamental + 20% second harmonic, frequency wander, 25% amplitude modulation.
 """
@@ -8,7 +9,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from airpoint.fsm import DwellDetector
+from .fsm import DwellDetector
 
 
 @dataclass

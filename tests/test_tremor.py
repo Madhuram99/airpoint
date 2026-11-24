@@ -3,7 +3,7 @@ import numpy as np
 from airpoint.features import normalize_63
 from airpoint.tremor import TremorMeter, TremorSim, estimate
 from tests.hands import BY_POSE
-from tests.pointer_sim import pointer_session
+from airpoint.sim_pointer import pointer_session
 
 
 def test_sim_moves_every_landmark_together_and_leaves_features_unchanged():
