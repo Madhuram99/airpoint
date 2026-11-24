@@ -38,8 +38,7 @@ class TremorSim:
     def apply(self, pts, t, w, h):
         """Landmarks (normalized image coords) with the shake added. `pts` itself is not modified."""
         p = F.to_array(pts)
-        palm_px = math.hypot((p[F.MIDDLE_MCP, 0] - p[F.WRIST, 0]) * w, (p[F.MIDDLE_MCP, 1] - p[F.WRIST, 1]) * h)
-        dx, dy = self.offset(t, palm_px)
+        dx, dy = self.offset(t, F.palm_px(p, w, h))
         out = p.copy()
         out[:, 0] += dx / w
         out[:, 1] += dy / h

@@ -10,14 +10,17 @@ from . import hud
 from .actions import ACTIVE_REGION
 from .classifier import PoseClassifier, VoteSmoother
 from .fsm import AirPointFSM, DwellDetector
+from .hints import Hinter
 from .modes import CalibrateMode, LiveMode, RecordMode
 from .pointer import PointerPipeline
 from .profile import Profile, fsm_parts
+from .sounds import Sounds
 from .train import train_personal
 from .tremor import TremorSim
 
 
 LIVE_EVERY_S = 1.0   # how often results/live.json is rewritten for the lab
+UNLOCK_S, UNLOCK_STILL_PX = 2.0, 20.0   # an open palm held this still, this long, ends a pause
 SIM_NUDGES = {ord("["): (0.0, -0.05), ord("]"): (0.0, 0.05), ord("{"): (-0.5, 0.0), ord("}"): (0.5, 0.0)}
 
 
@@ -31,6 +34,7 @@ class Obs:
     w: int
     h: int
     fps: float
+    luma: float = 255.0   # mean brightness of the view before anything is drawn on it
 
 
 class Session:
@@ -41,15 +45,17 @@ class Session:
     """
 
     def __init__(self, runner, rules, mlp, *, root, user=None, profile=None, dwell_on=None,
-                 train_fn=train_personal):
+                 train_fn=train_personal, sounds=None):
         self.runner, self.rules, self.mlp = runner, rules, mlp
         self.clf = mlp or rules
         self.root, self.user, self.train_fn = root, user, train_fn
         self.data_dir, self.models_dir = os.path.join(root, "data"), os.path.join(root, "models")
         self.profile = profile or Profile(user=user or "guest")      # a guest profile is never saved
-        grip, scroll, hold = fsm_parts(self.profile.roles)
         self.smoother, self.dwell = VoteSmoother(), DwellDetector()
-        self.fsm = AirPointFSM(hold_events=hold, grip=grip, scroll=scroll)
+        self.unlock_dwell = DwellDetector(dwell_s=UNLOCK_S, still_px=UNLOCK_STILL_PX)
+        self.apply_roles(self.profile.roles)
+        self.sounds = sounds or Sounds(enabled=self.profile.sounds)
+        self.hinter, self.hints_on, self.hint = Hinter(), self.profile.hints, None
         self.pointer = PointerPipeline(self.profile.fc_min)
         self.pointer.mode = self.profile.filter
         self.apply_region(self.profile.region)
@@ -68,13 +74,14 @@ class Session:
         self.prev_t = t
         view = hud.canon_view(frame)
         h, w = view.shape[:2]
+        luma = float(view[::8, ::8].mean())
         raw = None
         if pts is not None:
             if self.sim.on:
                 pts = self.sim.apply(pts, t, w, h)
             hud.draw_skeleton(view, pts)
             raw = (float(pts[F.MIDDLE_MCP, 0] * w), float(pts[F.MIDDLE_MCP, 1] * h))
-        self.obs = Obs(t, pts, hand, raw, w, h, fps)
+        self.obs = Obs(t, pts, hand, raw, w, h, fps, luma)
         self.mode.tick(self, self.obs, view)
         self._write_live(t)
         if self.mode.name == "live":
@@ -93,6 +100,20 @@ class Session:
                     state=self.fsm.state, state_s=self.obs.t - self.fsm.t_enter, last_event=self.last_event,
                     trail=p.trail, reading=p.reading, left=p.left, mode=p.mode, sim=self.sim.on)
 
+    def apply_roles(self, roles):
+        """Which poses click, scroll and right-click for this user. Restarts the state machine."""
+        grip, scroll, hold = fsm_parts(roles)
+        self.fsm = AirPointFSM(hold_events=hold, grip=grip, scroll=scroll)
+
+    def set_locked(self, locked):
+        """The user's pause. Locking lets go of a held button; a still open palm unlocks (live mode)."""
+        if locked:
+            self.runner.lock()
+        else:
+            self.runner.unlock()
+        self.unlock_dwell.reset()
+        self.sounds.play("lock" if locked else "unlock")
+
     def apply_region(self, region):
         """Use this comfort box: it maps to the whole screen, and the pointer filters follow its gain."""
         self.runner.active_region = tuple(region)
@@ -104,7 +125,8 @@ class Session:
         return dict(ts=time.time(), user=self.user, mode=self.mode.name, mouse=self.runner.enabled,
                     dwell=self.dwell_on, filter=self.pointer.mode,
                     sim=dict(on=self.sim.on, hz=self.sim.hz, amp=self.sim.amp),
-                    locked=r.locked, lock_hz=round(r.lock_hz, 2), classifier=self.clf.name,
+                    locked=self.runner.locked, gain=round(self.pointer.gain, 3),
+                    tremor_locked=r.locked, lock_hz=round(r.lock_hz, 2), classifier=self.clf.name,
                     fps=round(self.obs.fps, 1) if self.obs else 0.0)
 
     def _write_live(self, t):
@@ -150,6 +172,12 @@ class Session:
             self.view_dirty = True
         elif key == ord("x"):
             self.xray, self.view_dirty = not self.xray, True
+        elif key == ord("p"):
+            self.set_locked(not self.runner.locked)
+        elif key == ord("s"):
+            self.sounds.enabled = not self.sounds.enabled
+        elif key == ord("h"):
+            self.hints_on = not self.hints_on
         elif key == ord("b"):
             self.pointer.cycle_mode()
         elif key == ord("t") and self.mode.name == "live":

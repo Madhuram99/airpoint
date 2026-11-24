@@ -39,7 +39,7 @@ class AirPointFSM:
         self.scroll_dir = 0
         self.next_scroll_t = 0.0
 
-    def _neutral(self, pose):
+    def neutral(self, pose):
         return pose not in self.grip and pose not in self.scroll and pose not in self.hold_events
 
     @property
@@ -63,7 +63,7 @@ class AirPointFSM:
         if s == "RESTING":
             self._to("MOVING", t)
         elif s == "MOVING":
-            if self._neutral(pose):
+            if self.neutral(pose):
                 self.hold_armed = True
             elif pose in self.grip:
                 self._to("PRESSING", t)
@@ -88,7 +88,7 @@ class AirPointFSM:
                 self._to("MOVING", t)
         elif s == "HOLD":
             if pose != self.hold_pose:
-                if self._neutral(pose):
+                if self.neutral(pose):
                     self.hold_armed = True
                 self._to("MOVING", t)
             elif not self.hold_fired and t - self.t_enter >= HOLD_FIRE_S:

@@ -10,6 +10,7 @@ from airpoint.classifier import RuleClassifier
 from airpoint.modes.live import shake_line
 from airpoint.tremor import Reading, TremorSim
 from airpoint.session import Session
+from airpoint.sounds import Sounds
 from tests.hands import BY_POSE
 from tests.test_train import _write_user
 
@@ -21,10 +22,18 @@ def make(tmp_path, user="ana", mouse_on=True, **kw):
     runner = ActionRunner(mouse, mouse.size())
     if mouse_on:
         runner.toggle()
-    return Session(runner, RuleClassifier(), None, root=str(tmp_path), user=user, **kw), mouse
+    played = []                                     # sound files the session asked for; nothing is played
+    s = Session(runner, RuleClassifier(), None, root=str(tmp_path), user=user,
+                sounds=Sounds(player=lambda path: played.append(path.rsplit("/", 1)[1])), **kw)
+    s.played = played
+    return s, mouse
 
 
 def blank(w=640, h=360):
+    return np.full((h, w, 3), 120, dtype=np.uint8)      # a lit room; a black frame would raise the "too dark" hint
+
+
+def dark(w=640, h=360):
     return np.zeros((h, w, 3), dtype=np.uint8)
 
 
@@ -337,6 +346,7 @@ def test_live_state_file_tells_the_lab_what_is_driving_the_cursor(tmp_path):
     assert live["mouse"] and live["dwell"] and live["filter"] == "full" and live["mode"] == "live"
     assert live["sim"] == {"on": False, "hz": 6.0, "amp": 0.2} and live["user"] == "ana"
     assert live["classifier"] == "rules" and abs(live["ts"] - time.time()) < 5
+    assert live["locked"] is False and live["gain"] == 1.0
     s.on_key(ord("t"), t)
     s.on_key(ord("b"), t)
     t = feed(s, "palm", 0.3, t)                      # under a second since the last write
@@ -346,3 +356,79 @@ def test_live_state_file_tells_the_lab_what_is_driving_the_cursor(tmp_path):
     assert live["filter"] == "smooth" and live["sim"]["on"]
     s.close()
     assert not path.exists()                          # a closed AirPoint is "not running" at once
+
+
+def test_p_pauses_everything_and_a_still_open_palm_resumes(tmp_path):
+    s, mouse = make(tmp_path)
+    t = feed(s, "palm", 0.5, 0.0)
+    s.on_key(ord("p"), t)
+    assert s.runner.locked and s.played == ["Submarine.aiff"]
+    before = len(mouse.calls)
+    t = feed(s, "pinch", 0.2, t)                     # a click attempt while paused
+    t = feed(s, "palm", 1.5, t)                      # not yet two seconds of stillness
+    assert s.runner.locked and len(mouse.calls) == before and s.last_event == "none"
+    t = feed(s, "palm", 0.8, t)
+    assert not s.runner.locked and s.played[-1] == "Glass.aiff"
+    t = feed(s, "pinch", 0.2, t)
+    feed(s, "palm", 0.3, t)
+    assert kinds(mouse) == ["click"]
+
+
+def test_sounds_follow_real_actions_only(tmp_path):
+    s, _ = make(tmp_path)
+    t = feed(s, "palm", 0.5, 0.0)
+    t = feed(s, "pinch", 0.2, t)
+    t = feed(s, "palm", 0.3, t)
+    assert s.played == ["Tink.aiff"]
+    s.on_key(ord("s"), t)                            # sounds off
+    t = feed(s, "pinch", 0.2, t)
+    t = feed(s, "palm", 0.3, t)
+    assert s.played == ["Tink.aiff"]
+    quiet, _ = make(tmp_path, mouse_on=False)        # mouse off: the click never reached the system
+    t = feed(quiet, "palm", 0.5, 0.0)
+    t = feed(quiet, "pinch", 0.2, t)
+    feed(quiet, "palm", 0.3, t)
+    assert quiet.played == []
+
+
+def test_hints_appear_after_a_while_and_h_turns_them_off(tmp_path):
+    s, _ = make(tmp_path)
+    t = 0.0
+    for _ in range(100):                             # 3.3 s with no hand, in a lit room
+        s.tick(blank(), None, None, t)
+        t += DT
+    assert s.hint == "show your hand to the camera" and s.mini_label.startswith("! show your hand")
+    for _ in range(100):                             # a black frame: the room is dark
+        s.tick(dark(), None, None, t)
+        t += DT
+    assert s.hint == "too dark: put more light on your hand"
+    s.on_key(ord("h"), t)
+    s.tick(dark(), None, None, t + DT)
+    assert s.hint is None
+
+
+def test_calibration_notices_what_the_hand_cannot_do_and_falls_back_to_dwell(tmp_path):
+    data = tmp_path / "data"
+    data.mkdir()
+    _write_user(data / "base.csv", "base", np.random.default_rng(0), 1.0, np.array([0.0, 0.0, 0.0]))
+    s, _ = make(tmp_path, user="ana")
+    cannot = {"pinch", "fist", "thumb_down"}         # this user shows an open palm instead of these
+    s.on_key(ord("c"), 0.0)
+    t, dt = 0.0, 0.1
+    while s.mode.calib.phase != "training":
+        asked = s.mode.calib.pose if s.mode.calib.phase == "poses" else "palm"
+        s.tick(blank(), BY_POSE["palm" if asked in cannot else asked], "Right", t)
+        t += dt
+    deadline = time.time() + 60
+    while s.mode.calib.phase == "training" and time.time() < deadline:
+        s.tick(blank(), BY_POSE["palm"], "Right", t)
+        t += dt
+        time.sleep(0.02)
+    assert s.mode.calib.phase == "done", s.mode.calib.message
+    profile = json.loads((tmp_path / "profiles" / "ana.json").read_text())
+    assert sorted(profile["skipped"]) == ["fist", "pinch", "thumb_down"]
+    assert profile["roles"] == {"grip": [], "right_click": ["v_sign"], "scroll_up": ["thumb_up"], "scroll_down": []}
+    assert profile["dwell"] is True and s.dwell_on                # no grip sign left: dwell click took over
+    assert "skipped" in s.mode.calib.message and "dwell" in s.mode.calib.message
+    assert s.fsm.grip == frozenset() and s.fsm.scroll == {"thumb_up": 1}
+    s.close()

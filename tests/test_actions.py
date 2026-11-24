@@ -46,3 +46,17 @@ def test_toggle_off_releases_a_held_button():
     r.toggle()
     assert m.calls == [("down",), ("up",)]
     assert not r.enabled and not r.button_down
+
+
+def test_a_locked_runner_sends_nothing_and_lets_go_of_the_button():
+    m, r = make()
+    r.toggle()
+    r.apply([Event("drag_start")])
+    r.lock()
+    assert r.locked and m.calls == [("down",), ("up",)]
+    r.move(0.5, 0.5)
+    r.apply([Event("click"), Event("scroll", 2)])
+    assert m.calls == [("down",), ("up",)]
+    r.unlock()
+    r.apply([Event("click")])
+    assert m.calls[-1] == ("click",)

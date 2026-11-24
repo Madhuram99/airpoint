@@ -19,7 +19,7 @@ ZOOMS = (1.0, 1.5, 2.0)
 XRAY_W = 400
 STATES = ("RESTING", "MOVING", "PRESSING", "DRAGGING", "HOLD", "SCROLLING")
 RAW_C, OUT_C, DIM, GRID_C = (80, 80, 255), (120, 230, 120), (150, 150, 150), (60, 70, 65)
-KEY_HINT = "keys q k c v z x t r"
+KEY_HINT = "keys q p k c v z x t r"
 
 
 def canon_view(frame):
@@ -94,6 +94,13 @@ def draw_prompt(frame, title, subtitle, alert=None):
     put_fit(frame, subtitle, (16, 58), 0.45, WHITE)
     if alert:
         put_fit(frame, alert, (16, 78), 0.45, ALERT)
+
+
+def draw_hint(frame, text):
+    """Bottom strip: one plain instruction when something is in the way."""
+    h, w = frame.shape[:2]
+    cv2.rectangle(frame, (0, h - 26), (w, h), PANEL, -1)
+    put_fit(frame, text, (10, h - 8), 0.50, ACCENT_ON)
 
 
 def draw_dwell_ring(frame, xy, progress):

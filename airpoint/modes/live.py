@@ -5,6 +5,7 @@ import numpy as np
 from .. import features as F
 from .. import hud
 from ..pointer import PRECLICK_RATIO
+from ..poses import NONE, UNKNOWN
 
 
 FILTER_NAMES = {"full": "full", "smooth": "smooth only", "off": "OFF"}
@@ -49,19 +50,40 @@ class LiveMode:
             hud.draw_cursor(frame, o.raw, smooth)
             if not s.fsm.cursor_frozen:
                 s.runner.move(smooth[0] / o.w, smooth[1] / o.h)
-        dwell_event, progress = s.dwell.update(smooth, o.t, s.dwell_on and state == "MOVING")
-        if dwell_event is not None:
-            events = events + [dwell_event]
+        if s.runner.locked:                        # paused: nothing acts; a still open palm resumes
+            events = []
+            calm = smooth is not None and label not in (NONE, UNKNOWN) and s.fsm.neutral(label)
+            resume, progress = s.unlock_dwell.update(smooth, o.t, calm)
+            if resume is not None:
+                s.set_locked(False)
+        else:
+            dwell_event, progress = s.dwell.update(smooth, o.t, s.dwell_on and state == "MOVING")
+            if dwell_event is not None:
+                events = events + [dwell_event]
         if smooth is not None:
             hud.draw_dwell_ring(frame, smooth, progress)
         s.runner.apply(events)
         if events:
             s.last_event = ", ".join(e.kind + ("" if e.arg is None else f" {e.arg}") for e in events)
+            if s.runner.enabled:
+                for e in events:
+                    s.sounds.play(e.kind)
         hud.draw_region(frame, s.runner.active_region, s.runner.enabled)
+        s.hint = None
+        if s.hints_on:
+            centre = (0.5, 0.5) if o.raw is None else (o.raw[0] / o.w, o.raw[1] / o.h)
+            s.hint = s.hinter.update(o.t, o.luma, None if o.pts is None else F.palm_px(o.pts, o.w, o.h),
+                                     centre, label, o.fps)
         shake = shake_line(s.sim, s.pointer.reading, s.pointer.left)
-        s.mini_label = (f"{state} | {label} {conf:.2f} | mouse {'ON' if s.runner.enabled else 'OFF'}"
-                        + (" | SIM" if s.sim.on else "")
-                        + (f" | LOCK {s.pointer.reading.lock_hz:.1f}Hz" if s.pointer.reading.locked else ""))
+        if s.runner.locked:
+            line3 = ("PAUSED [p]: hold an open palm still for 2 s to resume", hud.ACCENT_ON)
+        else:
+            line3 = (shake, hud.ALERT if s.sim.on else hud.MINT) if shake else None
+        s.mini_label = ("! " + s.hint) if s.hint else (
+            ("PAUSED | " if s.runner.locked else "")
+            + f"{state} | {label} {conf:.2f} | mouse {'ON' if s.runner.enabled else 'OFF'}"
+            + (" | SIM" if s.sim.on else "")
+            + (f" | LOCK {s.pointer.reading.lock_hz:.1f}Hz" if s.pointer.reading.locked else ""))
         if not s.mini:
             hud.draw_banner(
                 frame,
@@ -70,8 +92,10 @@ class LiveMode:
                 f"dwell [d] {'ON' if s.dwell_on else 'OFF'} | filter [b] {FILTER_NAMES[s.pointer.mode]} | "
                 f"{hud.KEY_HINT}",
                 s.runner.enabled,
-                line3=(shake, hud.ALERT if s.sim.on else hud.MINT) if shake else None,
+                line3=line3,
             )
+            if s.hint:
+                hud.draw_hint(frame, s.hint)
 
     def on_key(self, s, key, t):
         return False

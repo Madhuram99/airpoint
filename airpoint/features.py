@@ -23,3 +23,9 @@ def pinch_ratio(landmarks) -> float:
     pts = to_array(landmarks)
     palm = np.linalg.norm(pts[MIDDLE_MCP, :2] - pts[WRIST, :2]) + 1e-6
     return float(np.linalg.norm(pts[THUMB_TIP, :2] - pts[INDEX_TIP, :2]) / palm)
+
+
+def palm_px(landmarks, w, h) -> float:
+    """Wrist to middle knuckle in pixels of a w x h view: how big the hand looks."""
+    pts = to_array(landmarks)
+    return float(np.hypot((pts[MIDDLE_MCP, 0] - pts[WRIST, 0]) * w, (pts[MIDDLE_MCP, 1] - pts[WRIST, 1]) * h))

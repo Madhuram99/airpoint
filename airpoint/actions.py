@@ -70,6 +70,7 @@ class ActionRunner:
         self.screen_w, self.screen_h = screen_size
         self.active_region = active_region
         self.enabled = False
+        self.locked = False       # the user's pause: nothing reaches the OS until unlocked
         self.button_down = False
 
     def toggle(self):
@@ -82,12 +83,19 @@ class ActionRunner:
         sy = min(max((ny - y0) / (y1 - y0), 0.0), 1.0) * (self.screen_h - 1)
         return sx, sy
 
+    def lock(self):
+        self.release()
+        self.locked = True
+
+    def unlock(self):
+        self.locked = False
+
     def move(self, nx, ny):
-        if self.enabled:
+        if self.enabled and not self.locked:
             self.mouse.move(*self.to_screen(nx, ny))
 
     def apply(self, events):
-        if not self.enabled:
+        if not self.enabled or self.locked:
             return
         for e in events:
             if e.kind == "click":
