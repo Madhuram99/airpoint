@@ -37,6 +37,19 @@ cursor : middle knuckle → tremor canceller → One-Euro filter → screen
 - **Hints and sounds.** A strip at the bottom says what is in the way (show your hand, too dark, move
   closer, sign not clear). Clicks, drags and the pause each have a system sound. `h` and `s` switch them.
 
+### Point only
+
+For a hand that can point but cannot make a sign. `d` alone gives dwell click: hold still for a second
+and it clicks. `w` turns the dwell into a wheel around the cursor: stay put and it clicks; move toward
+right click, drag, scroll, double click or pause and hold that direction for half a second. Drag presses
+the button and lets go at the next dwell; scroll follows how far the hand is above or below where it
+stopped. Choice is by direction, so it works the same whatever the comfort box. If calibration finds
+no clicking sign the hand can make, it turns both on.
+
+On macOS a glow follows the real cursor (a second, click-through window): the dwell countdown, a
+ripple on each action, DRAG / SCROLL / PAUSED / SIMULATED tags, the current hint, and the wheel. `o`
+switches it; `--no-overlay` starts without it. The wheel is also drawn in the camera view.
+
 ### Teach a sign
 
 `n` (with `--user`) adds a sign of your own in about fifteen seconds: type a name, hold the sign for
@@ -96,6 +109,8 @@ venv/bin/python run_demo.py --user you           # loads profiles/you.json once 
 #   t = simulated tremor ([ ] size, { } speed) | b = filter full / smoothing only / off | x = X-ray panel | z = zoom
 #   p = pause (open palm held still 2 s resumes) | h = hints on/off | s = sounds on/off
 #   n = teach a new sign: name it, hold it 8 s, choose speak / keys / type / open / pause
+#   w = point-only wheel (dwell opens click / right / drag / scroll / double / pause) | o = glow at the cursor
+venv/bin/python run_demo.py --no-overlay         # without the glow at the cursor (the glow is macOS only)
 venv/bin/python -m airpoint.profile you          # show or edit your profile: roles, comfort box, dwell, sounds
 venv/bin/python run_demo.py --record --user you  # record your hand: space = all poses, 1-6 = one pose
 venv/bin/python -m airpoint.train                # retrain on data/*.csv, leave-one-user-out report
@@ -114,7 +129,7 @@ macOS: allow your terminal under System Settings → Privacy & Security → Came
 airpoint/        package — camera, tracker, features, filters, tremor, pointer, classifier, fsm, actions, hud,
                  recorder, calibration, train, session, modes/ (live, record, calibrate), app,
                  lab/ (server, stats, store), results, sim_pointer, profile, hints, sounds, effects,
-                 modes/teach
+                 modes/teach, wheel, overlay
 lab/             practice pages and the pointing test (plain HTML/JS, served by airpoint.lab)
 results/         saved test sessions (trials.jsonl)
 legacy/          the midterm benchmark script, kept as presented

@@ -67,3 +67,17 @@ Report: how the comfort box felt (3.2), whether the other hand worked without re
 - [ ] **4.8 Typing a name with q.** On the name screen type a name containing `q`: AirPoint must not quit.
 
 Report: the percentages from 4.1 and 4.3, the false fires from 4.4, whether 4.5 warned.
+
+## Stage 5 — glow at the cursor, point-only wheel
+
+- [ ] **5.1 Glow.** With the mouse on, a thin ring follows the real cursor. It vanishes when the mouse is off or you enter record / calibrate / teach. `o` switches it.
+- [ ] **5.2 What it shows.** Dwell on (`d`): an arc fills at the cursor before the click, then a ripple. Drag: a DRAG tag. Thumb scroll: SCROLL. `p`: PAUSED with the resume countdown. `t`: SIMULATED. A hint (hand out for 3 s) appears under the cursor.
+- [ ] **5.3 Click-through.** With a real mouse, click a button that sits under the glow: the click must reach it.
+- [ ] **5.4 Above everything.** Put a browser in full screen, switch Spaces, and (if you have one) move to a second display: does the glow stay with the cursor?
+- [ ] **5.5 Wheel basics.** `w`, hold the palm still for a second: the wheel opens at the cursor and in the camera view, and the cursor stops following. Stay put: it clicks after a little under a second.
+- [ ] **5.6 Wheel items.** Open it again and move up-right (right click), down-right (drag: the cursor follows again, the next stop drops), down (scroll: hand above or below the start point scrolls, resting in the middle ends it), down-left (double click), up-left (pause).
+- [ ] **5.7 Timing.** Is there enough time to start moving before the plain click fires? Did any item fire that you did not mean? Was any direction hard to hit?
+- [ ] **5.8 Whole computer by pointing.** With no signs at all, open a folder, drag a file, scroll a page and right-click, using only the wheel.
+- [ ] **5.9 In the lab.** Take the pointing test with the wheel on: the block should be listed as `airpoint wheel`.
+
+Report: 5.3 and 5.4 exactly as they behaved, and the answers to 5.7.
