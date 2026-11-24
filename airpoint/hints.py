@@ -18,9 +18,10 @@ class Hinter:
             return False
         return t - self.since.setdefault(key, t) >= need
 
-    def update(self, t, luma, palm_px, centre, label, fps):
+    def update(self, t, luma, palm_px, centre, label, fps, what="hand"):
         """`luma` = mean brightness of the view (0-255); `palm_px` = wrist to middle knuckle, None when
-        no hand; `centre` = the pointer as frame fractions; `label` = the voted pose."""
+        no hand; `centre` = the pointer as frame fractions; `label` = the voted pose; `what` = the body
+        part being tracked, for the wording."""
         hand = palm_px is not None
         missing = self._lasting("hand", not hand, t, NO_HAND_S)
         unclear = self._lasting("sign", hand and label == UNKNOWN, t, UNCLEAR_S)
@@ -28,14 +29,14 @@ class Hinter:
         if not hand:
             if not missing:
                 return None
-            return "too dark: put more light on your hand" if luma < DARK else "show your hand to the camera"
+            return f"too dark: put more light on your {what}" if luma < DARK else f"show your {what} to the camera"
         if luma < DARK:
-            return "too dark: put more light on your hand"
+            return f"too dark: put more light on your {what}"
         if palm_px < SMALL_PX:
             return "move closer to the camera"
         if palm_px > BIG_PX:
             return "move back a little"
-        if min(centre[0], centre[1], 1.0 - centre[0], 1.0 - centre[1]) < EDGE:
+        if what == "hand" and min(centre[0], centre[1], 1.0 - centre[0], 1.0 - centre[1]) < EDGE:
             return "move your hand toward the middle"
         if unclear:
             return "sign not clear: open your palm, then try again"

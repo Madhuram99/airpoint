@@ -73,3 +73,46 @@ def test_no_overlay_flag_starts_without_one(monkeypatch):
     monkeypatch.setattr(app, "Overlay", lambda: made.append(1))
     app.main(["--rules", "--no-overlay"])
     assert made == []
+
+
+def _patch_loop(monkeypatch, keys):
+    it = iter(keys)
+    monkeypatch.setattr(app, "Camera", FakeCamera)
+    monkeypatch.setattr(app, "HandTracker", FakeTracker)
+    monkeypatch.setattr(app, "PyAutoGuiMouse", FakeMouse)
+    monkeypatch.setattr(app.cv2, "imshow", lambda name, img: None)
+    monkeypatch.setattr(app.cv2, "waitKey", lambda ms: next(it, ord("q")))
+    monkeypatch.setattr(app.cv2, "destroyAllWindows", lambda: None)
+    monkeypatch.setattr(app, "show_window", lambda mini, screen_w: None)
+
+
+def test_f_starts_the_face_tracker_and_feeds_its_observations(monkeypatch):
+    from airpoint.face import FaceObs
+    events = []
+
+    class FakeFace:
+        def __init__(self):
+            events.append("made")
+
+        def detect(self, frame):
+            events.append("detect")
+            return FaceObs(0.0, 0.0, {"jawOpen": 0.0})
+
+        def close(self):
+            events.append("closed")
+
+    _patch_loop(monkeypatch, [ord("f"), 255, 255, ord("q")])
+    monkeypatch.setattr(app, "FaceTracker", FakeFace)
+    app.main(["--rules", "--no-overlay"])
+    assert events[0] == "made" and events.count("detect") == 3 and events[-1] == "closed"
+
+
+def test_a_missing_face_model_falls_back_to_the_hand_with_the_download_line(monkeypatch, capsys):
+    def no_model():
+        raise FileNotFoundError("face_landmarker.task missing. Download with:\n  curl -L -o face_landmarker.task ...")
+
+    _patch_loop(monkeypatch, [ord("f"), 255, ord("q")])
+    monkeypatch.setattr(app, "FaceTracker", no_model)
+    app.main(["--rules", "--no-overlay"])
+    out = capsys.readouterr().out
+    assert "face mode needs its model" in out and "curl -L -o face_landmarker.task" in out

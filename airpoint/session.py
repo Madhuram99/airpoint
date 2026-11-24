@@ -10,9 +10,10 @@ from . import hud
 from .actions import ACTIVE_REGION
 from .classifier import PoseClassifier, VoteSmoother
 from .effects import Effects
+from .face import GRIP as FACE_GRIP, HOLD_EVENTS as FACE_HOLD, FacePointer, FaceSigns, default_face
 from .fsm import AirPointFSM, DwellDetector
 from .hints import Hinter
-from .modes import CalibrateMode, LiveMode, RecordMode, TeachMode
+from .modes import CalibrateMode, FaceCalibrateMode, LiveMode, RecordMode, TeachMode
 from .pointer import PointerPipeline
 from .profile import Profile, fsm_parts
 from .sounds import Sounds
@@ -23,6 +24,8 @@ from .wheel import Wheel
 
 LIVE_EVERY_S = 1.0   # how often results/live.json is rewritten for the lab
 UNLOCK_S, UNLOCK_STILL_PX = 2.0, 20.0   # an open palm held this still, this long, ends a pause
+FACE_GAIN = 1.6     # a head is a noisier pointer than a hand: smooth it as if it were a hand in a small box
+FACE_CENTRE_FRAMES = 20   # uncalibrated face: the first frames set where "straight ahead" is
 SIM_NUDGES = {ord("["): (0.0, -0.05), ord("]"): (0.0, 0.05), ord("{"): (-0.5, 0.0), ord("}"): (0.5, 0.0)}
 
 
@@ -37,6 +40,7 @@ class Obs:
     h: int
     fps: float
     luma: float = 255.0   # mean brightness of the view before anything is drawn on it
+    face: object = None   # FaceObs when the face is the input, else None
 
 
 class Session:
@@ -66,6 +70,10 @@ class Session:
         self.sim = TremorSim()
         self.dwell_on = self.profile.dwell if dwell_on is None else dwell_on
         self.wheel, self.wheel_on = Wheel(), self.profile.wheel
+        self.source, self.wheel_before_face = "hand", None           # "hand" | "face": what drives the pointer
+        self.face_cfg = dict(self.profile.face) if self.profile.face else default_face()
+        self.face_pointer, self.face_signs = FacePointer(self.face_cfg), FaceSigns(self.face_cfg)
+        self.face_centring = None       # a list of (yaw, pitch) while the first look is being taken as the centre
         self.mini, self.view_dirty = False, False
         self.zoom, self.xray, self.ms_tracker = 1.5, False, 0.0
         self.recorder, self.rejected = None, 0
@@ -73,7 +81,7 @@ class Session:
         self.last_event, self.mini_label, self.prev_t = "none", "", None
         self.obs, self.live_t = None, None
 
-    def tick(self, frame, pts, hand, t, tracker_ms=0.0):
+    def tick(self, frame, pts, hand, t, tracker_ms=0.0, face=None):
         self.ms_tracker = tracker_ms
         fps = 0.0 if self.prev_t is None else 1.0 / max(t - self.prev_t, 1e-5)
         self.prev_t = t
@@ -81,12 +89,21 @@ class Session:
         h, w = view.shape[:2]
         luma = float(view[::8, ::8].mean())
         raw = None
-        if pts is not None:
+        if self.source == "face":
+            pts, hand = None, None
+            if face is not None:
+                hud.draw_face(view, face)
+                if self.face_centring is not None:
+                    self._centre_face(face)
+                else:
+                    raw = self.face_pointer.xy(face.yaw, face.pitch, w, h)
+        elif pts is not None:
+            face = None
             if self.sim.on:
                 pts = self.sim.apply(pts, t, w, h)
             hud.draw_skeleton(view, pts)
             raw = (float(pts[F.MIDDLE_MCP, 0] * w), float(pts[F.MIDDLE_MCP, 1] * h))
-        self.obs = Obs(t, pts, hand, raw, w, h, fps, luma)
+        self.obs = Obs(t, pts, hand, raw, w, h, fps, luma, face if self.source == "face" else None)
         self.mode.tick(self, self.obs, view)
         self._write_live(t)
         if self.mode.name == "live":
@@ -100,7 +117,7 @@ class Session:
         """Everything the X-ray panel shows, read from where it already lives."""
         p, live = self.pointer, self.mode
         return dict(clf=self.clf.name, fps=self.obs.fps, ms_tracker=self.ms_tracker, ms_classifier=live.clf_ms,
-                    labels=self.clf.labels, probs=live.probs, gate=self.smoother.min_conf,
+                    labels=live.labels or self.clf.labels, probs=live.probs, gate=self.smoother.min_conf,
                     votes=[label for label, _ in self.smoother.buf], label=live.label,
                     state=self.fsm.state, state_s=self.obs.t - self.fsm.t_enter, last_event=self.last_event,
                     trail=p.trail, reading=p.reading, left=p.left, mode=p.mode, sim=self.sim.on)
@@ -109,6 +126,41 @@ class Session:
         """The profile's roles and taught signs decide which pose does what. Restarts the state machine."""
         grip, scroll, hold, hold_s = fsm_parts(self.profile.roles, self.profile.signs)
         self.fsm = AirPointFSM(hold_events=hold, grip=grip, scroll=scroll, hold_s=hold_s)
+
+    def _centre_face(self, face):
+        """No calibration yet: wherever the head rests in its first frames becomes the middle of the screen,
+        so someone sitting side-on to the camera is not pinned to an edge."""
+        self.face_centring.append((face.yaw, face.pitch))
+        if len(self.face_centring) >= FACE_CENTRE_FRAMES:
+            yaw0, pitch0 = np.median(np.array(self.face_centring), axis=0)
+            self.face_cfg = dict(self.face_cfg, yaw0=float(yaw0), pitch0=float(pitch0))
+            self.face_pointer, self.face_centring = FacePointer(self.face_cfg), None
+
+    def refresh_face(self):
+        """Use the current face settings: pointer range, thresholds, and the face's roles in the state machine."""
+        self.face_pointer, self.face_signs = FacePointer(self.face_cfg), FaceSigns(self.face_cfg)
+        usable = set(self.face_cfg["on"])
+        self.fsm = AirPointFSM(hold_events={k: e for k, e in FACE_HOLD.items() if k in usable},
+                               grip=FACE_GRIP & usable, scroll={})
+
+    def set_source(self, source):
+        """Hand or face drives the pointer. Everything after the tracker stays the same."""
+        if source == self.source:
+            return
+        self.runner.apply(self.wheel.reset())
+        self.runner.release()
+        self.source, self.sim.on = source, False
+        self.smoother.reset()
+        if source == "face":
+            self.refresh_face()
+            self.face_centring = None if self.profile.face else []
+            self.runner.active_region = (0.0, 0.0, 1.0, 1.0)      # the head range already spans the whole view
+            self.pointer.set_gain(FACE_GAIN)
+            self.wheel_before_face, self.wheel_on = self.wheel_on, True   # the wheel is how a face scrolls and drags
+        else:
+            self.apply_bindings()
+            self.apply_region(self.profile.region)
+            self.wheel_on = self.wheel_before_face
 
     def set_locked(self, locked):
         """The user's pause. Locking lets go of a held button; a still open palm unlocks (live mode)."""
@@ -129,7 +181,7 @@ class Session:
         """What is driving the cursor right now, for the lab to label a test block with."""
         r = self.pointer.reading
         return dict(ts=time.time(), user=self.user, mode=self.mode.name, mouse=self.runner.enabled,
-                    dwell=self.dwell_on, wheel=self.wheel_on, filter=self.pointer.mode,
+                    source=self.source, dwell=self.dwell_on, wheel=self.wheel_on, filter=self.pointer.mode,
                     sim=dict(on=self.sim.on, hz=self.sim.hz, amp=self.sim.amp),
                     locked=self.runner.locked, gain=round(self.pointer.gain, 3),
                     tremor_locked=r.locked, lock_hz=round(r.lock_hz, 2), classifier=self.clf.name,
@@ -183,6 +235,9 @@ class Session:
             if getattr(self.mode, "exit", False):
                 self.set_mode(LiveMode())
             return
+        if self.source == "face" and key in (ord("r"), ord("n"), ord("t")):
+            print("[AirPoint] record, teach and the tremor simulator are for the hand: press f first")
+            return
         if key == ord("m"):
             self.runner.toggle()
         elif key == ord("d"):
@@ -218,6 +273,8 @@ class Session:
             self.hints_on = not self.hints_on
         elif key == ord("b"):
             self.pointer.cycle_mode()
+        elif key == ord("f") and self.mode.name == "live":
+            self.set_source("face" if self.source == "hand" else "hand")
         elif key == ord("t") and self.mode.name == "live":
             self.sim.on = not self.sim.on
         elif key in SIM_NUDGES:
@@ -225,6 +282,10 @@ class Session:
         elif key == ord("r") and self.user and self.mode.name != "calibrate":
             self.runner.release()
             self.set_mode(RecordMode(self) if self.mode.name == "live" else LiveMode())
+        elif key == ord("c") and self.source == "face":
+            if self.mode.name == "live":
+                self.runner.release()
+                self.set_mode(FaceCalibrateMode(self, t))
         elif key == ord("c") and self.mode.name != "record":
             if not self.user:
                 print("[AirPoint] calibration needs --user <name>")

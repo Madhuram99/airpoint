@@ -82,6 +82,7 @@ def test_condition_labels_name_what_was_actually_driving_the_cursor():
     shaky = dict(live, sim={"on": True, "hz": 6.0, "amp": 0.2}, filter="smooth")
     assert server.condition_label("airpoint", shaky) == "airpoint sign-click, simulated tremor 0.20 palm @ 6.0 Hz, filter smooth"
     assert server.condition_label("airpoint", dict(live, wheel=True, dwell=True)) == "airpoint wheel"
+    assert server.condition_label("airpoint", dict(live, wheel=True, source="face")) == "airpoint face"
     assert server.condition_label("airpoint", None) == "airpoint (settings unknown)"
     assert server.condition_label("airpoint", dict(live, mouse=False)) == "airpoint (settings unknown)"
 

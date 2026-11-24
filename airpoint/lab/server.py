@@ -34,8 +34,11 @@ def condition_label(device, state):
         return device
     if not state or not state.get("mouse"):
         return "airpoint (settings unknown)"
-    label = ("airpoint wheel" if state.get("wheel") else
-             "airpoint dwell-click" if state.get("dwell") else "airpoint sign-click")
+    if state.get("source") == "face":
+        label = "airpoint face"
+    else:
+        label = ("airpoint wheel" if state.get("wheel") else
+                 "airpoint dwell-click" if state.get("dwell") else "airpoint sign-click")
     sim = state.get("sim") or {}
     if sim.get("on"):
         return f"{label}, simulated tremor {sim['amp']:.2f} palm @ {sim['hz']:.1f} Hz, filter {state.get('filter')}"

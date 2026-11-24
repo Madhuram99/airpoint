@@ -19,7 +19,7 @@ ZOOMS = (1.0, 1.5, 2.0)
 XRAY_W, XRAY_ROWS = 400, 6
 STATES = ("RESTING", "MOVING", "PRESSING", "DRAGGING", "HOLD", "SCROLLING")
 RAW_C, OUT_C, DIM, GRID_C = (80, 80, 255), (120, 230, 120), (150, 150, 150), (60, 70, 65)
-KEY_HINT = "keys q p n k c v z x t r"
+KEY_HINT = "keys q p n f k c v z x t r"
 
 
 def canon_view(frame):
@@ -56,6 +56,18 @@ def draw_skeleton(frame, pts):
         cv2.line(frame, px[a], px[b], (250, 44, 250), 2)
     for p in px:
         cv2.circle(frame, p, 3, (121, 22, 76), -1)
+
+
+def draw_face(frame, face):
+    """Face mode's skeleton: the face box, the nose, and the mouth opening."""
+    h, w = frame.shape[:2]
+    m = {k: (int(x * w), int(y * h)) for k, (x, y) in face.marks.items()}
+    if len(m) < 7:
+        return
+    cv2.rectangle(frame, (min(m["side_a"][0], m["side_b"][0]), m["forehead"][1]),
+                  (max(m["side_a"][0], m["side_b"][0]), m["chin"][1]), (250, 44, 250), 1)
+    cv2.line(frame, m["lip_top"], m["lip_bottom"], (250, 44, 250), 3)
+    cv2.circle(frame, m["nose"], 4, (121, 22, 76), -1)
 
 
 def _px(xy):

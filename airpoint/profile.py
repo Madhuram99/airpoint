@@ -41,6 +41,7 @@ class Profile:
     filter: str = "full"
     signs: dict = field(default_factory=dict)      # taught signs: name -> {"action", "arg", "hold_s"}
     voice: str = None                              # `say` voice for spoken phrases; None = the system voice
+    face: dict = None                              # face-mode calibration: resting pose, head range, thresholds
     version: int = VERSION
 
 

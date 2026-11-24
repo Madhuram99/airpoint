@@ -4,6 +4,7 @@ import numpy as np
 
 from .. import features as F
 from .. import hud
+from ..face import FACE_LABELS, NEUTRAL
 from ..pointer import PRECLICK_RATIO
 from ..poses import NONE, UNKNOWN
 
@@ -54,22 +55,38 @@ class LiveMode:
 
     def __init__(self):
         self.probs, self.label, self.clf_ms = None, "none", 0.0     # kept for the X-ray panel
+        self.labels, self.detail = [], ""
+
+    def _read_hand(self, s, o):
+        """-> (label this frame | None, confidence, about to click?)."""
+        self.labels = s.clf.labels
+        if o.pts is None:
+            self.probs, self.detail = None, "ratio 1.00"
+            return None, 0.0, False
+        t0 = time.perf_counter()
+        self.probs = s.clf.proba(o.pts)
+        self.clf_ms = (time.perf_counter() - t0) * 1000.0
+        i, ratio = int(np.argmax(self.probs)), F.pinch_ratio(o.pts)
+        self.detail = f"ratio {ratio:.2f}"
+        return s.clf.labels[i], float(self.probs[i]), ratio < PRECLICK_RATIO
+
+    def _read_face(self, s, o):
+        self.labels, self.clf_ms = list(FACE_LABELS), 0.0
+        if o.face is None:
+            self.probs, self.detail = None, "no face"
+            return None, 0.0, False
+        label, self.probs, near = s.face_signs.update(o.face.shapes)
+        self.detail = f"mouth {near:.2f}"
+        return label, 1.0, label == NEUTRAL and near > 0.5
 
     def tick(self, s, o, frame):
-        if o.pts is None:
-            self.probs, label, conf, ratio = None, s.smoother.update(None, 0.0), 0.0, 1.0
-        else:
-            t0 = time.perf_counter()
-            self.probs = s.clf.proba(o.pts)
-            self.clf_ms = (time.perf_counter() - t0) * 1000.0
-            i = int(np.argmax(self.probs))
-            conf = float(self.probs[i])
-            label, ratio = s.smoother.update(s.clf.labels[i], conf), F.pinch_ratio(o.pts)
+        seen, conf, preclick = (self._read_face if s.source == "face" else self._read_hand)(s, o)
+        label = s.smoother.update(seen, conf)
         self.label = label
         state, events = s.fsm.update(label, o.t)
         smooth = None
         if o.raw is not None:
-            smooth = s.pointer.update(o.raw, o.t, preclick=ratio < PRECLICK_RATIO)
+            smooth = s.pointer.update(o.raw, o.t, preclick=preclick)
             hud.draw_cursor(frame, o.raw, smooth)
             if not s.fsm.cursor_frozen and not (s.wheel_on and s.wheel.frozen):
                 s.runner.move(smooth[0] / o.w, smooth[1] / o.h)
@@ -106,8 +123,11 @@ class LiveMode:
         s.hint = None
         if s.hints_on:
             centre = (0.5, 0.5) if o.raw is None else (o.raw[0] / o.w, o.raw[1] / o.h)
-            s.hint = s.hinter.update(o.t, o.luma, None if o.pts is None else F.palm_px(o.pts, o.w, o.h),
-                                     centre, label, o.fps)
+            if s.source == "face":                   # a face has no "too far" yet: only presence, light, clarity
+                s.hint = s.hinter.update(o.t, o.luma, None if o.face is None else 70.0, centre, label, o.fps, "face")
+            else:
+                s.hint = s.hinter.update(o.t, o.luma, None if o.pts is None else F.palm_px(o.pts, o.w, o.h),
+                                         centre, label, o.fps)
         if s.overlay is not None and s.overlay_on:
             s.overlay.send(overlay_state(s, o, smooth, progress, events))
         shake = shake_line(s.sim, s.pointer.reading, s.pointer.left)
@@ -123,7 +143,8 @@ class LiveMode:
         if not s.mini:
             hud.draw_banner(
                 frame,
-                f"{state} | pose {label} {conf:.2f} | ratio {ratio:.2f} | {s.clf.name} | {o.fps:.0f} fps",
+                f"{state} | pose {label} {conf:.2f} | {self.detail} | "
+                f"{'face' if s.source == 'face' else s.clf.name} | {o.fps:.0f} fps",
                 f"last: {s.last_event} | mouse [m] {'ON' if s.runner.enabled else 'OFF'} | "
                 f"dwell [d] {'ON' if s.dwell_on else 'OFF'} | wheel [w] {'ON' if s.wheel_on else 'OFF'} | "
                 f"filter [b] {FILTER_NAMES[s.pointer.mode]}",

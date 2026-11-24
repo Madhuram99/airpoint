@@ -8,6 +8,7 @@ import numpy as np
 from airpoint.actions import ActionRunner, FakeMouse
 from airpoint.classifier import RuleClassifier
 from airpoint.effects import Effects
+from airpoint.face import FaceObs
 from airpoint.profile import Profile
 from airpoint.modes.live import shake_line
 from airpoint.tremor import Reading, TremorSim
@@ -596,3 +597,113 @@ def test_overlay_shows_the_wheel_at_its_anchor_and_scroll_and_simulated_tags(tmp
     s.on_key(ord("t"), t)
     t = feed(s, "thumb_up", 0.5, t)
     assert ov.states[-1]["tag"] == "SCROLL"
+
+
+def face_feed(s, seconds, t, yaw=0.0, pitch=0.0, jaw=0.0, brow=0.0, seen=True):
+    """Tick in face mode with one synthetic face observation for `seconds`. -> time after."""
+    for _ in range(round(seconds / DT)):
+        s.tick(blank(), None, None, t, face=FaceObs(yaw, pitch, {"jawOpen": jaw, "browInnerUp": brow}) if seen else None)
+        t += DT
+    return t
+
+
+def last_move(mouse):
+    return [c for c in mouse.calls if c[0] == "move"][-1][1:]
+
+
+def test_f_switches_to_the_face_and_the_head_moves_the_cursor(tmp_path):
+    s, mouse = make(tmp_path)
+    s.on_key(ord("f"), 0.0)
+    assert s.source == "face" and s.wheel_on and s.runner.active_region == (0.0, 0.0, 1.0, 1.0)
+    t = face_feed(s, 1.0, 0.0)
+    cx, cy = last_move(mouse)
+    assert abs(cx - 500) <= 2 and abs(cy - 250) <= 2            # resting pose = the middle of the screen
+    t = face_feed(s, 1.5, t, yaw=9.0, pitch=6.0)                # half the comfortable range to the right and up
+    x, y = last_move(mouse)
+    assert 730 < x < 755 and 115 < y < 140                      # three quarters across, a quarter down
+    assert s.taps()["labels"] == ["neutral", "mouth_open", "brows_up"] and s.state()["source"] == "face"
+
+
+def test_mouth_open_clicks_or_drags_and_raised_brows_right_click(tmp_path):
+    s, mouse = make(tmp_path)
+    s.on_key(ord("f"), 0.0)
+    s.on_key(ord("w"), 0.0)                                      # wheel off: test the expressions alone
+    t = face_feed(s, 0.5, 0.0)
+    t = face_feed(s, 0.2, t, jaw=0.8)
+    t = face_feed(s, 0.4, t)
+    assert kinds(mouse) == ["click"]
+    t = face_feed(s, 0.9, t, jaw=0.8)                            # held open: drag
+    assert kinds(mouse) == ["click", "down"]
+    t = face_feed(s, 0.4, t)
+    assert kinds(mouse) == ["click", "down", "up"]
+    t = face_feed(s, 0.7, t, brow=0.8)
+    assert kinds(mouse) == ["click", "down", "up", "right_click"]
+    face_feed(s, 0.5, t, seen=False)                             # face lost: resting, nothing more
+    assert s.fsm.state == "RESTING"
+
+
+def test_face_mode_refuses_hand_only_things_and_f_restores_the_hand(tmp_path, capsys):
+    s, _ = make(tmp_path)
+    s.on_key(ord("f"), 0.0)
+    for key in "rnt":
+        s.on_key(ord(key), 0.0)
+    assert s.mode.name == "live" and not s.sim.on
+    assert capsys.readouterr().out.count("press f first") == 3
+    s.on_key(ord("f"), 0.0)
+    assert s.source == "hand" and not s.wheel_on
+    assert s.fsm.grip == frozenset({"pinch", "fist"}) and s.runner.active_region == (0.15, 0.15, 0.85, 0.80)
+    t = feed(s, "palm", 0.5, 0.0)
+    assert s.taps()["labels"] == s.clf.labels
+
+
+def test_face_hints_talk_about_the_face(tmp_path):
+    s, _ = make(tmp_path)
+    s.on_key(ord("f"), 0.0)
+    face_feed(s, 3.4, 0.0, seen=False)
+    assert s.hint == "show your face to the camera"
+
+
+def test_face_calibration_sets_range_and_thresholds_and_saves_them(tmp_path):
+    import math
+    s, mouse = make(tmp_path)
+    s.on_key(ord("f"), 0.0)
+    s.on_key(ord("c"), 0.0)
+    assert s.mode.name == "face_calibrate"
+    t = face_feed(s, 3.0, 0.0, yaw=3.0, pitch=-4.0, jaw=0.02, brow=0.02)
+    for i in range(180):                                         # 6 s of looking around
+        s.tick(blank(), None, None, t, face=FaceObs(3.0 + 20 * math.sin(i / 18), -4.0 + 10 * math.sin(i / 12), {"jawOpen": 0.03, "browInnerUp": 0.03}))
+        t += DT
+    t = face_feed(s, 3.0, t, yaw=3.0, pitch=-4.0, jaw=0.9)
+    t = face_feed(s, 3.0, t, yaw=3.0, pitch=-4.0, brow=0.04)     # this face barely moves its brows
+    t = face_feed(s, 0.2, t, yaw=3.0, pitch=-4.0)
+    assert "not seen: brows_up" in s.mode.message
+    saved = json.loads((tmp_path / "profiles" / "ana.json").read_text())["face"]
+    assert abs(saved["yaw0"] - 3.0) < 0.5 and 14 < saved["span_yaw"] <= 20 and list(saved["on"]) == ["mouth_open"]
+    s.on_key(ord(" "), t)
+    assert s.mode.name == "live" and s.source == "face" and s.fsm.hold_events == {}     # no brows: no right-click sign
+    t = face_feed(s, 0.6, t, yaw=3.0, pitch=-4.0)
+    cx, cy = last_move(mouse)
+    assert abs(cx - 500) <= 3 and abs(cy - 250) <= 3            # the calibrated resting pose is now the centre
+    s.close()
+
+
+def test_an_uncalibrated_face_is_centred_on_wherever_it_first_looks(tmp_path):
+    s, mouse = make(tmp_path)
+    s.on_key(ord("f"), 0.0)
+    t = face_feed(s, 1.2, 0.0, yaw=-31.0, pitch=-8.0)            # sitting side-on to the camera
+    cx, cy = last_move(mouse)
+    assert abs(cx - 500) <= 3 and abs(cy - 250) <= 3            # that pose is the middle of the screen
+    assert abs(s.face_cfg["yaw0"] + 31.0) < 0.01 and s.face_centring is None
+    face_feed(s, 1.5, t, yaw=-31.0 + 9.0, pitch=-8.0)
+    assert 730 < last_move(mouse)[0] < 755
+    assert s.profile.face is None                                # a quick centre is not a calibration: not saved
+
+
+def test_a_calibrated_face_keeps_its_own_centre(tmp_path):
+    p = Profile(user="ana")
+    p.face = {"yaw0": 5.0, "pitch0": 0.0, "span_yaw": 10.0, "span_pitch": 8.0, "on": {"mouth_open": 0.4}}
+    s, mouse = make(tmp_path, profile=p)
+    s.on_key(ord("f"), 0.0)
+    assert s.face_centring is None
+    face_feed(s, 1.0, 0.0, yaw=10.0)
+    assert 740 < last_move(mouse)[0] < 755                       # 5 degrees past a centre of 5, in a 10 degree span
