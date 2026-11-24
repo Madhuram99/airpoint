@@ -3,7 +3,7 @@ import json
 import numpy as np
 
 from airpoint.recorder import Recorder
-from airpoint.train import train_and_save
+from airpoint.train import train_and_save, train_personal
 from tests.hands import BY_POSE
 
 
@@ -46,3 +46,29 @@ def test_single_user_falls_back_to_row_holdout(tmp_path):
     assert list(report["louo"]) == ["solo (row hold-out)"]
     assert report["louo_acc"] >= 0.9
     assert (models / "pose_mlp.joblib").exists()
+
+
+def test_personal_model_scores_calibration_holdout(tmp_path):
+    rng = np.random.default_rng(2)
+    data, models = tmp_path / "data", tmp_path / "models"
+    data.mkdir()
+    _write_user(data / "a.csv", "a", rng, 1.0, np.array([0.0, 0.0, 0.0]))
+    _write_user(data / "b_calib.csv", "b", rng, 1.3, np.array([0.1, -0.05, 0.0]))
+
+    report = train_personal(str(data), str(data / "b_calib.csv"), str(models), "b", seed=0)
+
+    assert report["n_calib"] == 180 and report["acc_on_own_frames"] >= 0.9
+    assert report["model"] == str(models / "personal_b.joblib")
+    assert (models / "personal_b.joblib").exists() and (models / "personal_b_labels.json").exists()
+
+
+def test_base_training_ignores_calibration_files(tmp_path):
+    rng = np.random.default_rng(3)
+    data, models = tmp_path / "data", tmp_path / "models"
+    data.mkdir()
+    _write_user(data / "a.csv", "a", rng, 1.0, np.array([0.0, 0.0, 0.0]))
+    _write_user(data / "b_calib.csv", "b", rng, 1.3, np.array([0.1, -0.05, 0.0]))
+
+    report = train_and_save(str(data), str(models), seed=0)
+
+    assert report["users"] == ["a"] and report["n_rows"] == 180

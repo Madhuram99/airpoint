@@ -20,23 +20,35 @@ from .recorder import looks_like
 TILT_MAX_RAD = 0.60   # +/- 34 degrees in-plane
 NOISE_SIGMA = 0.12    # palm units
 AUG_COPIES = 3
+PERSONAL_WEIGHT = 3        # calibration rows duplicated this many times
+CALIB_SUFFIX = "_calib.csv"
+
+
+def read_csv_rows(path):
+    """One CSV -> (X, y, users, dropped). Rows whose geometry contradicts their label are skipped."""
+    X, y, users, dropped = [], [], [], 0
+    with open(path, newline="") as f:
+        for row in csv.DictReader(f):
+            coords = [float(row[f"{a}{i}"]) for i in range(21) for a in "xyz"]
+            if not looks_like(row["pose"], coords):
+                dropped += 1
+                continue
+            X.append(coords)
+            y.append(row["pose"])
+            users.append(row["user"])
+    return X, y, users, dropped
 
 
 def load_rows(data_dir):
-    """Rows whose geometry contradicts their label (recorded before the capture guard) are skipped."""
+    """Base dataset: data/*.csv minus *_calib.csv (one person's calibration, used by train_personal)."""
     X, y, users, dropped = [], [], [], 0
     for path in sorted(glob.glob(os.path.join(data_dir, "*.csv"))):
-        with open(path, newline="") as f:
-            for row in csv.DictReader(f):
-                coords = [float(row[f"{a}{i}"]) for i in range(21) for a in "xyz"]
-                if not looks_like(row["pose"], coords):
-                    dropped += 1
-                    continue
-                X.append(coords)
-                y.append(row["pose"])
-                users.append(row["user"])
+        if path.endswith(CALIB_SUFFIX):
+            continue
+        x_, y_, u_, d_ = read_csv_rows(path)
+        X += x_; y += y_; users += u_; dropped += d_
     if not X:
-        raise SystemExit(f"no rows in {data_dir}/*.csv — record first: run_demo.py --record --user <name>")
+        raise FileNotFoundError(f"no rows in {data_dir}/*.csv — record first: run_demo.py --record --user <name>")
     if dropped:
         print(f"[train] skipped {dropped} rows whose geometry contradicts their label")
     return np.array(X), np.array(y), np.array(users)
@@ -112,9 +124,42 @@ def train_and_save(data_dir, models_dir, seed=42):
     return report
 
 
+def train_personal(data_dir, calib_path, models_dir, user, seed=42, weight=PERSONAL_WEIGHT):
+    """Base rows + this user's calibration rows x`weight` -> models/personal_<user>.joblib.
+    Accuracy is on a 25% hold-out of the calibration rows, which the fit never sees."""
+    rng = np.random.default_rng(seed)
+    X_base, y_base, _ = load_rows(data_dir)
+    Xc, yc, _, _ = read_csv_rows(calib_path)
+    if len(Xc) < 60:
+        raise ValueError(f"only {len(Xc)} usable calibration frames; redo calibration")
+    Xc, yc = np.array(Xc), np.array(yc)
+    te = rng.random(len(yc)) < 0.25
+    Xn_base, Xn_c = normalize_rows(X_base), normalize_rows(Xc)
+    X_tr = np.concatenate([Xn_base] + [Xn_c[~te]] * weight)
+    y_tr = np.concatenate([y_base] + [yc[~te]] * weight)
+    X_aug, y_aug = augment(X_tr, y_tr, AUG_COPIES, rng)
+
+    t0 = time.perf_counter()
+    model = make_model(seed).fit(X_aug, y_aug)
+    fit_s = time.perf_counter() - t0
+    acc = float(np.mean(model.predict(Xn_c[te]) == yc[te]))
+
+    os.makedirs(models_dir, exist_ok=True)
+    model_path = os.path.join(models_dir, f"personal_{user}.joblib")
+    labels_path = os.path.join(models_dir, f"personal_{user}_labels.json")
+    joblib.dump(model, model_path)
+    with open(labels_path, "w") as f:
+        json.dump(list(model.classes_), f)
+    return {"user": user, "n_calib": int(len(yc)), "acc_on_own_frames": acc,
+            "fit_seconds": fit_s, "model": model_path, "labels": labels_path}
+
+
 def main(argv=None):
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    r = train_and_save(os.path.join(root, "data"), os.path.join(root, "models"))
+    try:
+        r = train_and_save(os.path.join(root, "data"), os.path.join(root, "models"))
+    except FileNotFoundError as e:
+        raise SystemExit(e)
     print(f"rows {r['n_rows']} | users {', '.join(r['users'])} | fit {r['fit_seconds']:.1f}s")
     print(f"leave-one-user-out accuracy: {r['louo_acc'] * 100:.1f}%  "
           + "  ".join(f"{u} {a * 100:.0f}%" for u, a in r["louo"].items()))
