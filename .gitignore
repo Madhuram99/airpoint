@@ -7,3 +7,4 @@ data/*_calib.csv
 profiles/
 
 models/train_report.json
+models/personal_*
