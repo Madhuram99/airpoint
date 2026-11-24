@@ -40,3 +40,17 @@ Report: anything that fails, the frequency from 1.7, any false locks from 1.8.
 - [ ] **2.8 Dashboard.** `venv/bin/python -m airpoint.results`, then open `index.html`: the pointing table shows those conditions; nothing reads "not measured yet" that you measured.
 
 Report: the "Measured so far" table as it stands, and any block that landed under the wrong condition.
+
+## Stage 3 — fits your body
+
+- [ ] **3.1 Calibration with reach.** `c`: after HOLD STILL comes REACH (6 s). Move your hand as far as is comfortable in every direction, elbow resting if you like. After "done", the yellow box on the view is your comfort box and small hand movements cover the whole screen.
+- [ ] **3.2 Feel in the box.** Does the cursor still feel steady and reach every screen corner? Too jumpy or too slow?
+- [ ] **3.3 Other hand.** Use your other hand without recalibrating: the same signs should work.
+- [ ] **3.4 Back of the hand.** Turn your hand so its back faces the camera: palm and V-sign should still read.
+- [ ] **3.5 A sign you "cannot" make.** Calibrate again but show an open palm when asked for thumb down. The result line should say `skipped: thumb_down`, and thumb down should no longer scroll. Then `venv/bin/python -m airpoint.profile madhuram --reset-roles` and calibrate normally to restore it.
+- [ ] **3.6 Pause.** `p`: the banner reads PAUSED and nothing clicks. Hold an open palm still: the ring fills in 2 s and control returns.
+- [ ] **3.7 Hints.** Take your hand out for 3 s; cover the camera; hold the hand very close and very far; move it to the frame edge. Each should give a sensible line at the bottom. `h` turns them off.
+- [ ] **3.8 Sounds.** Click, right-click, drag and pause each make a sound when the mouse is on. `s` turns them off.
+- [ ] **3.9 Role edit by hand.** `venv/bin/python -m airpoint.profile madhuram --role right_click=fist --role grip=pinch`, relaunch: a held fist right-clicks and no longer drags. Restore with `--reset-roles`.
+
+Report: how the comfort box felt (3.2), whether the other hand worked without recalibrating (3.3), any hint that was wrong or annoying.

@@ -23,6 +23,20 @@ cursor : middle knuckle → tremor canceller → One-Euro filter → screen
 | open palm, still 1 s (dwell mode, `d`) | click with no finger motion at all |
 | hand out of frame | rest, anything held is dropped |
 
+### Fits your body
+
+- **Comfort box.** Calibration (`c`) asks you to move your hand as far as is comfortable. That box, not
+  the whole frame, then maps to the whole screen, so an elbow can stay on the desk. The pointer filters
+  follow the box's gain.
+- **Choose your poses.** Which pose clicks, right-clicks and scrolls is a per-user role map. Calibration
+  drops any pose your hand could not hold, and if no clicking pose is left it turns dwell click on.
+  `python -m airpoint.profile you --role right_click=fist --role grip=pinch` edits the map by hand.
+- **Either hand.** Training adds a mirrored copy of every example, so one model reads both hands and both
+  faces of a hand. It does not rely on MediaPipe's left/right label, which follows the hand's facing.
+- **Pause.** `p` stops everything reaching the system. Hold an open palm still for two seconds to resume.
+- **Hints and sounds.** A strip at the bottom says what is in the way (show your hand, too dark, move
+  closer, sign not clear). Clicks, drags and the pause each have a system sound. `h` and `s` switch them.
+
 ### Tremor
 
 A smoothing filter has to choose between shake and lag, and a rhythmic tremor fools it: the
@@ -65,6 +79,8 @@ venv/bin/python run_demo.py --mouse              # start with the mouse already 
 venv/bin/python run_demo.py --user you           # loads profiles/you.json once calibrated; c = calibrate (~1 min)
 #   d = dwell click on/off | v = mini always-on-top view | c = hold still 5 s, 6 poses x 5 s, retrain, hot-swap
 #   t = simulated tremor ([ ] size, { } speed) | b = filter full / smoothing only / off | x = X-ray panel | z = zoom
+#   p = pause (open palm held still 2 s resumes) | h = hints on/off | s = sounds on/off
+venv/bin/python -m airpoint.profile you          # show or edit your profile: roles, comfort box, dwell, sounds
 venv/bin/python run_demo.py --record --user you  # record your hand: space = all poses, 1-6 = one pose
 venv/bin/python -m airpoint.train                # retrain on data/*.csv, leave-one-user-out report
 venv/bin/pytest -q                               # unit tests (no camera needed)
@@ -81,7 +97,7 @@ macOS: allow your terminal under System Settings → Privacy & Security → Came
 ```
 airpoint/        package — camera, tracker, features, filters, tremor, pointer, classifier, fsm, actions, hud,
                  recorder, calibration, train, session, modes/ (live, record, calibrate), app,
-                 lab/ (server, stats, store), results, sim_pointer
+                 lab/ (server, stats, store), results, sim_pointer, profile, hints, sounds
 lab/             practice pages and the pointing test (plain HTML/JS, served by airpoint.lab)
 results/         saved test sessions (trials.jsonl)
 legacy/          the midterm benchmark script, kept as presented
