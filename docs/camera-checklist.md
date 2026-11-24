@@ -54,3 +54,16 @@ Report: the "Measured so far" table as it stands, and any block that landed unde
 - [ ] **3.9 Role edit by hand.** `venv/bin/python -m airpoint.profile madhuram --role right_click=fist --role grip=pinch`, relaunch: a held fist right-clicks and no longer drags. Restore with `--reset-roles`.
 
 Report: how the comfort box felt (3.2), whether the other hand worked without recalibrating (3.3), any hint that was wrong or annoying.
+
+## Stage 4 — teach a sign, speak for me
+
+- [ ] **4.1 Teach a speaking sign.** `n`, type `hello`, Enter, hold a sign of your own (for example index and little finger up) for 8 s while tilting it, press `1`, type `Thank you for coming`, Enter. After "Learning..." the result line gives a percentage. Back in live view, hold the sign: the laptop says the phrase once, and again only after you open your palm.
+- [ ] **4.2 With the mouse off.** Turn mouse control off (`m`) and hold the sign: it should still speak.
+- [ ] **4.3 A key sign.** Teach a second sign bound to keys (`2`, then `cmd+c`, or `right` to advance slides). Check it does that and nothing else.
+- [ ] **4.4 False fires.** Use AirPoint normally for two minutes with both signs taught. Note every time a taught sign fires when you did not mean it.
+- [ ] **4.5 Confusable sign.** Teach a sign very close to a built-in one (a slightly open fist). Does the result line warn you?
+- [ ] **4.6 Forget.** `n`, then `1`: the sign is forgotten and no longer fires.
+- [ ] **4.7 Voice.** `venv/bin/python -m airpoint.profile madhuram --voice Rishi` (or `Lekha` with a Hindi phrase), relaunch, hold the speaking sign.
+- [ ] **4.8 Typing a name with q.** On the name screen type a name containing `q`: AirPoint must not quit.
+
+Report: the percentages from 4.1 and 4.3, the false fires from 4.4, whether 4.5 warned.

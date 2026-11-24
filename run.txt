@@ -10,7 +10,7 @@ venv/bin/python -m airpoint.lab                # tutorial + pointing test at htt
 #    (the midterm benchmark is kept at legacy/midterm_benchmark_suite.py; the dashboard no longer reads it)
 
 # 3. Live demo (q quit | m mouse | d dwell | b filter | k rules/mlp | c calibrate | v mini | z zoom | x x-ray |
-#               t simulated tremor, [ ] size, { } speed | p pause | h hints | s sounds | r record | 1-6 pose | space start/redo)
+#               t simulated tremor, [ ] size, { } speed | p pause | h hints | s sounds | n new sign | r record | 1-6 pose | space start/redo)
 venv/bin/python run_demo.py                    # MLP if models/pose_mlp.joblib exists, else rules
 venv/bin/python run_demo.py --mouse            # same, OS mouse control already ON
 venv/bin/python run_demo.py --rules            # force rules
@@ -18,6 +18,7 @@ venv/bin/python run_demo.py --user <name>      # loads profiles/<name>.json (fc_
 venv/bin/python run_demo.py --record --user <name>   # record poses to data/<name>.csv
 #    palm = move | pinch/fist < 0.5 s = click | hold = drag | v-sign 0.3 s = right click
 #    thumb up / down = scroll | hand out of frame = rest
+#    teach demo : n -> type a name -> hold a new sign 8 s -> 1 (speak) -> type a phrase -> Enter; hold the sign: it speaks
 #    tremor demo: m (mouse on) -> t (cursor shakes, tag reads SIMULATED) -> wait 2 s for LOCKED ->
 #                 b twice (smoothing only, then off) to compare on the real cursor -> x to show why
 

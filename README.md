@@ -37,6 +37,21 @@ cursor : middle knuckle → tremor canceller → One-Euro filter → screen
 - **Hints and sounds.** A strip at the bottom says what is in the way (show your hand, too dark, move
   closer, sign not clear). Clicks, drags and the pause each have a system sound. `h` and `s` switch them.
 
+### Teach a sign
+
+`n` (with `--user`) adds a sign of your own in about fifteen seconds: type a name, hold the sign for
+eight seconds, then choose what it does: speak a phrase aloud, press a key combo, type text, open an
+app or a link, or pause AirPoint. The personal model is retrained with the new class and swapped in
+while you wait. Held for 0.6 s the sign fires once and re-arms after a neutral pose.
+
+Speaking works even with mouse control off, so the same sign vocabulary can serve someone who needs
+AirPoint to talk for them: `python -m airpoint.profile you --voice Rishi` picks the voice (Indian
+English and Hindi voices ship with macOS). To reach the system's on-screen keyboard, bind a sign to
+`option+cmd+f5`. On the name screen `1`–`9` forgets a taught sign.
+
+The result line after teaching reports how much of the sign's own held-out frames were recognised,
+and warns if it is easily confused with another sign or if other signs are being read as it.
+
 ### Tremor
 
 A smoothing filter has to choose between shake and lag, and a rhythmic tremor fools it: the
@@ -80,6 +95,7 @@ venv/bin/python run_demo.py --user you           # loads profiles/you.json once 
 #   d = dwell click on/off | v = mini always-on-top view | c = hold still 5 s, 6 poses x 5 s, retrain, hot-swap
 #   t = simulated tremor ([ ] size, { } speed) | b = filter full / smoothing only / off | x = X-ray panel | z = zoom
 #   p = pause (open palm held still 2 s resumes) | h = hints on/off | s = sounds on/off
+#   n = teach a new sign: name it, hold it 8 s, choose speak / keys / type / open / pause
 venv/bin/python -m airpoint.profile you          # show or edit your profile: roles, comfort box, dwell, sounds
 venv/bin/python run_demo.py --record --user you  # record your hand: space = all poses, 1-6 = one pose
 venv/bin/python -m airpoint.train                # retrain on data/*.csv, leave-one-user-out report
@@ -97,7 +113,8 @@ macOS: allow your terminal under System Settings → Privacy & Security → Came
 ```
 airpoint/        package — camera, tracker, features, filters, tremor, pointer, classifier, fsm, actions, hud,
                  recorder, calibration, train, session, modes/ (live, record, calibrate), app,
-                 lab/ (server, stats, store), results, sim_pointer, profile, hints, sounds
+                 lab/ (server, stats, store), results, sim_pointer, profile, hints, sounds, effects,
+                 modes/teach
 lab/             practice pages and the pointing test (plain HTML/JS, served by airpoint.lab)
 results/         saved test sessions (trials.jsonl)
 legacy/          the midterm benchmark script, kept as presented
