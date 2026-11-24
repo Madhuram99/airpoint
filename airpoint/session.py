@@ -12,7 +12,7 @@ from .classifier import PoseClassifier, VoteSmoother
 from .effects import Effects
 from .fsm import AirPointFSM, DwellDetector
 from .hints import Hinter
-from .modes import CalibrateMode, LiveMode, RecordMode
+from .modes import CalibrateMode, LiveMode, RecordMode, TeachMode
 from .pointer import PointerPipeline
 from .profile import Profile, fsm_parts
 from .sounds import Sounds
@@ -47,7 +47,7 @@ class Session:
 
     def __init__(self, runner, rules, mlp, *, root, user=None, profile=None, dwell_on=None,
                  train_fn=train_personal, sounds=None, effects=None):
-        self.runner, self.rules, self.mlp = runner, rules, mlp
+        self.runner, self.rules, self.mlp, self.base_mlp = runner, rules, mlp, mlp
         self.clf = mlp or rules
         self.root, self.user, self.train_fn = root, user, train_fn
         self.data_dir, self.models_dir = os.path.join(root, "data"), os.path.join(root, "models")
@@ -156,8 +156,21 @@ class Session:
         self.mlp.name = f"mlp/{self.user}"
         self.smoother.reset()
 
+    @property
+    def typing(self):
+        """True while a mode is taking text: every key, the quit key included, is then a character."""
+        return getattr(self.mode, "typing", False)
+
+    def reset_model(self):
+        """Back to the shared model (or the rules), when nothing personal is left to use."""
+        self.mlp = self.base_mlp
+        self.clf = self.mlp or self.rules
+        self.smoother.reset()
+
     def on_key(self, key, t):
         if self.mode.on_key(self, key, t):
+            if getattr(self.mode, "exit", False):
+                self.set_mode(LiveMode())
             return
         if key == ord("m"):
             self.runner.toggle()
@@ -176,6 +189,12 @@ class Session:
             self.xray, self.view_dirty = not self.xray, True
         elif key == ord("p"):
             self.set_locked(not self.runner.locked)
+        elif key == ord("n") and self.mode.name == "live":
+            if not self.user:
+                print("[AirPoint] teaching a sign needs --user <name>")
+            else:
+                self.runner.release()
+                self.set_mode(TeachMode(self, t))
         elif key == ord("s"):
             self.sounds.enabled = not self.sounds.enabled
         elif key == ord("h"):

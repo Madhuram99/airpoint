@@ -2,5 +2,6 @@
 from .calibrate import CalibrateMode
 from .live import LiveMode
 from .record import RecordMode
+from .teach import TeachMode
 
-__all__ = ["CalibrateMode", "LiveMode", "RecordMode"]
+__all__ = ["CalibrateMode", "LiveMode", "RecordMode", "TeachMode"]

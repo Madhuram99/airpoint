@@ -18,7 +18,8 @@ MODELS_DIR = os.path.join(ROOT, "models")
 MODEL_PATH, LABELS_PATH = os.path.join(MODELS_DIR, "pose_mlp.joblib"), os.path.join(MODELS_DIR, "labels.json")
 WINDOW, MINI_MARGIN = "AirPoint", 20
 KEYS = ("q quit | m mouse | d dwell | b filter full/smooth/off | k rules/mlp | c calibrate | v mini | z zoom | x x-ray | "
-        "t simulated tremor ([ ] size, { } speed) | r record | 1-6 pose | space start/redo")
+        "t simulated tremor ([ ] size, { } speed) | p pause | h hints | s sounds | n new sign | r record | 1-6 pose | "
+        "space start/redo")
 
 
 def load_classifiers(force_rules, profile=None):
@@ -87,7 +88,7 @@ def main(argv=None):
                 s.view_dirty = False
             cv2.imshow(WINDOW, shown)
             key = cv2.waitKey(1) & 0xFF
-            if key == ord("q"):
+            if key == ord("q") and not s.typing:
                 break
             if key != 255:
                 s.on_key(key, t)

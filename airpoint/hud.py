@@ -16,10 +16,10 @@ ACCENT_ON, ACCENT_OFF, WHITE, MINT = (0, 200, 255), (90, 90, 90), (255, 255, 255
 PANEL, ALERT = (25, 35, 30), (60, 60, 255)
 MINI_SIZE = (320, 240)
 ZOOMS = (1.0, 1.5, 2.0)
-XRAY_W = 400
+XRAY_W, XRAY_ROWS = 400, 6
 STATES = ("RESTING", "MOVING", "PRESSING", "DRAGGING", "HOLD", "SCROLLING")
 RAW_C, OUT_C, DIM, GRID_C = (80, 80, 255), (120, 230, 120), (150, 150, 150), (60, 70, 65)
-KEY_HINT = "keys q p k c v z x t r"
+KEY_HINT = "keys q p n k c v z x t r"
 
 
 def canon_view(frame):
@@ -136,14 +136,17 @@ def draw_xray(height, x):
     put_fit(panel, f"X-RAY | {x['clf']} | {x['fps']:.0f} fps | tracker {x['ms_tracker']:.0f} ms | "
                    f"classifier {x['ms_classifier']:.1f} ms", (8, 15), 0.40, WHITE)
 
-    probs = x["probs"]                                         # 1. class probabilities
+    probs, labels = x["probs"], list(x["labels"])              # 1. class probabilities
     best = -1 if probs is None else int(np.argmax(probs))
-    for i, name in enumerate(x["labels"]):
-        y, p = 24 + 16 * i, 0.0 if probs is None else float(probs[i])
-        put_fit(panel, name, (8, y + 12), 0.40, MINT if i == best else DIM)
+    shown = list(range(len(labels)))
+    if len(shown) > XRAY_ROWS:                                 # taught signs add classes: show the likeliest
+        shown = shown[:XRAY_ROWS] if probs is None else sorted(np.argsort(-np.asarray(probs))[:XRAY_ROWS].tolist())
+    for row, i in enumerate(shown):
+        y, p = 24 + 16 * row, 0.0 if probs is None else float(probs[i])
+        put_fit(panel, labels[i][:11], (8, y + 12), 0.40, MINT if i == best else DIM)
         cv2.rectangle(panel, (100, y + 3), (100 + int(220 * p), y + 13), ACCENT_ON if i == best else ACCENT_OFF, -1)
         put_fit(panel, f"{p:.2f}", (334, y + 12), 0.40, WHITE)
-    gate_x, y = 100 + int(220 * x["gate"]), 24 + 16 * len(x["labels"])
+    gate_x, y = 100 + int(220 * x["gate"]), 24 + 16 * len(shown)
     cv2.line(panel, (gate_x, 24), (gate_x, y), WHITE, 1)
 
     votes = " ".join(v.replace("thumb_", "")[:6] for v in x["votes"])   # 2. the vote buffer

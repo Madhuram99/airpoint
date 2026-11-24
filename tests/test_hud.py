@@ -96,3 +96,14 @@ def test_xray_panel_shows_the_winning_bar_the_active_state_and_the_curves():
     assert (panel[143:159, 270:390] == accent).all(axis=2).mean() > 0.5   # the PRESSING box is filled
     assert (panel[217:263] != plain[217:263]).any()                        # the scope has curves
     assert (panel[283:325] != plain[283:325]).any()                        # the spectrum has curves
+
+
+def test_xray_shows_the_six_likeliest_classes_when_signs_were_taught():
+    labels = ["fist", "palm", "pinch", "rock", "thumb_down", "thumb_up", "v_sign", "water"]
+    probs = np.array([0.01, 0.02, 0.03, 0.80, 0.01, 0.01, 0.02, 0.10])
+    panel = hud.draw_xray(360, _taps(labels=labels, probs=probs, label="rock"))
+    assert panel.shape == (360, 400, 3)
+    accent = np.array(hud.ACCENT_ON, np.uint8)
+    lit_rows = np.where((panel[24:130, 110:200] == accent).all(axis=2).any(axis=1))[0]
+    assert len(lit_rows) > 0 and 24 + lit_rows.max() < 24 + 16 * 6       # the winner sits inside six rows
+    assert hud.draw_xray(360, _taps(labels=labels, probs=None, label="none")).shape == (360, 400, 3)
