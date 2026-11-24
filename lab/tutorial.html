@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AirPoint lab — tutorial</title>
+<link rel="stylesheet" href="lab.css">
+</head>
+<body>
+<div class="top">
+  <div class="logo">AirPoint<span>tutorial</span></div>
+  <div class="spacer"></div>
+  <a href="index.html">lab</a>
+</div>
+<div class="wrap">
+  <div class="card" id="lesson">
+    <div class="steps" id="steps"></div>
+    <h2 id="title"></h2>
+    <p id="text"></p>
+    <p class="hint" id="hint"></p>
+    <div class="arena" id="arena"></div>
+    <div class="row" style="margin-top:1rem">
+      <button class="btn ghost" id="skip">Skip this step</button>
+      <span class="muted" id="clock"></span>
+    </div>
+  </div>
+  <div class="card hidden" id="finished">
+    <h2>Tutorial complete</h2>
+    <div class="stats">
+      <div class="card"><div class="big-num" id="total">–</div><div class="muted">seconds in total</div></div>
+      <div class="card"><div class="big-num" id="done-count">–</div><div class="muted">steps done</div></div>
+    </div>
+    <table><thead><tr><th>Step</th><th class="num">Seconds</th><th>Result</th></tr></thead><tbody id="rows"></tbody></table>
+    <p class="muted" id="save-note" style="margin-top:0.8rem"></p>
+    <div class="row" style="margin-top:1rem">
+      <a class="btn" href="test.html">Pointing test</a>
+      <a class="btn ghost" href="tutorial.html">Again</a>
+      <a class="btn ghost" href="index.html">Back to the lab</a>
+    </div>
+  </div>
+</div>
+<script src="lab.js"></script>
+<script src="tutorial.js"></script>
+</body>
+</html>

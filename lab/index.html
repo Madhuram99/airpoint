@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AirPoint lab</title>
+<link rel="stylesheet" href="lab.css">
+</head>
+<body>
+<div class="top">
+  <div class="logo">AirPoint<span>lab</span></div>
+  <div class="spacer"></div>
+  <a href="/index.html">dashboard</a>
+</div>
+<div class="wrap">
+  <div class="card">
+    <h2>Who is testing</h2>
+    <div class="row">
+      <div><label for="participant">Participant code</label><br><input type="text" id="participant" maxlength="40" placeholder="P1" autocomplete="off"></div>
+      <div><label>Driving the cursor with</label><br>
+        <label class="choice"><input type="radio" name="device" value="airpoint"> AirPoint</label>
+        <label class="choice"><input type="radio" name="device" value="mouse"> mouse</label>
+        <label class="choice"><input type="radio" name="device" value="trackpad"> trackpad</label>
+      </div>
+      <div><label for="hand">Hand</label><br><select id="hand"><option value="right">right</option><option value="left">left</option></select></div>
+    </div>
+    <p class="muted" style="margin-top:0.8rem">Use a code, not a name. Results are saved on this laptop in <code>results/trials.jsonl</code>.</p>
+  </div>
+
+  <div class="card">
+    <h2>AirPoint right now</h2>
+    <div id="live"><span class="pill">checking…</span></div>
+    <p class="muted" id="live-hint" style="margin-top:0.6rem"></p>
+  </div>
+
+  <div class="row">
+    <a class="btn big off" id="go-tutorial" href="tutorial.html">Tutorial<br><span style="font-weight:500;font-size:0.9rem">six short steps</span></a>
+    <a class="btn big off" id="go-test" href="test.html">Pointing test<br><span style="font-weight:500;font-size:0.9rem">27 targets, about 2 minutes</span></a>
+  </div>
+
+  <div class="card">
+    <h2>Measured so far</h2>
+    <table>
+      <thead><tr><th>Condition</th><th class="num">People</th><th class="num">Selections</th><th class="num">Throughput (bits/s)</th><th class="num">Errors</th><th class="num">Time per target (s)</th></tr></thead>
+      <tbody id="conditions"><tr><td colspan="6" class="muted">Nothing measured yet.</td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Latest sessions</h2>
+    <table>
+      <thead><tr><th>When</th><th>Who</th><th>What</th><th>Condition</th><th class="num">Result</th></tr></thead>
+      <tbody id="blocks"><tr><td colspan="5" class="muted">No sessions saved.</td></tr></tbody>
+    </table>
+  </div>
+</div>
+<script src="lab.js"></script>
+<script>
+const who = Lab.who() || { participant: "", device: "airpoint", hand: "right" };
+Lab.el("participant").value = who.participant;
+Lab.el("hand").value = who.hand;
+document.querySelectorAll("input[name=device]").forEach(r => { r.checked = r.value === who.device; });
+
+function save() {
+  who.participant = Lab.el("participant").value.trim();
+  who.hand = Lab.el("hand").value;
+  who.device = (document.querySelector("input[name=device]:checked") || {}).value || "airpoint";
+  Lab.saveWho(who);
+  const ready = who.participant.length > 0;
+  Lab.el("go-tutorial").classList.toggle("off", !ready);
+  Lab.el("go-test").classList.toggle("off", !ready);
+}
+document.querySelectorAll("input, select").forEach(e => e.addEventListener("input", save));
+save();
+
+async function pollState() {
+  const { running, state } = await Lab.state();
+  const live = Lab.el("live"), hint = Lab.el("live-hint");
+  if (!running) {
+    live.innerHTML = '<span class="pill">not running</span>';
+    hint.textContent = who.device === "airpoint"
+      ? "Start AirPoint (venv/bin/python run_demo.py --user you) and press m to turn the mouse on, or choose mouse / trackpad above."
+      : "Fine for a mouse or trackpad baseline.";
+  } else {
+    live.innerHTML = `<span class="pill ${state.mouse ? "on" : "warn"}">${state.mouse ? "mouse ON" : "mouse OFF"}</span>` +
+      `<span class="pill">${state.dwell ? "dwell click" : "sign click"}</span><span class="pill">filter ${state.filter}</span>` +
+      (state.sim.on ? `<span class="pill bad">simulated tremor ${state.sim.amp.toFixed(2)} @ ${state.sim.hz.toFixed(1)} Hz</span>` : "") +
+      (state.locked ? `<span class="pill on">locked ${state.lock_hz.toFixed(1)} Hz</span>` : "") +
+      `<span class="pill">${Lab.esc(state.classifier)}</span><span class="pill">${state.fps.toFixed(0)} fps</span>`;
+    hint.textContent = (who.device === "airpoint" && !state.mouse)
+      ? "AirPoint is running but its mouse control is OFF. Press m in the AirPoint window before testing."
+      : "These settings are saved with every test block.";
+  }
+}
+
+async function loadSummary() {
+  let s;
+  try { s = await Lab.api("/api/summary"); } catch (e) { return; }
+  if (s.conditions.length) {
+    Lab.el("conditions").innerHTML = s.conditions.map(c =>
+      `<tr><td>${Lab.esc(c.condition)}</td><td class="num">${c.participants}</td><td class="num">${c.trials}</td>` +
+      `<td class="num">${Lab.fmt(c.tp)}${c.tp_sd === null ? "" : " ± " + Lab.fmt(c.tp_sd)}</td>` +
+      `<td class="num">${Lab.pct(c.error_rate)}</td><td class="num">${Lab.fmt(c.mt)}</td></tr>`).join("");
+  }
+  if (s.blocks.length) {
+    Lab.el("blocks").innerHTML = s.blocks.map(b =>
+      `<tr><td>${Lab.esc((b.saved_at || "").replace("T", " "))}</td><td>${Lab.esc(b.participant)}</td><td>${Lab.esc(b.kind)}</td><td>${Lab.esc(b.condition)}</td>` +
+      `<td class="num">${b.kind === "test" ? Lab.fmt(b.tp) + " bits/s, " + Lab.pct(b.error_rate) + " errors" : Lab.fmt(b.seconds, 0) + " s"}</td></tr>`).join("");
+  }
+}
+pollState(); loadSummary();
+setInterval(pollState, 1000);
+</script>
+</body>
+</html>

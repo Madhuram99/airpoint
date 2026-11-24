@@ -1,0 +1,72 @@
+/* AirPoint lab — same palette as the dashboard (index.html). No external fonts: works offline. */
+:root {
+  --bg: #0a0e1a; --bg2: #111827; --card: rgba(30, 41, 59, 0.55); --line: rgba(100, 200, 255, 0.16);
+  --cyan: #22d3ee; --green: #34d399; --amber: #fbbf24; --red: #f87171; --purple: #a78bfa;
+  --text: #f1f5f9; --text2: #94a3b8; --muted: #64748b; --radius: 16px;
+  --font: -apple-system, "Segoe UI", Inter, Roboto, sans-serif; --mono: ui-monospace, "SF Mono", Menlo, monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.55; }
+a { color: var(--cyan); text-decoration: none; }
+.top { display: flex; align-items: center; gap: 1.2rem; padding: 0.9rem 1.6rem; border-bottom: 1px solid var(--line);
+       background: rgba(10, 14, 26, 0.9); position: sticky; top: 0; z-index: 10; }
+.top .logo { font-weight: 800; font-size: 1.15rem; color: var(--cyan); }
+.top .logo span { color: var(--muted); font-weight: 500; margin-left: 0.5rem; font-size: 0.85rem; }
+.top .spacer { flex: 1; }
+.wrap { max-width: 1040px; margin: 0 auto; padding: 1.6rem; display: grid; gap: 1.2rem; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.3rem 1.5rem; }
+.card h2 { font-size: 1.05rem; margin-bottom: 0.8rem; }
+.row { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; }
+label { color: var(--text2); font-size: 0.9rem; }
+input[type=text], select { background: var(--bg2); color: var(--text); border: 1px solid var(--line); border-radius: 10px;
+       padding: 0.6rem 0.8rem; font-size: 1rem; font-family: inherit; min-width: 9rem; }
+.choice { display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.55rem 0.9rem; border: 1px solid var(--line);
+       border-radius: 10px; cursor: pointer; color: var(--text); font-size: 0.95rem; }
+.choice input { accent-color: var(--cyan); }
+.btn { display: inline-block; border: 0; border-radius: 12px; padding: 0.9rem 1.5rem; font-size: 1.05rem; font-weight: 700;
+       font-family: inherit; cursor: pointer; background: var(--cyan); color: #06202a; }
+.btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+.btn.big { padding: 1.3rem 2rem; font-size: 1.2rem; min-width: 15rem; text-align: center; }
+.btn[disabled], .btn.off { opacity: 0.35; pointer-events: none; }
+.pill { display: inline-block; padding: 0.15rem 0.6rem; border-radius: 999px; font-size: 0.8rem; font-weight: 700;
+        border: 1px solid var(--line); color: var(--text2); margin-right: 0.35rem; }
+.pill.on { color: var(--green); border-color: rgba(52, 211, 153, 0.5); }
+.pill.warn { color: var(--amber); border-color: rgba(251, 191, 36, 0.5); }
+.pill.bad { color: var(--red); border-color: rgba(248, 113, 113, 0.5); }
+.muted { color: var(--muted); font-size: 0.88rem; }
+table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+th, td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+th { color: var(--text2); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+td.num, th.num { text-align: right; font-family: var(--mono); }
+.big-num { font-size: 2.6rem; font-weight: 800; color: var(--cyan); font-family: var(--mono); line-height: 1.1; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; margin: 1rem 0; }
+.stats .card { text-align: center; padding: 1rem 0.6rem; }
+/* test page: the canvas fills the window under the bar */
+body.fill { overflow: hidden; }
+#stage { display: block; position: fixed; left: 0; top: 0; }
+.overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(10, 14, 26, 0.86); z-index: 20; }
+.overlay .card { max-width: 640px; width: calc(100% - 3rem); }
+.overlay h1 { font-size: 1.5rem; margin-bottom: 0.6rem; }
+.overlay p { color: var(--text2); margin-bottom: 0.9rem; }
+.hidden { display: none !important; }
+/* tutorial */
+.steps { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+.steps span { flex: 1; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.1); }
+.steps span.done { background: var(--green); }
+.steps span.now { background: var(--cyan); }
+.hint { color: var(--amber); font-size: 0.95rem; margin: 0.4rem 0 1rem; }
+.arena { position: relative; height: 380px; border: 1px dashed var(--line); border-radius: var(--radius); overflow: hidden; user-select: none; }
+.dot { position: absolute; width: 96px; height: 96px; border-radius: 50%; border: 3px solid var(--cyan); display: flex;
+       align-items: center; justify-content: center; font-weight: 700; color: var(--cyan); transition: background 0.15s; }
+.dot.done, .tile.done { background: rgba(52, 211, 153, 0.25); border-color: var(--green); color: var(--green); }
+.tile { position: absolute; width: 150px; height: 96px; border-radius: 14px; border: 3px solid var(--cyan); display: flex;
+        align-items: center; justify-content: center; font-weight: 700; color: var(--cyan); cursor: pointer; background: transparent; font-size: 1rem; font-family: inherit; }
+.zone { position: absolute; right: 40px; top: 110px; width: 220px; height: 160px; border-radius: 14px; border: 3px dashed var(--amber);
+        display: flex; align-items: center; justify-content: center; color: var(--amber); font-weight: 700; }
+.zone.done { border-color: var(--green); color: var(--green); background: rgba(52, 211, 153, 0.15); }
+.block { position: absolute; left: 60px; top: 140px; width: 110px; height: 90px; border-radius: 14px; background: var(--purple);
+         display: flex; align-items: center; justify-content: center; font-weight: 800; color: #1b1035; cursor: grab; }
+.scroller { position: absolute; inset: 20px 120px; overflow-y: scroll; border: 1px solid var(--line); border-radius: 12px; background: var(--bg2); }
+.scroller div { padding: 0.7rem 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.05); color: var(--text2); }
+.scroller div.goal { color: #06202a; background: var(--cyan); font-weight: 800; cursor: pointer; }

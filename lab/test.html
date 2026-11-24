@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AirPoint lab — pointing test</title>
+<link rel="stylesheet" href="lab.css">
+</head>
+<body class="fill">
+<canvas id="stage"></canvas>
+<div class="top" style="position:fixed;left:0;right:0">
+  <div class="logo">AirPoint<span>pointing test</span></div>
+  <div id="progress" class="muted"></div>
+  <div class="spacer"></div>
+  <div id="condition" class="muted"></div>
+  <a href="index.html">lab</a>
+</div>
+
+<div class="overlay" id="intro">
+  <div class="card">
+    <h1>Pointing test</h1>
+    <p>Nine circles sit on a ring. Click the lit circle; the next one lights up across the ring. Go as fast as you can while still landing inside. A click outside counts as a miss and the test moves on.</p>
+    <p>There are three levels: big targets close together, then smaller and further apart. Each level starts when you click the top circle.</p>
+    <p class="muted" id="intro-who"></p>
+    <button class="btn big" id="start">Start</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="result">
+  <div class="card">
+    <h1>Done</h1>
+    <p class="muted" id="result-condition"></p>
+    <div class="stats">
+      <div class="card"><div class="big-num" id="r-tp">–</div><div class="muted">throughput, bits per second</div></div>
+      <div class="card"><div class="big-num" id="r-err">–</div><div class="muted">missed</div></div>
+      <div class="card"><div class="big-num" id="r-mt">–</div><div class="muted">seconds per target</div></div>
+    </div>
+    <table>
+      <thead><tr><th>Level</th><th class="num">Distance</th><th class="num">Width</th><th class="num">Throughput</th><th class="num">Missed</th><th class="num">Path / straight</th></tr></thead>
+      <tbody id="r-levels"></tbody>
+    </table>
+    <p class="muted" id="r-note" style="margin-top:0.8rem"></p>
+    <div class="row" style="margin-top:1rem">
+      <a class="btn" href="test.html">Again</a>
+      <a class="btn ghost" href="index.html">Back to the lab</a>
+    </div>
+  </div>
+</div>
+<script src="lab.js"></script>
+<script src="test.js"></script>
+</body>
+</html>
