@@ -47,6 +47,10 @@ and glow. One brain, another body part.
   restores what was set. Record, teach and the tremor simulator are hand-only and
   refuse in face mode.
 
+- **First look.** With no face calibration saved, the head's resting pose over its first twenty
+  frames becomes the centre. (Added after the first live run: the tester was sitting side-on to the
+  camera, about 30 degrees off, and the cursor sat pinned to the screen edge.)
+
 ## 4. Risks stated plainly
 
 - Talking opens the mouth, which clicks. Pause (`p`, or the wheel's pause item)

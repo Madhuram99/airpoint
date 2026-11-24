@@ -50,6 +50,19 @@ On macOS a glow follows the real cursor (a second, click-through window): the dw
 ripple on each action, DRAG / SCROLL / PAUSED / SIMULATED tags, the current hint, and the wheel. `o`
 switches it; `--no-overlay` starts without it. The wheel is also drawn in the camera view.
 
+### Face mode
+
+`f` hands the pointer to the face: turning the head moves the cursor, opening the mouth clicks (held
+open, it drags), raising the eyebrows right-clicks, and the wheel is switched on for scroll, drag and
+pause. Everything after the tracker is shared with the hand: the same vote, state machine, tremor
+canceller, dwell, wheel, glow and lab. `c` in face mode calibrates in fifteen seconds: rest, turn the
+head as far as is comfortable, open the mouth, raise the eyebrows. Without calibration, wherever the
+head rests in its first moment is taken as the middle of the screen. Talking opens the mouth, so pause
+(`p` or the wheel) before speaking.
+
+Face mode uses MediaPipe's FaceLandmarker (`face_landmarker.task`, in the repo beside the hand model).
+On this laptop it runs at 30 fps, about 5 ms per frame.
+
 ### Teach a sign
 
 `n` (with `--user`) adds a sign of your own in about fifteen seconds: type a name, hold the sign for
@@ -110,6 +123,7 @@ venv/bin/python run_demo.py --user you           # loads profiles/you.json once 
 #   p = pause (open palm held still 2 s resumes) | h = hints on/off | s = sounds on/off
 #   n = teach a new sign: name it, hold it 8 s, choose speak / keys / type / open / pause
 #   w = point-only wheel (dwell opens click / right / drag / scroll / double / pause) | o = glow at the cursor
+#   f = face mode: head moves the cursor, mouth open clicks, eyebrows right-click; c calibrates the face
 venv/bin/python run_demo.py --no-overlay         # without the glow at the cursor (the glow is macOS only)
 venv/bin/python -m airpoint.profile you          # show or edit your profile: roles, comfort box, dwell, sounds
 venv/bin/python run_demo.py --record --user you  # record your hand: space = all poses, 1-6 = one pose
@@ -129,7 +143,7 @@ macOS: allow your terminal under System Settings → Privacy & Security → Came
 airpoint/        package — camera, tracker, features, filters, tremor, pointer, classifier, fsm, actions, hud,
                  recorder, calibration, train, session, modes/ (live, record, calibrate), app,
                  lab/ (server, stats, store), results, sim_pointer, profile, hints, sounds, effects,
-                 modes/teach, wheel, overlay
+                 modes/teach, wheel, overlay, face, modes/face_calibrate
 lab/             practice pages and the pointing test (plain HTML/JS, served by airpoint.lab)
 results/         saved test sessions (trials.jsonl)
 legacy/          the midterm benchmark script, kept as presented

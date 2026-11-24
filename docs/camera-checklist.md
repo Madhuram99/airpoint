@@ -81,3 +81,17 @@ Report: the percentages from 4.1 and 4.3, the false fires from 4.4, whether 4.5 
 - [ ] **5.9 In the lab.** Take the pointing test with the wheel on: the block should be listed as `airpoint wheel`.
 
 Report: 5.3 and 5.4 exactly as they behaved, and the answers to 5.7.
+
+## Stage 6 — face mode
+
+- [ ] **6.1 Switch.** Mouse on, look at the middle of the screen, press `f`. After a moment the cursor sits near the middle and the banner reads `face`. A box and a nose dot are drawn on your face in the view.
+- [ ] **6.2 Head pointing.** Turn your head left, right, up, down: the cursor follows the same way and reaches every screen edge without straining. Is it steady when you hold still?
+- [ ] **6.3 Mouth and eyebrows.** Open your mouth briefly: one click. Hold it open and turn your head: a drag; close to drop. Raise your eyebrows for a moment: a right click.
+- [ ] **6.4 Wheel with the face.** Hold your head still for a second: the wheel opens. Pick scroll and pause with head movement alone.
+- [ ] **6.5 Calibrate the face.** `c`: follow the four prompts (rest, turn, mouth, eyebrows). The result line gives your head range. Does pointing feel better afterwards? Relaunch with `--user madhuram` and press `f`: the calibration is remembered.
+- [ ] **6.6 Talking.** Talk normally in face mode and count the unwanted clicks. Then pause (`p`) and talk: there should be none. A still face for two seconds resumes.
+- [ ] **6.7 Glasses and light.** If you wear glasses, try with and without; try with a lamp to one side.
+- [ ] **6.8 Back to the hand.** `f` again: hand signs work as before and the wheel returns to how you had it.
+- [ ] **6.9 In the lab.** Take the pointing test in face mode: the block should be listed as `airpoint face`.
+
+Report: steadiness in 6.2, unwanted clicks in 6.6, and whether 6.5 changed the feel.

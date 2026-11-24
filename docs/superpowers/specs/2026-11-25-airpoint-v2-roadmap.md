@@ -41,7 +41,7 @@ Relation to the 2026-11-13 spec:
 
 ## 2. Stages
 
-Status (kept current): Stage 1 built 2026-11-25 (`26edce2`). Stages 2 to 5 built 2026-11-25. From Stage 2 on
+Status (kept current): Stage 1 built 2026-11-25 (`26edce2`). Stages 2 to 6 built 2026-11-25. From Stage 2 on
 the user approved every stage in advance and tests them all in one session; that session's checklist is
 `docs/camera-checklist.md`.
 
