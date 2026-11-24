@@ -6,6 +6,19 @@ from ..pointer import PRECLICK_RATIO
 FILTER_NAMES = {"full": "full", "smooth": "smooth only", "off": "OFF"}
 
 
+def shake_line(sim, reading, left):
+    """Third banner line: what the tremor meter sees, and what is left after the filters.
+    None when there is nothing to say (no simulator, no lock)."""
+    parts = []
+    if sim.on:
+        parts.append(f"SIMULATED TREMOR {sim.hz:.1f} Hz")
+    if reading.locked:
+        parts.append(f"LOCKED {reading.lock_hz:.1f} Hz: shake {reading.amp:.0f} px -> {left.amp:.1f} px")
+    elif sim.on:
+        parts.append("measuring...")
+    return " | ".join(parts) or None
+
+
 class LiveMode:
     """Classify -> vote -> state machine -> pointer -> dwell -> OS."""
 
@@ -33,9 +46,10 @@ class LiveMode:
         if events:
             s.last_event = ", ".join(e.kind + ("" if e.arg is None else f" {e.arg}") for e in events)
         hud.draw_region(frame, s.runner.active_region, s.runner.enabled)
-        sim = f"SIMULATED TREMOR {s.sim.hz:.1f} Hz, {s.sim.amp:.2f} palm" if s.sim.on else None
+        shake = shake_line(s.sim, s.pointer.reading, s.pointer.left)
         s.mini_label = (f"{state} | {label} {conf:.2f} | mouse {'ON' if s.runner.enabled else 'OFF'}"
-                        + (" | SIM" if sim else ""))
+                        + (" | SIM" if s.sim.on else "")
+                        + (f" | LOCK {s.pointer.reading.lock_hz:.1f}Hz" if s.pointer.reading.locked else ""))
         if not s.mini:
             hud.draw_banner(
                 frame,
@@ -44,7 +58,7 @@ class LiveMode:
                 f"dwell [d] {'ON' if s.dwell_on else 'OFF'} | filter [b] {FILTER_NAMES[s.pointer.mode]} | "
                 f"{hud.KEY_HINT}",
                 s.runner.enabled,
-                line3=(sim, hud.ALERT) if sim else None,
+                line3=(shake, hud.ALERT if s.sim.on else hud.MINT) if shake else None,
             )
 
     def on_key(self, s, key, t):

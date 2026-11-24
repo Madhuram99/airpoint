@@ -7,6 +7,8 @@ import numpy as np
 
 from airpoint.actions import ActionRunner, FakeMouse
 from airpoint.classifier import RuleClassifier
+from airpoint.modes.live import shake_line
+from airpoint.tremor import Reading, TremorSim
 from airpoint.session import Session
 from tests.hands import BY_POSE
 from tests.test_train import _write_user
@@ -276,3 +278,22 @@ def test_simulated_tremor_is_locked_and_cancelled_in_the_live_loop(tmp_path):
     assert s.pointer.mode == "off"
     feed(s, "palm", 0.1, t)
     assert s.pointer.out == s.obs.raw                        # off = the raw pointer
+
+
+def test_shake_line_says_what_is_measured_and_what_is_left():
+    sim, idle = TremorSim(), Reading(status="steady")
+    assert shake_line(sim, idle, idle) is None
+    sim.on = True
+    assert shake_line(sim, idle, idle) == "SIMULATED TREMOR 6.0 Hz | measuring..."
+    locked = Reading(status="tremor", amp=12.4, locked=True, lock_hz=6.1)
+    left = Reading(status="steady", amp=0.83)
+    assert shake_line(sim, locked, left) == "SIMULATED TREMOR 6.0 Hz | LOCKED 6.1 Hz: shake 12 px -> 0.8 px"
+    sim.on = False
+    assert shake_line(sim, locked, left) == "LOCKED 6.1 Hz: shake 12 px -> 0.8 px"
+
+
+def test_mini_label_carries_the_simulator_and_lock_tags(tmp_path):
+    s, _ = make(tmp_path)
+    s.on_key(ord("t"), 0.0)
+    feed(s, "palm", 6.0, 0.0)
+    assert " | SIM" in s.mini_label and " | LOCK " in s.mini_label
