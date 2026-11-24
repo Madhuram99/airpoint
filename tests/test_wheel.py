@@ -30,9 +30,9 @@ def at(i, r=30.0):
 
 def test_holding_still_opens_the_wheel_and_staying_centred_clicks():
     w, t = opened()
-    events, t = run(w, [(A, 0.4, True)], t)
+    events, t = run(w, [(A, 0.6, True)], t)
     assert events == [] and 0.5 < w.progress < 1.0 and w.pick == -1
-    events, t = run(w, [(A, 0.3, True)], t)
+    events, t = run(w, [(A, 0.4, True)], t)
     assert events == [("click", None)] and w.mode == "idle" and not w.frozen
 
 
@@ -67,7 +67,7 @@ def test_moving_far_out_or_waiting_too_long_closes_it_without_acting():
 
 def test_it_does_not_reopen_until_the_hand_has_moved_away():
     w, t = opened()
-    events, t = run(w, [(A, 0.6, True), (A, 3.0, True)], t)
+    events, t = run(w, [(A, 0.9, True), (A, 3.0, True)], t)
     assert events == [("click", None)] and w.mode == "idle"            # still there for 3 s: no second wheel
     events, t = run(w, [((A[0] + 50, A[1]), 1.2, True)], t)
     assert w.mode == "open"

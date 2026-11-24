@@ -10,7 +10,8 @@ from .fsm import DwellDetector, Event
 
 ITEMS = ("click", "right", "drag", "scroll", "double", "pause")   # clockwise from the top
 R_PICK, R_OUT = 16.0, 70.0          # past R_PICK a direction is being pointed at; past R_OUT the wheel closes
-PICK_S, CENTRE_S, OPEN_TIMEOUT_S = 0.5, 0.5, 6.0
+PICK_S, OPEN_TIMEOUT_S = 0.5, 6.0
+CENTRE_S = 0.8                      # staying put clicks; long enough to start moving toward another item first
 SCROLL_DEAD_PX, SCROLL_PX_PER_TICK, SCROLL_MAX_TICKS = 10.0, 15.0, 3
 SCROLL_PERIOD_S, SCROLL_REST_S = 0.1, 1.2
 EVENTS = {"click": "click", "right": "right_click", "double": "double_click", "pause": "pause"}

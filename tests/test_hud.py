@@ -44,7 +44,7 @@ def test_fit_scale_shrinks_only_when_needed():
 
 def test_worst_case_hud_lines_stay_legible_on_the_640_canvas():
     line1 = "SCROLLING | pose thumb_down 0.99 | ratio 1.23 | mlp/madhuramrathi | 30 fps"
-    line2 = "last: drag_end, click | mouse [m] OFF | dwell [d] OFF | filter [b] smooth only | " + hud.KEY_HINT
+    line2 = "last: drag_end, click | mouse [m] OFF | dwell [d] OFF | wheel [w] OFF | filter [b] smooth only"
     title = "HOLD thumb_down   10s"
     sub = "tilt, move closer, move away | kept 1508 | rejected 1508"
     assert hud.fit_scale(line1, 0.50, 620) >= 0.42
@@ -107,3 +107,16 @@ def test_xray_shows_the_six_likeliest_classes_when_signs_were_taught():
     lit_rows = np.where((panel[24:130, 110:200] == accent).all(axis=2).any(axis=1))[0]
     assert len(lit_rows) > 0 and 24 + lit_rows.max() < 24 + 16 * 6       # the winner sits inside six rows
     assert hud.draw_xray(360, _taps(labels=labels, probs=None, label="none")).shape == (360, 400, 3)
+
+
+def test_wheel_is_drawn_around_its_anchor_with_the_pointed_item_lit():
+    view = {"mode": "open", "anchor": (320.0, 180.0), "pick": 1, "progress": 0.6,
+            "items": ["click", "right", "drag", "scroll", "double", "pause"], "dot": (0.3, -0.2)}
+    frame = np.zeros((360, 640, 3), np.uint8)
+    hud.draw_wheel(frame, view)
+    assert frame[100:260, 240:400].any() and not frame[:100].any() and not frame[:, :240].any()
+    accent = np.array(hud.ACCENT_ON, np.uint8)
+    assert (frame[110:180, 320:400] == accent).all(axis=2).any()          # the lit arc is up and to the right
+    idle = np.zeros((360, 640, 3), np.uint8)
+    hud.draw_wheel(idle, dict(view, mode="idle"))
+    assert not idle.any()

@@ -96,6 +96,30 @@ def draw_prompt(frame, title, subtitle, alert=None):
         put_fit(frame, alert, (16, 78), 0.45, ALERT)
 
 
+WHEEL_LABELS = {"click": "click", "right": "right", "drag": "drag", "scroll": "scroll", "double": "2x", "pause": "pause"}
+
+
+def draw_wheel(frame, view, r_in=16, r_out=70):
+    """The point-only wheel in the camera view: six directions around where the hand stopped."""
+    if view["mode"] != "open":
+        return
+    c = _px(view["anchor"])
+    cv2.circle(frame, c, r_out, PANEL, 2)
+    cv2.circle(frame, c, r_in, ACCENT_ON if view["pick"] == -1 else ACCENT_OFF, 1)
+    for i, item in enumerate(view["items"]):
+        mid = -90.0 + 60.0 * i                               # image angles: 0 = right, growing clockwise
+        a = np.radians(mid)
+        lit = i == view["pick"]
+        if lit:
+            cv2.ellipse(frame, c, (r_out, r_out), 0, mid - 30, mid - 30 + 60 * view["progress"], ACCENT_ON, 4)
+        label = WHEEL_LABELS.get(item, item)
+        size = cv2.getTextSize(label, FONT, 0.38, 1)[0]
+        org = (int(c[0] + 44 * np.cos(a) - size[0] / 2), int(c[1] + 44 * np.sin(a) + size[1] / 2))
+        cv2.putText(frame, label, org, FONT, 0.38, ACCENT_ON if lit else WHITE, 1, cv2.LINE_AA)
+    if view["pick"] == -1:
+        cv2.ellipse(frame, c, (r_in + 4, r_in + 4), -90, 0, 360 * view["progress"], ACCENT_ON, 2)
+
+
 def draw_hint(frame, text):
     """Bottom strip: one plain instruction when something is in the way."""
     h, w = frame.shape[:2]

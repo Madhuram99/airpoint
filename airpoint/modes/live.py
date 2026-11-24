@@ -48,7 +48,7 @@ class LiveMode:
         if o.raw is not None:
             smooth = s.pointer.update(o.raw, o.t, preclick=ratio < PRECLICK_RATIO)
             hud.draw_cursor(frame, o.raw, smooth)
-            if not s.fsm.cursor_frozen:
+            if not s.fsm.cursor_frozen and not (s.wheel_on and s.wheel.frozen):
                 s.runner.move(smooth[0] / o.w, smooth[1] / o.h)
         if s.runner.locked:                        # paused: nothing acts; a still open palm resumes
             events = []
@@ -56,6 +56,10 @@ class LiveMode:
             resume, progress = s.unlock_dwell.update(smooth, o.t, calm)
             if resume is not None:
                 s.set_locked(False)
+        elif s.wheel_on:                           # point-only: a dwell opens the wheel of actions
+            events = events + s.wheel.update(smooth, o.t, state == "MOVING")
+            progress = s.wheel.progress if s.wheel.mode in ("idle", "drag") else 0.0
+            hud.draw_wheel(frame, s.wheel.view)
         else:
             dwell_event, progress = s.dwell.update(smooth, o.t, s.dwell_on and state == "MOVING")
             if dwell_event is not None:
@@ -96,8 +100,8 @@ class LiveMode:
                 frame,
                 f"{state} | pose {label} {conf:.2f} | ratio {ratio:.2f} | {s.clf.name} | {o.fps:.0f} fps",
                 f"last: {s.last_event} | mouse [m] {'ON' if s.runner.enabled else 'OFF'} | "
-                f"dwell [d] {'ON' if s.dwell_on else 'OFF'} | filter [b] {FILTER_NAMES[s.pointer.mode]} | "
-                f"{hud.KEY_HINT}",
+                f"dwell [d] {'ON' if s.dwell_on else 'OFF'} | wheel [w] {'ON' if s.wheel_on else 'OFF'} | "
+                f"filter [b] {FILTER_NAMES[s.pointer.mode]}",
                 s.runner.enabled,
                 line3=line3,
             )

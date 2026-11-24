@@ -18,6 +18,7 @@ from .profile import Profile, fsm_parts
 from .sounds import Sounds
 from .train import train_personal
 from .tremor import TremorSim
+from .wheel import Wheel
 
 
 LIVE_EVERY_S = 1.0   # how often results/live.json is rewritten for the lab
@@ -63,6 +64,7 @@ class Session:
         self.apply_region(self.profile.region)
         self.sim = TremorSim()
         self.dwell_on = self.profile.dwell if dwell_on is None else dwell_on
+        self.wheel, self.wheel_on = Wheel(), self.profile.wheel
         self.mini, self.view_dirty = False, False
         self.zoom, self.xray, self.ms_tracker = 1.5, False, 0.0
         self.recorder, self.rejected = None, 0
@@ -110,6 +112,7 @@ class Session:
     def set_locked(self, locked):
         """The user's pause. Locking lets go of a held button; a still open palm unlocks (live mode)."""
         if locked:
+            self.wheel.reset()
             self.runner.lock()
         else:
             self.runner.unlock()
@@ -125,7 +128,7 @@ class Session:
         """What is driving the cursor right now, for the lab to label a test block with."""
         r = self.pointer.reading
         return dict(ts=time.time(), user=self.user, mode=self.mode.name, mouse=self.runner.enabled,
-                    dwell=self.dwell_on, filter=self.pointer.mode,
+                    dwell=self.dwell_on, wheel=self.wheel_on, filter=self.pointer.mode,
                     sim=dict(on=self.sim.on, hz=self.sim.hz, amp=self.sim.amp),
                     locked=self.runner.locked, gain=round(self.pointer.gain, 3),
                     tremor_locked=r.locked, lock_hz=round(r.lock_hz, 2), classifier=self.clf.name,
@@ -145,6 +148,7 @@ class Session:
             pass
 
     def set_mode(self, mode):
+        self.runner.apply(self.wheel.reset())       # a wheel drag does not survive leaving the live view
         self.mode.close(self)
         self.mode = mode
         if mode.name != "live":
@@ -177,6 +181,9 @@ class Session:
         elif key == ord("d"):
             self.dwell_on = not self.dwell_on
             self.dwell.reset()
+        elif key == ord("w"):
+            self.wheel_on = not self.wheel_on
+            self.runner.apply(self.wheel.reset())
         elif key == ord("k") and self.mlp is not None:
             self.clf = self.rules if self.clf is self.mlp else self.mlp
             self.smoother.reset()

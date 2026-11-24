@@ -72,13 +72,14 @@ class CalibrateMode:
         prof.roles = profiles.drop_poses(prof.roles, prof.skipped)
         s.apply_bindings()
         no_grip = not prof.roles["grip"]
-        if no_grip:                                    # no sign left to click with: hold-still clicking takes over
+        if no_grip:                                    # no sign left to click with: pointing alone takes over
             prof.dwell = s.dwell_on = True
+            prof.wheel = s.wheel_on = True
         profiles.save(s.root, prof)
         calib.phase = "done"
         calib.message = (f"{r['acc_on_own_frames'] * 100:.0f}% on your frames"
                          + (f" | skipped: {', '.join(prof.skipped)}" if prof.skipped else "")
-                         + (" | dwell click ON" if no_grip else ""))
+                         + (" | dwell wheel ON" if no_grip else ""))
 
     def on_key(self, s, key, t):
         return False

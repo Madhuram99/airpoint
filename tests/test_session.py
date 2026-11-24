@@ -350,7 +350,7 @@ def test_live_state_file_tells_the_lab_what_is_driving_the_cursor(tmp_path):
     assert live["mouse"] and live["dwell"] and live["filter"] == "full" and live["mode"] == "live"
     assert live["sim"] == {"on": False, "hz": 6.0, "amp": 0.2} and live["user"] == "ana"
     assert live["classifier"] == "rules" and abs(live["ts"] - time.time()) < 5
-    assert live["locked"] is False and live["gain"] == 1.0
+    assert live["locked"] is False and live["gain"] == 1.0 and live["wheel"] is False
     s.on_key(ord("t"), t)
     s.on_key(ord("b"), t)
     t = feed(s, "palm", 0.3, t)                      # under a second since the last write
@@ -471,3 +471,58 @@ def test_nothing_is_spoken_while_paused_and_a_pause_sign_pauses(tmp_path):
     t = feed(s, "palm", 0.5, 0.0)
     feed(s, "v_sign", 1.0, t)
     assert s.runner.locked and s.played == ["Submarine.aiff"]
+
+
+def feed_at(s, dx, dy, seconds, t):
+    """Open palm shifted by (dx, dy) view pixels from where the fixtures hold it."""
+    pts = BY_POSE["palm"] + np.array([dx / 640.0, dy / 360.0, 0.0])
+    for _ in range(round(seconds / DT)):
+        s.tick(blank(), pts, "Right", t)
+        t += DT
+    return t
+
+
+def open_wheel(s, dx, dy, t):
+    """Hold the palm at (dx, dy) until the wheel opens there. -> time."""
+    pts = BY_POSE["palm"] + np.array([dx / 640.0, dy / 360.0, 0.0])
+    for _ in range(90):
+        s.tick(blank(), pts, "Right", t)
+        t += DT
+        if s.wheel.mode == "open":
+            return t
+    raise AssertionError("the wheel did not open")
+
+
+def test_w_turns_dwell_into_a_wheel_and_staying_centred_clicks(tmp_path):
+    s, mouse = make(tmp_path)
+    s.on_key(ord("w"), 0.0)
+    t = open_wheel(s, 0, 0, 0.0)
+    assert kinds(mouse) == []
+    moves = sum(c[0] == "move" for c in mouse.calls)
+    t = feed_at(s, 3, 2, 0.5, t)                         # the hand drifts a little: the system cursor must not
+    assert sum(c[0] == "move" for c in mouse.calls) == moves and kinds(mouse) == []
+    t = feed_at(s, 3, 2, 0.5, t)
+    assert kinds(mouse) == ["click"] and s.wheel.mode == "idle" and s.played == ["Tink.aiff"]
+
+
+def test_wheel_directions_reach_right_click_and_pause(tmp_path):
+    s, mouse = make(tmp_path)
+    s.on_key(ord("w"), 0.0)
+    t = open_wheel(s, 0, 0, 0.0)
+    t = feed_at(s, 26, -15, 1.0, t)                      # up and to the right: the second item, right click
+    assert kinds(mouse) == ["right_click"]
+    t = open_wheel(s, 120, 0, t)                         # move away, stop: it opens again there
+    t = feed_at(s, 120 - 26, -15, 1.0, t)                # up and to the left: the sixth item, pause
+    assert s.runner.locked and s.wheel.mode == "idle"
+
+
+def test_wheel_drag_is_dropped_when_wheel_mode_or_live_mode_ends(tmp_path):
+    for leave in (ord("w"), ord("r")):
+        s, mouse = make(tmp_path)
+        s.on_key(ord("w"), 0.0)
+        t = open_wheel(s, 0, 0, 0.0)
+        t = feed_at(s, 26, 15, 1.0, t)                   # down and to the right: the third item, drag
+        assert kinds(mouse) == ["down"] and s.wheel.mode == "drag"
+        s.on_key(leave, t)
+        assert kinds(mouse) == ["down", "up"] and s.wheel.mode == "idle"
+        s.close()

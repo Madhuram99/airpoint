@@ -35,6 +35,7 @@ class Profile:
     roles: dict = field(default_factory=default_roles)
     skipped: list = field(default_factory=list)    # poses the hand could not hold at calibration
     dwell: bool = False
+    wheel: bool = False             # point-only: a dwell opens the wheel of actions instead of clicking
     sounds: bool = True
     hints: bool = True
     filter: str = "full"
@@ -141,6 +142,7 @@ def main(argv=None, root=None):
     ap.add_argument("--region", metavar="x0,y0,x1,y1", help="comfort box in frame fractions")
     ap.add_argument("--reset-region", action="store_true")
     ap.add_argument("--dwell", type=_on_off, metavar="on|off")
+    ap.add_argument("--wheel", type=_on_off, metavar="on|off", help="point-only wheel instead of a plain dwell click")
     ap.add_argument("--sounds", type=_on_off, metavar="on|off")
     ap.add_argument("--hints", type=_on_off, metavar="on|off")
     ap.add_argument("--filter", choices=MODES)
@@ -166,7 +168,7 @@ def main(argv=None, root=None):
         if len(box) != 4 or not (0 <= box[0] < box[2] <= 1 and 0 <= box[1] < box[3] <= 1):
             raise SystemExit("region needs x0,y0,x1,y1 with 0 <= x0 < x1 <= 1 and 0 <= y0 < y1 <= 1")
         prof.region = box
-    for name in ("dwell", "sounds", "hints", "filter", "voice"):
+    for name in ("dwell", "wheel", "sounds", "hints", "filter", "voice"):
         if getattr(args, name) is not None:
             setattr(prof, name, getattr(args, name))
     if asdict(prof) != before or not os.path.exists(path(root, args.user)):

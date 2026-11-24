@@ -19,7 +19,8 @@ The system cursor stays where it was; the hand now steers a choice.
 Six items, clockwise from the top: click, right click, drag, scroll, double
 click, pause.
 
-- Stay near the centre for half a second: plain click. A click costs 1.5 s in all.
+- Stay near the centre for 0.8 s: plain click, 1.8 s in all. The wait is deliberately longer than
+  the half second an item needs, so there is time to start moving toward another item.
 - Move toward an item (16 px of hand travel in the 640-wide view) and hold that
   direction for half a second: that item.
 - Move far out (70 px) or wait six seconds: the wheel closes and nothing happens.
