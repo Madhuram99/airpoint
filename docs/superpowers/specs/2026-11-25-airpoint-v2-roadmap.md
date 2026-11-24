@@ -43,28 +43,30 @@ Relation to the 2026-11-13 spec:
 
 Size is relative: S, M, L. "You" = work only the user can do (camera, people).
 
-### Stage 1 — Tremor switch + X-ray view (M)
-- First task: restructure the frame loop in `app.py` into shared session state plus
-  one object per mode (live, record, calibrate), each with `tick` and `on_key`. No
-  behaviour change; the existing 55 tests and an import check guard it. Eight more
-  stages add modes, sources and services to this loop.
-- `tremor.py`: a simulator that adds a whole-hand oscillation to the landmarks
-  before anything reads them (classification is unaffected: features are
-  translation-free); a meter over a sliding window of the raw pointer that removes
-  slow voluntary motion and reports dominant frequency (3–12 Hz band) and RMS
-  amplitude, "steady" below a floor; adaptive `fc_min` from the live amplitude
-  through the existing jitter mapping, rate-limited.
-- Keys: simulated tremor on/off (labelled SIMULATED everywhere), amplitude up/down,
-  filter bypass for an A/B on the real cursor, adaptive smoothing on/off, X-ray.
-- X-ray view: probability bar per class, vote buffer, state machine with the
-  active state lit and time in state, raw vs filtered trail, per-stage timings, fps,
-  tremor gauge.
-- Tests: synthetic 6 Hz signal reads 6 Hz and the right amplitude; steady reads
-  steady; simulator leaves `normalize_63` unchanged; adaptive mapping is monotone.
-- You: one camera session. It also covers the three Week 2 checks never run
-  (calibration end to end, dwell, mini view).
-- Limits to state: a 30 fps webcam caps measurable tremor near 12–15 Hz; this is
-  not a medical measurement; the demo tremor is simulated.
+### Stage 1 — Tremor switch, tremor canceller, X-ray view (M)
+Design: `2026-11-25-airpoint-stage1-tremor-xray-design.md`.
+- First task: restructure the frame loop in `app.py` into a session, a pointer
+  pipeline and one object per mode (live, record, calibrate). No behaviour change;
+  the existing 55 tests plus new headless flow tests guard it.
+- One coordinate space: everything after the tracker works in a 640-wide canonical
+  frame, so pixel thresholds mean the same on any camera. The camera's real frame
+  size was never measured; the 1-Euro speed gain is rescaled once to keep the feel.
+- `tremor.py`: a simulator (whole-hand shake added to the landmarks, live mode
+  only, always labelled), a meter (frequency and amplitude of the shake, with
+  lock-on), and a canceller (a notch at the locked frequency, before the 1-Euro
+  filter).
+- Changed from the first draft: "smoothing adapts by itself" became the canceller.
+  A simulation study showed that lowering the smoothing cutoff barely touches a
+  periodic tremor, while removing only the tremor band leaves 3–7× less shake and
+  makes dwell clicking work under severe tremor.
+- Keys: simulator on/off, size, speed; filter mode full / smoothing only / off;
+  X-ray panel.
+- X-ray panel: probability bars, vote buffer, state machine, pointer scope,
+  spectrum, timings.
+- You: report the camera's native frame size before the build; one camera session
+  after it, which also covers the three Week 2 checks never run.
+- Limits to state: results are simulated; a 30 fps webcam caps measurable tremor
+  near 12 Hz; this is not a medical measurement.
 
 ### Stage 2 — Practice pages + real numbers (M)
 - `python -m airpoint.lab`: a local server (standard library) that serves two pages
@@ -157,8 +159,11 @@ Size is relative: S, M, L. "You" = work only the user can do (camera, people).
 - The only feature that sends anything off the laptop (screenshots and request
   text). Off by default, switched on per session, with a visible mark. The key comes
   from the environment and never enters the repo.
-- Needs internet, an API key, Screen Recording permission. API, model choice, cost
-  and the tool loop are designed in this stage's own spec.
+- Needs internet, an API key, Screen Recording permission. Provider chosen by the
+  user on 2026-11-25: OpenAI, key read from `OPENAI_API_KEY` in the environment
+  (the variable may hold several keys separated by `;`). The exact model id, cost
+  and the tool loop are settled in this stage's own spec. The key is never written
+  to this repo.
 
 ### Stage 9 — Try it in your browser (L)
 - A hosted page (GitHub Pages on the public repo): MediaPipe hand tracking in the
