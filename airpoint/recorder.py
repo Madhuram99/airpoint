@@ -75,8 +75,9 @@ class RecordSession:
     drop that pose's old rows once; the caller clears it.
     """
 
-    def __init__(self, poses=POSES):
+    def __init__(self, poses=POSES, capture_s=CAPTURE_S):
         self.poses = list(poses)
+        self.capture_s = capture_s
         self.i = 0
         self.phase = "idle"
         self.t0 = 0.0
@@ -111,13 +112,13 @@ class RecordSession:
         """-> (phase, pose, seconds_left)."""
         if self.phase == "countdown" and t - self.t0 >= COUNTDOWN_S:
             self.phase, self.t0, self.fresh = "capturing", t, True
-        elif self.phase == "capturing" and t - self.t0 >= CAPTURE_S:
+        elif self.phase == "capturing" and t - self.t0 >= self.capture_s:
             if not self.single and self.i + 1 < len(self.poses):
                 self.i += 1
                 self.start(t)
             else:
                 self.i = min(self.i + 1, len(self.poses)) if not self.single else self.i
                 self.phase = "done"
-        total = {"countdown": COUNTDOWN_S, "capturing": CAPTURE_S}.get(self.phase)
+        total = {"countdown": COUNTDOWN_S, "capturing": self.capture_s}.get(self.phase)
         left = max(total - (t - self.t0), 0.0) if total else 0.0
         return self.phase, self.pose, left

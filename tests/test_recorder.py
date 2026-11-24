@@ -100,3 +100,11 @@ def test_session_select_jumps_to_a_pose_and_redo_restarts_current():
     assert s.update(22.0)[0] == "done"
     s.redo(23.0)
     assert s.update(23.0) == ("countdown", "palm", 3.0)
+
+
+def test_session_capture_length_is_configurable():
+    s = RecordSession(("palm",), capture_s=5.0)
+    s.start(0.0)
+    assert s.update(3.0) == ("capturing", "palm", 5.0)
+    assert s.update(7.9)[0] == "capturing"
+    assert s.update(8.0)[0] == "done"
