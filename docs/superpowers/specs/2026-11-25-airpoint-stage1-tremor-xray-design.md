@@ -1,7 +1,7 @@
 # AirPoint Stage 1 — Tremor switch, tremor canceller, X-ray view
 
 Date: 2026-11-25
-Status: design, awaiting user review
+Status: approved 2026-11-25; built per `docs/superpowers/plans/2026-11-25-airpoint-stage1-tremor-xray.md`
 Roadmap: `2026-11-25-airpoint-v2-roadmap.md`, Stage 1
 Builder: Madhuram + Claude
 
@@ -26,6 +26,7 @@ and a frame loop split into parts that eight more stages can extend.
 | `{` `}` | simulated tremor slower / faster |
 | `b` | pointer filter: full → smoothing only → off → full |
 | `x` | X-ray panel beside the camera view |
+| `z` | zoom of the full view: 1×, 1.5×, 2× |
 
 - **full** = tremor canceller + 1-Euro smoothing (new default).
 - **smoothing only** = today's behaviour.
@@ -120,8 +121,11 @@ Design:
   Stage 9 browser port can share them.
 - `beta` becomes 0.030 in that space (0.010 × 1920 / 640). This reproduces the
   Week 1 cursor feel exactly.
-- The full-view window becomes resizable; the HUD is laid out for the 640 canvas.
-  A test measures every HUD string with `cv2.getTextSize` so none overflows.
+- The view is shown at 1.5× by default and `z` cycles 1×, 1.5×, 2× (decided in the
+  plan: dragging an OpenCV window on macOS scales unpredictably). The HUD is laid out
+  for the 640 canvas; text shrinks to fit rather than run off the edge, and a test
+  keeps the worst-case strings legible. Record and calibrate prompts sit in a top
+  strip so they never cover the hand.
 
 ### 4.2 Frame loop in parts (no behaviour change)
 
@@ -153,8 +157,9 @@ modes/calibrate.py CalibSession + Recorder + Trainer + prompt
   slow frequency wander of about ±0.45 Hz, 25% amplitude modulation (the model the
   evidence in §3 used). Phase is integrated
   step by step, so changing the frequency live is smooth.
-- Amplitude is in palm lengths (default 0.15, range 0.05–0.45), so it looks the
-  same at any distance. Frequency default 6.0 Hz, range 3.5–10.
+- Amplitude is in palm lengths (default 0.20, range 0.05–0.60), so it looks the
+  same at any distance. 0.20 is the "moderate" row of §3 at a typical palm size.
+  Frequency default 6.0 Hz, range 3.5–10.
 - Live mode only. Entering record or calibrate turns it off: simulated shake never
   reaches recorded data or a profile.
 
@@ -165,7 +170,9 @@ modes/calibrate.py CalibSession + Recorder + Trainer + prompt
   (upper edge capped at 0.42 × frame rate), amplitude = RMS across both axes,
   frequency = strongest peak of the windowed spectrum, prominence = peak over the
   band median.
-- An estimate counts as tremor when amplitude ≥ 1.5 px and prominence ≥ 6.
+- An estimate counts as tremor when amplitude ≥ 1.5 px and prominence ≥ 8. (The
+  prototype showed 6 falsely locks about 2% of the time on noisier landmarks; 8
+  gave none, with the same lock-on time.)
 - Locked after three consecutive tremor estimates agreeing within 1 Hz; released
   after three consecutive without. Frequency is smoothed while locked.
 - The band's upper edge follows the frame rate: at 16.5 fps it sees tremor only

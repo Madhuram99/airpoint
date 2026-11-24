@@ -55,7 +55,7 @@ The MacBook camera idles at 15 fps in dim light unless a rate is requested; aske
 **Files:**
 - Modify: `airpoint/camera.py`
 
-- [ ] **Step 1: Implement**
+- [x] **Step 1: Implement**
 
 **Apply to `airpoint/camera.py`:**
 
@@ -88,7 +88,7 @@ index db8dd70..88fd839 100644
  
 ````
 
-- [ ] **Step 2: Check on the real camera** (turns the camera on for about 2 seconds, stores nothing)
+- [x] **Step 2: Check on the real camera** (turns the camera on for about 2 seconds, stores nothing)
 
 Run:
 ```bash
@@ -99,12 +99,12 @@ c = Camera(); print(c.index, c.size, c.fps); c.close()"
 Expected on this MacBook: `0 (1920, 1080) 30.0` (OpenCV may first print `out device of bound (0-0): 1`; that is
 the probe for a second camera and is harmless).
 
-- [ ] **Step 3: Suite still green**
+- [x] **Step 3: Suite still green**
 
 Run: `venv/bin/pytest -q`
 Expected: `55 passed`
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add airpoint/camera.py
@@ -121,7 +121,7 @@ The X-ray panel (Task 9) draws one bar per class. `predict` keeps its contract a
 - Modify: `airpoint/classifier.py`
 - Modify: `tests/test_classifier.py`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 **Apply to `tests/test_classifier.py`:**
 
@@ -151,12 +151,12 @@ index fc9f42c..99dc8e7 100644
 +        assert p.sum() == 1.0 and clf.labels[int(np.argmax(p))] == pose
 ````
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `venv/bin/pytest tests/test_classifier.py -q`
 Expected: `2 failed, 7 passed` with `AttributeError: 'PoseClassifier' object has no attribute 'proba'` and `AttributeError: 'RuleClassifier' object has no attribute 'labels'`
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 **Apply to `airpoint/classifier.py`:**
 
@@ -203,12 +203,12 @@ index 28c96ca..0a823ca 100644
  
 ````
 
-- [ ] **Step 4: Run to verify they pass, then the full suite**
+- [x] **Step 4: Run to verify they pass, then the full suite**
 
 Run: `venv/bin/pytest tests/test_classifier.py -q && venv/bin/pytest -q`
 Expected: the full suite ends with `57 passed`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add airpoint/classifier.py tests/test_classifier.py
@@ -233,7 +233,7 @@ A pure move: behaviour is unchanged, including integer pointer pixels and drawin
 - Modify: `airpoint/app.py`
 - Create: `tests/test_session.py`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 **Create `tests/test_session.py`:**
 
@@ -442,12 +442,12 @@ def test_failed_retrain_keeps_the_old_model(tmp_path):
     s.close()
 ````
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `venv/bin/pytest tests/test_session.py -q`
 Expected: `1 error` with `ModuleNotFoundError: No module named 'airpoint.session'`
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 **Create `airpoint/pointer.py`:**
 
@@ -891,17 +891,17 @@ def main(argv=None):
         cv2.destroyAllWindows()
 ````
 
-- [ ] **Step 4: Run to verify they pass**
+- [x] **Step 4: Run to verify they pass**
 
 Run: `venv/bin/pytest tests/test_session.py -q`
 Expected: `12 passed`
 
-- [ ] **Step 5: Import check and full suite**
+- [x] **Step 5: Import check and full suite**
 
 Run: `venv/bin/python -c "import airpoint.app" && venv/bin/pytest -q`
 Expected: `69 passed`
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add airpoint/app.py airpoint/hud.py airpoint/modes airpoint/pointer.py airpoint/recorder.py airpoint/session.py tests/test_session.py
@@ -924,7 +924,7 @@ The camera delivers 1920 x 1080, so Week 2's pixel thresholds (written for a 640
 - Modify: `tests/test_hud.py`
 - Modify: `tests/test_session.py`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 **Replace `tests/test_hud.py` with:**
 
@@ -1043,12 +1043,12 @@ index 3f1f369..eff436c 100644
  class _Mlp:
 ````
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `venv/bin/pytest tests/test_hud.py tests/test_session.py -q`
 Expected: failures with `AttributeError: module 'airpoint.hud' has no attribute 'canon_view'` (also `zoomed`, `fit_scale`) and `TypeError: draw_banner() got an unexpected keyword argument 'line3'`
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 **Replace `airpoint/hud.py` with:**
 
@@ -1351,12 +1351,12 @@ index ddbcaae..f21b1ed 100644
          for frame in camera.frames():
 ````
 
-- [ ] **Step 4: Run to verify they pass, then the full suite**
+- [x] **Step 4: Run to verify they pass, then the full suite**
 
 Run: `venv/bin/pytest tests/test_hud.py tests/test_session.py -q && venv/bin/pytest -q`
 Expected: the full suite ends with `77 passed`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add airpoint/app.py airpoint/hud.py airpoint/modes airpoint/pointer.py airpoint/session.py tests/test_hud.py tests/test_session.py
@@ -1377,7 +1377,7 @@ One offset added to all 21 landmarks before anything reads them, so the skeleton
 - Modify: `tests/test_session.py`
 - Create: `tests/test_tremor.py`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 **Apply to `tests/test_session.py`:**
 
@@ -1459,12 +1459,12 @@ def test_sim_nudges_clamp_to_their_ranges():
     assert (sim.hz, sim.amp) == (3.5, 0.05)
 ````
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `venv/bin/pytest tests/test_tremor.py tests/test_session.py -q`
 Expected: `1 error` with `ModuleNotFoundError: No module named 'airpoint.tremor'`
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 **Create `airpoint/tremor.py`:**
 
@@ -1639,12 +1639,12 @@ index 0995f8e..09388dd 100644
  def draw_dwell_ring(frame, xy, progress):
 ````
 
-- [ ] **Step 4: Run to verify they pass, then the full suite**
+- [x] **Step 4: Run to verify they pass, then the full suite**
 
 Run: `venv/bin/pytest tests/test_tremor.py tests/test_session.py -q && venv/bin/pytest -q`
 Expected: the full suite ends with `82 passed`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add airpoint/hud.py airpoint/modes airpoint/session.py airpoint/tremor.py tests/test_session.py tests/test_tremor.py
@@ -1662,7 +1662,7 @@ git commit -m "feat(tremor): simulator — t on/off, [ ] size, { } speed; live m
 - Create: `tests/pointer_sim.py`
 - Modify: `tests/test_tremor.py`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 **Create `tests/pointer_sim.py`:**
 
@@ -1859,12 +1859,12 @@ def test_estimate_reports_the_spectrum_it_judged():
     assert r.status == "tremor" and len(freqs) == len(power) == 91 and abs(freqs[int(np.argmax(power))] - r.hz) < 1e-9
 ````
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `venv/bin/pytest tests/test_tremor.py -q`
 Expected: `1 error` with `ImportError: cannot import name 'TremorMeter' from 'airpoint.tremor'`
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 **Replace `airpoint/tremor.py` with:**
 
@@ -2008,12 +2008,12 @@ class TremorMeter:
         return self.reading
 ````
 
-- [ ] **Step 4: Run to verify they pass, then the full suite**
+- [x] **Step 4: Run to verify they pass, then the full suite**
 
 Run: `venv/bin/pytest tests/test_tremor.py -q && venv/bin/pytest -q`
 Expected: the full suite ends with `89 passed`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add airpoint/tremor.py tests/pointer_sim.py tests/test_tremor.py
@@ -2037,7 +2037,7 @@ A second-order notch per axis at the locked frequency (Q 1.5), stepped on every 
 - Create: `tests/test_pointer.py`
 - Modify: `tests/test_session.py`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 **Apply to `tests/test_hud.py`:**
 
@@ -2189,12 +2189,12 @@ index 41165e7..d5f5270 100644
 +    assert s.pointer.out == s.obs.raw                        # off = the raw pointer
 ````
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `venv/bin/pytest tests/test_pointer.py tests/test_session.py tests/test_hud.py -q`
 Expected: `1 error` with `ImportError: cannot import name 'TremorCanceller' from 'airpoint.tremor'`
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 **Apply to `airpoint/tremor.py`:**
 
@@ -2397,12 +2397,12 @@ index f21b1ed..d67dc7b 100644
  def load_classifiers(force_rules, profile=None):
 ````
 
-- [ ] **Step 4: Run to verify they pass, then the full suite**
+- [x] **Step 4: Run to verify they pass, then the full suite**
 
 Run: `venv/bin/pytest tests/test_pointer.py tests/test_session.py tests/test_hud.py -q && venv/bin/pytest -q`
 Expected: the full suite ends with `99 passed`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add airpoint/app.py airpoint/hud.py airpoint/modes airpoint/pointer.py airpoint/session.py airpoint/tremor.py tests/test_hud.py tests/test_pointer.py tests/test_session.py
@@ -2419,7 +2419,7 @@ A third banner line appears only when there is something to say: the simulator i
 - Modify: `airpoint/modes/live.py`
 - Modify: `tests/test_session.py`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 **Apply to `tests/test_session.py`:**
 
@@ -2462,12 +2462,12 @@ index d5f5270..7c9c322 100644
 +    assert " | SIM" in s.mini_label and " | LOCK " in s.mini_label
 ````
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `venv/bin/pytest tests/test_session.py -q`
 Expected: `1 error` with `ImportError: cannot import name 'shake_line' from 'airpoint.modes.live'`
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 **Apply to `airpoint/modes/live.py`:**
 
@@ -2520,12 +2520,12 @@ index d209b85..51953b7 100644
      def on_key(self, s, key, t):
 ````
 
-- [ ] **Step 4: Run to verify they pass, then the full suite**
+- [x] **Step 4: Run to verify they pass, then the full suite**
 
 Run: `venv/bin/pytest tests/test_session.py -q && venv/bin/pytest -q`
 Expected: the full suite ends with `101 passed`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add airpoint/modes tests/test_session.py
@@ -2547,7 +2547,7 @@ git commit -m "feat(hud): shake readout — measured tremor and what is left, in
 - Modify: `tests/test_hud.py`
 - Modify: `tests/test_session.py`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 **Create `tests/test_app.py`:**
 
@@ -2698,12 +2698,12 @@ index 7c9c322..c467131 100644
 +    assert len(x["trail"]) == 21 and x["mode"] == "full" and not x["sim"]
 ````
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `venv/bin/pytest tests/test_hud.py tests/test_session.py tests/test_app.py -q`
 Expected: `6 failed` with `AttributeError: module 'airpoint.hud' has no attribute 'draw_xray'`, `AttributeError: 'Session' object has no attribute 'taps'` and `AttributeError: '_Mlp' object has no attribute 'predict'`
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 **Apply to `airpoint/hud.py`:**
 
@@ -2947,12 +2947,12 @@ index d67dc7b..aaffa0f 100644
                  s.view_dirty = False
 ````
 
-- [ ] **Step 4: Run to verify they pass, then the full suite**
+- [x] **Step 4: Run to verify they pass, then the full suite**
 
 Run: `venv/bin/pytest tests/test_hud.py tests/test_session.py tests/test_app.py -q && venv/bin/pytest -q`
 Expected: the full suite ends with `106 passed`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add airpoint/app.py airpoint/hud.py airpoint/modes airpoint/session.py tests/test_app.py tests/test_hud.py tests/test_session.py
@@ -2971,7 +2971,7 @@ The README gains the tremor section and the new keys, `run.txt` the key line and
 - Modify: `docs/superpowers/specs/2026-11-25-airpoint-stage1-tremor-xray-design.md`
 - Modify: this plan (tick the boxes)
 
-- [ ] **Step 1: Apply the docs changes**
+- [x] **Step 1: Apply the docs changes**
 
 **Apply to `README.md`:**
 
@@ -3123,14 +3123,14 @@ index 6d9938a..5191b4d 100644
  - The band's upper edge follows the frame rate: at 16.5 fps it sees tremor only
 ````
 
-- [ ] **Step 2: Tick the boxes of Tasks 1–10 in this plan**
+- [x] **Step 2: Tick the boxes of Tasks 1–10 in this plan**
 
-- [ ] **Step 3: Import check and full suite**
+- [x] **Step 3: Import check and full suite**
 
 Run: `venv/bin/python -c "import airpoint.app" && venv/bin/pytest -q`
 Expected: `106 passed`
 
-- [ ] **Step 4: Commit and push**
+- [x] **Step 4: Commit and push**
 
 ```bash
 git add README.md run.txt docs/superpowers/specs/2026-11-25-airpoint-stage1-tremor-xray-design.md docs/superpowers/plans/2026-11-25-airpoint-stage1-tremor-xray.md

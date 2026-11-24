@@ -10,6 +10,7 @@ Team: Ishan Gupta, Dakshmeet Singh, Madhuram Rathi, Bhuvi Kansal.
 ```
 webcam → MediaPipe Hands (21 points) → wrist-centred, palm-scaled 63-d vector
        → pose classifier (MLP, rules fallback) → 5-frame vote → state machine → OS mouse
+cursor : middle knuckle → tremor canceller → One-Euro filter → screen
 ```
 
 | Pose | Action |
@@ -22,6 +23,23 @@ webcam → MediaPipe Hands (21 points) → wrist-centred, palm-scaled 63-d vecto
 | open palm, still 1 s (dwell mode, `d`) | click with no finger motion at all |
 | hand out of frame | rest, anything held is dropped |
 
+### Tremor
+
+A smoothing filter has to choose between shake and lag, and a rhythmic tremor fools it: the
+filter reads the shake as fast movement and opens up. AirPoint measures the shake instead. A
+meter watches the last three seconds of pointer movement, and when it finds one strong frequency
+between 3 and 12 Hz three times in a row it locks on. A notch filter then removes only that band,
+before the One-Euro filter. In simulation at this project's settings that leaves 4 to 6 times
+less shake than smoothing alone, and dwell clicking keeps working under a tremor that defeats
+smoothing.
+
+`t` adds a labelled, simulated tremor so a steady hand can show this live; `b` switches the
+filters (full, smoothing only, off) for a comparison on the real cursor; `x` opens a panel with
+the class probabilities, the state machine, the pointer before and after, and the shake spectrum.
+
+Limits: the numbers come from simulation, there is no patient data, a 30 fps webcam cannot see
+tremor above about 12 Hz, and none of this is a medical measurement.
+
 ## Run
 
 ```bash
@@ -32,6 +50,7 @@ venv/bin/python run_demo.py                      # live demo; m = mouse on/off, 
 venv/bin/python run_demo.py --mouse              # start with the mouse already on
 venv/bin/python run_demo.py --user you           # loads profiles/you.json once calibrated; c = calibrate (~1 min)
 #   d = dwell click on/off | v = mini always-on-top view | c = hold still 5 s, 6 poses x 5 s, retrain, hot-swap
+#   t = simulated tremor ([ ] size, { } speed) | b = filter full / smoothing only / off | x = X-ray panel | z = zoom
 venv/bin/python run_demo.py --record --user you  # record your hand: space = all poses, 1-6 = one pose
 venv/bin/python -m airpoint.train                # retrain on data/*.csv, leave-one-user-out report
 venv/bin/pytest -q                               # unit tests (no camera needed)
@@ -45,7 +64,8 @@ macOS: allow your terminal under System Settings → Privacy & Security → Came
 ## Layout
 
 ```
-airpoint/        package — camera, tracker, features, filters, classifier, fsm, actions, hud, recorder, calibration, train, app
+airpoint/        package — camera, tracker, features, filters, tremor, pointer, classifier, fsm, actions, hud,
+                 recorder, calibration, train, session, modes/ (live, record, calibrate), app
 data/            recorded landmark CSVs, one per person
 models/          trained pose classifier + labels
 profiles/        per-user calibration: filter cutoff + personal model (gitignored)

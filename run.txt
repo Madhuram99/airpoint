@@ -6,7 +6,8 @@ open index.html
 # 2. Benchmarks (writes results.js for the dashboard, ~5 s)
 venv/bin/python airpoint_offline_training_filter_fitts_law_benchmark_suite.py
 
-# 3. Live demo (q quit | m mouse | d dwell | k rules/mlp | c calibrate | v mini | r record | 1-6 pose | space start/redo)
+# 3. Live demo (q quit | m mouse | d dwell | b filter | k rules/mlp | c calibrate | v mini | z zoom | x x-ray |
+#               t simulated tremor, [ ] size, { } speed | r record | 1-6 pose | space start/redo)
 venv/bin/python run_demo.py                    # MLP if models/pose_mlp.joblib exists, else rules
 venv/bin/python run_demo.py --mouse            # same, OS mouse control already ON
 venv/bin/python run_demo.py --rules            # force rules
@@ -14,6 +15,8 @@ venv/bin/python run_demo.py --user <name>      # loads profiles/<name>.json (fc_
 venv/bin/python run_demo.py --record --user <name>   # record poses to data/<name>.csv
 #    palm = move | pinch/fist < 0.5 s = click | hold = drag | v-sign 0.3 s = right click
 #    thumb up / down = scroll | hand out of frame = rest
+#    tremor demo: m (mouse on) -> t (cursor shakes, tag reads SIMULATED) -> wait 2 s for LOCKED ->
+#                 b twice (smoothing only, then off) to compare on the real cursor -> x to show why
 
 # 4. Train on data/*.csv -> models/
 venv/bin/python -m airpoint.train
