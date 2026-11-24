@@ -49,22 +49,24 @@ Design: `2026-11-25-airpoint-stage1-tremor-xray-design.md`.
   pipeline and one object per mode (live, record, calibrate). No behaviour change;
   the existing 55 tests plus new headless flow tests guard it.
 - One coordinate space: everything after the tracker works in a 640-wide canonical
-  frame, so pixel thresholds mean the same on any camera. The camera's real frame
-  size was never measured; the 1-Euro speed gain is rescaled once to keep the feel.
+  frame, so pixel thresholds mean the same on any camera. Measured: the camera is
+  1920 × 1080 (Week 2's thresholds assumed 640 wide, so they are three times too
+  strict as shipped) and idles at 15 fps in dim light unless asked for 30. The
+  camera is pinned to 30 fps and the 1-Euro speed gain is rescaled once.
 - `tremor.py`: a simulator (whole-hand shake added to the landmarks, live mode
   only, always labelled), a meter (frequency and amplitude of the shake, with
   lock-on), and a canceller (a notch at the locked frequency, before the 1-Euro
   filter).
 - Changed from the first draft: "smoothing adapts by itself" became the canceller.
   A simulation study showed that lowering the smoothing cutoff barely touches a
-  periodic tremor, while removing only the tremor band leaves 3–7× less shake and
+  periodic tremor, while removing only the tremor band leaves 4–6× less shake and
   makes dwell clicking work under severe tremor.
 - Keys: simulator on/off, size, speed; filter mode full / smoothing only / off;
   X-ray panel.
 - X-ray panel: probability bars, vote buffer, state machine, pointer scope,
   spectrum, timings.
-- You: report the camera's native frame size before the build; one camera session
-  after it, which also covers the three Week 2 checks never run.
+- You: one camera session after the build, which also covers the three Week 2
+  checks never run.
 - Limits to state: results are simulated; a 30 fps webcam caps measurable tremor
   near 12 Hz; this is not a medical measurement.
 

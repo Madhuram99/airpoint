@@ -49,33 +49,39 @@ the cursor steadies → `b` twice shows today's smoothing and raw for comparison
 
 ## 3. Evidence (simulation, 2026-11-25)
 
-A design spike compared pointer pipelines on synthetic sessions: 30 fps with
-timestamp jitter, minimum-jerk reaches and holds, landmark noise 1 px, tremor with
-frequency wander ±0.45 Hz, 25% amplitude modulation and a 20% second harmonic.
-Units are pixels of a 640-wide frame; error is against the true intended path.
-"Dwell works" = the existing `DwellDetector` clicks within 1.6 s of the hand
-stopping. `beta` is the 1-Euro speed gain; the real value is fixed in the build
-(§4.1), so both are shown.
+A design spike compared pointer pipelines on synthetic sessions: minimum-jerk
+reaches and holds, timestamp jitter, landmark noise 1 px, tremor with frequency
+wander ±0.45 Hz, 25% amplitude modulation and a 20% second harmonic. Units are
+pixels of a 640-wide frame; error is against the true intended path. "Dwell works"
+= the existing `DwellDetector` clicks within 1.6 s of the hand stopping. The
+1-Euro constants are this camera's real ones (§4.1): beta .030 in the 640-wide
+space, 30 fps.
 
-| Tremor | beta | Today: shake left | Today: dwell works | Canceller: shake left | Canceller: dwell works |
-|---|---|---|---|---|---|
-| none | .010 | 0.43 px | 100% | 0.43 px (identical) | 100% |
-| moderate, 14 px 6 Hz | .010 | 2.5 px | 100% | 0.75 px | 100% |
-| moderate, 14 px 6 Hz | .020 | 3.4 px | 100% | 0.86 px | 100% |
-| severe, 25 px 5 Hz | .010 | 6.7 px | 56% | 1.3 px | 100% |
-| severe, 25 px 5 Hz | .020 | 9.6 px | 15% | 1.6 px | 100% |
-| very severe, 40 px 6 Hz | .020 | 16.4 px | 0% | 2.8 px | 98% |
-| very severe, 40 px 4.5 Hz | .020 | 21.1 px | 0% | 3.2 px | 98% |
+| Tremor | Today: shake left | Today: dwell works | Canceller: shake left | Canceller: dwell works |
+|---|---|---|---|---|
+| none | 0.48 px | 100% | 0.48 px (identical) | 100% |
+| moderate, 14 px 6 Hz | 4.1 px | 99% | 0.96 px | 100% |
+| severe, 25 px 5 Hz | 11.7 px | 1% | 1.9 px | 100% |
+| very severe, 40 px 6 Hz | 20.0 px | 0% | 3.2 px | 97% |
+| very severe, 40 px 4.5 Hz | 24.5 px | 0% | 3.9 px | 92% |
+
+One canonical pixel is about 3.4 screen points on a 1512-point-wide display, so
+11.7 px is a cursor wandering about 40 points: larger than most buttons.
+
+At 16.5 fps (this camera's unpinned rate in a dim room, §4.1) the canceller still
+helps, less: moderate 4.0 → 1.7 px, severe 10.2 → 2.7 px with dwell 10% → 98%,
+very severe dwell about 70%.
 
 What it showed:
 - Plain smoothing cannot remove a periodic tremor: the 1-Euro speed term reads the
   shake as fast movement and opens the filter. Lowering `fc_min` from measured
   jitter (the Week 2 calibration mapping, and the roadmap's "adaptive smoothing")
-  barely helps: 3.4 → 2.7 px moderate, 9.6 → 8.5 px severe.
-- Removing only the tremor band does: 3–7× less shake, and dwell clicking goes from
-  failing to working under severe tremor.
-- Cost: in fast reaches the cursor trails the hand about a third more (10.5 → 14.2
-  px RMS at beta .010). Arrival on target is not delayed.
+  left only 10–20% less shake.
+- Removing only the tremor band leaves 4–6× less shake, and dwell clicking goes
+  from failing to working under severe tremor.
+- Cost: under moderate tremor the cursor trails the hand about a fifth more in
+  fast reaches (8.2 → 9.9 px RMS). Under severe tremor it trails less than today.
+  Arrival on target is not delayed.
 - Lock-on takes about 1.7 s, release about 3 s. On a noisy signal with no tremor
   the meter was falsely locked under 1% of the time; a false lock only adds that
   small reach lag.
@@ -87,23 +93,35 @@ All of this is simulation. Real hands are checked in the camera session (§7).
 
 ## 4. Design
 
-### 4.1 One coordinate space
+### 4.1 Camera facts and one coordinate space
 
-Finding: the camera's real frame size was never measured. Week 2's pixel
-thresholds (dwell 15 / 30 px, jitter 3 → 12 px) were written for a 640-wide frame,
-and the 1-Euro speed gain was tuned by feel at whatever the camera delivers.
+Measured on the user's MacBook Pro camera (2026-11-25, night, dim room):
+- Native frame 1920 × 1080.
+- Left alone, the driver reports 15 fps and delivers about 17 in dim light. The
+  13 November daytime recordings ran at 30. Asked for 30, it delivers 29.8 in the
+  same dim light.
+- The tracker costs about 5 ms per frame at native size and at 640 wide alike.
 
+What that means for code already shipped:
+- Week 2's pixel thresholds were written for a 640-wide frame. On this camera they
+  are three times too strict: dwell radius effectively 5 px, re-arm 10 px, jitter
+  mapping 1 → 4 px. Dwell and calibration should not be judged on camera until the
+  first tasks of this stage land.
+- In a dim room, such as a seminar hall with the lights down, the whole app ran
+  at about half speed.
+
+Design:
+- `Camera` asks the driver for 30 fps. The launch line prints native and canonical
+  frame size and the reported frame rate.
 - The tracker keeps reading the native frame, so detection is unchanged.
 - Everything after it works in a canonical space 640 wide (height keeps the camera's
   aspect): pointer pixels, thresholds, filters, HUD drawing. The view is the native
   frame resized to that size. Thresholds then mean the same on any camera, and the
   Stage 9 browser port can share them.
-- `beta` is rescaled once so the Week 1 feel is unchanged: `0.010 × native_width /
-  640`, hard-coded after the user reports the native width (build task 1). If the
-  camera is already 640 wide nothing changes.
+- `beta` becomes 0.030 in that space (0.010 × 1920 / 640). This reproduces the
+  Week 1 cursor feel exactly.
 - The full-view window becomes resizable; the HUD is laid out for the 640 canvas.
   A test measures every HUD string with `cv2.getTextSize` so none overflows.
-- Launch line prints native and canonical frame size.
 
 ### 4.2 Frame loop in parts (no behaviour change)
 
@@ -150,7 +168,9 @@ modes/calibrate.py CalibSession + Recorder + Trainer + prompt
 - An estimate counts as tremor when amplitude ≥ 1.5 px and prominence ≥ 6.
 - Locked after three consecutive tremor estimates agreeing within 1 Hz; released
   after three consecutive without. Frequency is smoothed while locked.
-- Below 20 fps it reports "camera too slow" and nothing engages.
+- The band's upper edge follows the frame rate: at 16.5 fps it sees tremor only
+  up to about 7 Hz, and the X-ray panel shows that limit. Below 14 fps it reports
+  "camera too slow" and nothing engages.
 - A second meter on the pipeline output gives the leftover shake for the readout.
 - Uses `scipy.signal`, already installed with scikit-learn.
 
@@ -199,10 +219,11 @@ modes/calibrate.py CalibSession + Recorder + Trainer + prompt
 - Meter, on synthetic sessions from a shared helper (`tests/pointer_sim.py`, the
   spike's generator): locks within 2.5 s on 14 px 6 Hz, frequency within 0.4 Hz of
   the true value, amplitude within 25%; never locks on a no-tremor session; releases within 4 s;
-  "camera too slow" under 20 fps.
+  "camera too slow" under 14 fps.
 - Canceller: on the moderate session, shake left is under half of smoothing only;
   with no tremor the output equals smoothing only exactly; under the severe session
-  dwell works ≥ 95% with the canceller and under 70% without.
+  dwell works ≥ 95% with the canceller and under 50% without; at 16.5 fps the
+  canceller still at least halves the shake on the moderate session.
 - `proba` sums to 1 and agrees with `predict`; rules give one-hot.
 - HUD: every string fits the 640 canvas; X-ray panel draws at 360 and 480 high.
 
@@ -210,10 +231,8 @@ Expected suite: about 85 tests, from 55.
 
 ## 7. Camera session (user)
 
-Before the build, once:
-- Run the camera check script and report its line (native frame size, capture fps).
-
-After the build:
+Camera facts were measured before the build (§4.1). After the build:
+0. Launch line shows about 30 fps, also in a dim room.
 1. Week 2 checks never run: calibration end to end, dwell click, mini view on top.
 2. Feel check: cursor speed and smoothness match Week 1.
 3. `t`: cursor shakes, SIMULATED shows, lock within about 2 s, cursor steadies.
@@ -236,6 +255,7 @@ the roadmap's Stage 1 text. Dashboard numbers move in Stage 2.
 - Default filter mode is full: with no lock it is identical to today. The camera
   session decides whether it stays the default.
 - Tracker keeps the native frame; only the maths and the view move to 640.
+- The camera is pinned to 30 fps: its default drops to 15 in low light.
 - Simulator is live-mode only.
 - No new command-line flags, no profile changes (profile v2 is Stage 3).
 
