@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AirPoint — try it</title>
+<link rel="stylesheet" href="try.css">
+<script>
+  // The practice pages (in the frame below) have no server here: they ask this page instead.
+  // This must exist before the frame loads; app.js fills in `score` with the ported statistics.
+  window.AirPointStatic = {
+    who: { participant: "you", device: "airpoint", hand: "right" },
+    score: null,
+    async api(path, body) {
+      if (path === "/api/blocks" && body && this.score) return this.score(body);
+      return { running: false, state: null };
+    },
+  };
+</script>
+</head>
+<body>
+<header>
+  <div class="logo">AirPoint<span>try it with your own hand</span></div>
+  <div class="spacer"></div>
+  <div id="status">not started</div>
+</header>
+<main>
+  <aside>
+    <div id="view">
+      <video id="video" playsinline muted></video>
+      <canvas id="overlay"></canvas>
+      <div class="box"></div>
+    </div>
+    <div id="readout">
+      <span>sign</span><b id="sign">–</b>
+      <span>doing</span><b id="doing">–</b>
+      <span>speed</span><b id="fps">–</b>
+    </div>
+    <div id="tip">Press Start. Your camera picture stays on this device.</div>
+    <div class="row">
+      <button class="btn ghost on" id="go-tutorial">Tutorial</button>
+      <button class="btn ghost" id="go-test">Pointing test</button>
+    </div>
+    <div class="row">
+      <button class="btn ghost" id="dwell" title="for a hand that cannot make a sign">Dwell click: off</button>
+    </div>
+    <div class="signs">
+      <b>open palm</b><span>moves the cursor</span>
+      <b>pinch or fist</b><span>click; keep it held to drag</span>
+      <b>V sign</b><span>hold a moment: right-click</span>
+      <b>thumb up / down</b><span>scroll</span>
+      <b>hold still</b><span>clicks, with dwell on</span>
+    </div>
+    <p class="fine">A taste of AirPoint, the open-source hand-sign mouse for people who cannot use one. The full
+      version adds tremor filtering, personal calibration, signs you teach it, a face mode and more.
+      Nothing is uploaded: the hand tracking runs in this page. <a href="?selftest">self-test</a></p>
+  </aside>
+  <section id="stage">
+    <iframe id="practice" src="../lab/tutorial.html" title="practice"></iframe>
+    <div id="cursor" class="away"><svg id="ring" viewBox="0 0 34 34"><circle cx="17" cy="17" r="15"/></svg></div>
+    <div id="welcome">
+      <div class="card">
+        <h1>Move a cursor with your hand</h1>
+        <p>Hold your open hand up to the camera, about half an arm away. An open palm moves the cursor. Pinch your
+          thumb and finger together to click.</p>
+        <p>The camera picture never leaves this device: it is read in this page and thrown away. The page loads its
+          hand-tracking library from a public CDN.</p>
+        <p id="welcome-note" class="fine"></p>
+        <button class="btn" id="start">Start camera</button>
+      </div>
+    </div>
+  </section>
+</main>
+<script type="module" src="app.js"></script>
+</body>
+</html>

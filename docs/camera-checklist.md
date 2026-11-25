@@ -151,3 +151,22 @@ in a file here). Then `venv/bin/python run_demo.py --user madhuram --mouse`.
 
 Report: seconds per step in 8.2, what it said in 8.4, any false stop in 8.6, whether 8.7 asked before
 the discarding click, and every wrong click in 8.9.
+
+## Stage 9 — try it in your browser
+
+```bash
+cd ~/Projects/airpoint && venv/bin/python -m http.server 8801      # leave running; open http://127.0.0.1:8801/try/
+```
+
+- [ ] **9.1 Starts.** Chrome: the welcome card, Start camera, allow the camera. The status turns green, your mirrored picture appears with the hand skeleton on it. Note the frames a second.
+- [ ] **9.2 Signs.** The `sign` line names what you show: palm, pinch, fist, v_sign, thumb up, thumb down. Any it gets wrong, and is it also wrong in the desktop app?
+- [ ] **9.3 Tutorial.** Do all six steps with your hand: move, click, double-click, drag, scroll, right-click. Which were hard?
+- [ ] **9.4 Pointing test.** Do the test. Is the throughput near what the desktop app gave you in the lab (it has no tremor filter here, and the cursor is inside the page)?
+- [ ] **9.5 Dwell.** Switch dwell click on: holding still for a second clicks, with the ring filling.
+- [ ] **9.6 Safari and Firefox.** Repeat 9.1 and one tutorial step in each.
+- [ ] **9.7 Refusing the camera.** Block the camera: the card must say what to do, not hang.
+- [ ] **9.8 The robot.** `http://127.0.0.1:8801/try/?replay&robot=tutorial`: a recorded hand finishes the tutorial by itself (this is what was checked without a camera, and a fallback for the demo).
+- [ ] **9.9 Putting it online (your decision).** GitHub › the repo › Settings › Pages › Deploy from a branch › `main` and `/ (root)` › Save. After a minute `https://madhuram99.github.io/airpoint/try/` opens, and `try/qr.png` leads there.
+- [ ] **9.10 A phone.** After 9.9: scan the code with a phone, prop the phone up, and try 9.1 to 9.3. Note the frames a second.
+
+Report: frames a second in 9.1 and 9.10, wrong signs in 9.2, anything that failed in 9.6 and 9.7.

@@ -180,6 +180,37 @@ to delete everything (it read the message out and deleted nothing). That is one 
 pictures; real apps are for the test session, and screen text steering a model remains a known
 weakness of this kind of helper.
 
+### Try it in your browser
+
+`try/` is AirPoint as a web page: someone scans a QR code, holds a hand up to their own camera, and
+does the tutorial and the pointing test with a cursor inside the page, with their own score at the
+end. Nothing is installed and the camera picture never leaves their device: MediaPipe's browser
+build tracks the hand in the page (same version as the Python one, loaded from a public CDN), and
+`try/airpoint.js` is a port of the features, the pose network, the vote, the pointer filter, the
+state machine, dwell click and the test statistics. It is a taste of the real thing: the tremor
+filter, calibration, taught signs, face mode, talk and the helper stay in the desktop app.
+
+The port is held to the Python code by a fixture, not by trust. `python -m airpoint.export_web`
+writes the trained network as numbers (`try/model.json`) and `try/parity.json`: recorded hands with
+the features and probabilities Python computes for them, scripts for the vote, filter, state machine
+and dwell, a scored test block, and one whole session run through the real Python live loop with
+every cursor position and click it produced. `node try/parity.mjs` runs the JavaScript on the same
+inputs: 3,837 checks, all agree. The page runs the same check on itself at `try/?selftest`, and the
+test suite runs the Node check.
+
+```bash
+venv/bin/python -m http.server 8801            # then open http://127.0.0.1:8801/try/
+#   try/?selftest                  the page checks itself against Python's answers
+#   try/?replay&robot=tutorial     a robot hand does the tutorial from recorded hands (no camera)
+#   try/?replay&robot=test         ... and the pointing test
+venv/bin/python -m airpoint.export_web         # after retraining: rewrite the network and the fixture
+node try/parity.mjs                            # the port must still agree
+venv/bin/python -m airpoint.qr https://<you>.github.io/airpoint/try/ try/qr.png
+```
+
+To put it online, switch on GitHub Pages for this repository (Settings › Pages › Deploy from a
+branch › `main`, `/ (root)`); `try/qr.png` already points at that address.
+
 ## Run
 
 ```bash
@@ -220,8 +251,9 @@ airpoint/        package — camera, tracker, features, filters, tremor, pointer
                  recorder, calibration, train, session, modes/ (live, record, calibrate), app,
                  lab/ (server, stats, store), results, sim_pointer, profile, hints, sounds, effects,
                  modes/teach, wheel, overlay, face, modes/face_calibrate, speech,
-                 llm, screen, helper, modes/ask, helper_eval
+                 llm, screen, helper, modes/ask, helper_eval, export_web, qr
 lab/             practice pages and the pointing test (plain HTML/JS, served by airpoint.lab)
+try/             AirPoint as a web page: the JavaScript port, its parity fixture, a robot hand, the QR code
 results/         saved test sessions (trials.jsonl)
 legacy/          the midterm benchmark script, kept as presented
 data/            recorded landmark CSVs, one per person

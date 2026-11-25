@@ -1,7 +1,8 @@
 # AirPoint Stage 9 — Try it in your browser
 
 Date: 2026-11-25
-Status: approved in advance (user, 2026-11-25). Publishing the page (GitHub Pages) waits for the user's OK.
+Status: approved in advance (user, 2026-11-25); built the same day. Publishing the page (GitHub Pages)
+waits for the user's OK.
 Roadmap: `2026-11-25-airpoint-v2-roadmap.md`, Stage 9
 
 ## 1. Goal
@@ -45,6 +46,14 @@ helper. The page says it is a taste of the real thing.
 - In a real browser, driven by a replay: the page accepts recorded hands instead of a camera
   (`?replay`), so the virtual pointer, the practice pages and the scoring can be exercised end to
   end. The hand-tracking engine is loaded and run on an empty picture to show it starts.
+
+Done on 2026-11-25, in Chrome on this laptop, from a local web server:
+- parity: 3,837 checks, all agree, in Node and inside the page;
+- the hand-tracking library (1.2.3, from the CDN) and the hand model load, and find no hand in an
+  empty picture;
+- a robot hand (`robot.js`), feeding recorded hands in at 30 a second and steering by looking at the
+  page, finished all six tutorial steps in 20 s and the whole pointing test (30 clicks, none
+  missed); the result card was filled in by the ported statistics. No errors in the console.
 
 ## 4. Not checked without a person
 

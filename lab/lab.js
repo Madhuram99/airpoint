@@ -2,7 +2,11 @@
 const Lab = {
   KEY: "airpoint.lab.who",
 
+  // Inside the try-it page (try/) there is no server: the page that embeds this one answers instead.
+  embed: (() => { try { return (window.parent !== window && window.parent.AirPointStatic) || null; } catch (e) { return null; } })(),
+
   async api(path, body) {
+    if (this.embed) return this.embed.api(path, body);
     const r = await fetch(path, body === undefined ? {} : {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
     });
@@ -12,6 +16,7 @@ const Lab = {
   },
 
   who() {
+    if (this.embed) return this.embed.who;
     try { return JSON.parse(localStorage.getItem(this.KEY)) || null; } catch (e) { return null; }
   },
   saveWho(who) { localStorage.setItem(this.KEY, JSON.stringify(who)); },
@@ -23,6 +28,7 @@ const Lab = {
 
   // One line a person can check against what they see in the AirPoint window.
   describe(s) {
+    if (this.embed) return "AirPoint in your browser";
     if (!s) return "AirPoint is not running";
     const bits = [s.mouse ? "mouse ON" : "mouse OFF", s.dwell ? "dwell click" : "sign click", `filter ${s.filter}`];
     if (s.sim && s.sim.on) bits.push(`simulated tremor ${s.sim.amp.toFixed(2)} palm @ ${s.sim.hz.toFixed(1)} Hz`);
@@ -47,3 +53,4 @@ const Lab = {
     return who;
   },
 };
+if (Lab.embed) document.documentElement.classList.add("embedded");

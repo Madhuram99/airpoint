@@ -120,7 +120,7 @@
     try {
       const out = await Lab.api("/api/blocks", { kind: "tutorial", participant: who.participant, device: who.device, hand: who.hand,
         started_at: new Date().toISOString(), airpoint_start: s.running ? s.state : null, steps: results });
-      Lab.el("save-note").textContent = `Saved for ${who.participant} (${out.condition}).`;
+      Lab.el("save-note").textContent = out.note || `Saved for ${who.participant} (${out.condition}).`;
     } catch (e) {
       Lab.el("save-note").textContent = "Could not save: " + e.message;
     }

@@ -70,3 +70,5 @@ body.fill { overflow: hidden; }
 .scroller { position: absolute; inset: 20px 120px; overflow-y: scroll; border: 1px solid var(--line); border-radius: 12px; background: var(--bg2); }
 .scroller div { padding: 0.7rem 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.05); color: var(--text2); }
 .scroller div.goal { color: #06202a; background: var(--cyan); font-weight: 800; cursor: pointer; }
+/* embedded in the try-it page: there is no lab home to go back to */
+.embedded a[href="index.html"] { display: none; }

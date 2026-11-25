@@ -43,6 +43,10 @@ venv/bin/python -m airpoint.speech
 #   venv/bin/pip install faster-whisper && venv/bin/python -m airpoint.speech --setup
 #   venv/bin/python -m airpoint.profile <name> --speech local      # then spoken commands work: "scroll down", "select all"
 
+# 3e. The browser demo (try/): nothing to install for the visitor, the camera picture stays on their device
+venv/bin/python -m http.server 8801            # then open http://127.0.0.1:8801/try/   (?selftest, ?replay&robot=tutorial)
+venv/bin/python -m airpoint.export_web && node try/parity.mjs      # after retraining: rewrite numbers, check the port
+
 # 4. Train on data/*.csv -> models/
 venv/bin/python -m airpoint.train
 
