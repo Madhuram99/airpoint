@@ -55,7 +55,8 @@ def test_sign_names_and_key_combos_are_checked():
     assert "letters" in P.check_sign_name("", {})
     assert P.parse_keys("cmd+shift+4") == ("command", "shift", "4")
     assert P.parse_keys("Option + Cmd + F5") == ("option", "command", "f5")
-    assert P.parse_keys("ctrl+alt+del") is None and P.parse_keys("") is None
+    assert P.parse_keys("ctrl+alt+hyper") is None and P.parse_keys("") is None
+    assert P.parse_keys("ctrl+alt+del") == ("control", "option", "delete") and P.parse_keys("Meta+ArrowUp") == ("command", "up")
 
 
 def test_dropping_poses_removes_them_from_every_role():

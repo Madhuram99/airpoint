@@ -95,7 +95,9 @@ def drop_poses(roles, poses):
 
 SIGN_ACTIONS = ("say", "hotkey", "type", "open", "pause", "talk")
 SIGN_HOLD_S = 0.6        # longer than the built-in 0.3 s: a taught sign must be meant
-KEY_ALIASES = {"cmd": "command", "ctrl": "control", "opt": "option", "alt": "option", "return": "enter", "esc": "escape"}
+KEY_ALIASES = {"cmd": "command", "ctrl": "control", "opt": "option", "alt": "option", "return": "enter", "esc": "escape",
+               "meta": "command", "spacebar": "space", "del": "delete", "arrowup": "up", "arrowdown": "down",
+               "arrowleft": "left", "arrowright": "right", "pgup": "pageup", "pgdn": "pagedown"}
 KEY_NAMES = ({"command", "control", "option", "shift", "enter", "escape", "space", "tab", "backspace", "delete",
               "left", "right", "up", "down", "home", "end", "pageup", "pagedown"}
              | {f"f{i}" for i in range(1, 13)})
