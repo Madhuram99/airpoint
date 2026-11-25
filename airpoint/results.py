@@ -5,13 +5,17 @@ named as one. A section with nothing behind it is None / empty, and the dashboar
 """
 import json
 import os
+import re
+import shutil
 import subprocess
 import time
 
 import numpy as np
 
+from . import features as F
 from .classifier import PoseClassifier, RuleClassifier
 from .features import normalize_63
+from .poses import POSES
 from .lab import store
 from .lab.stats import aggregate
 from .pointer import BETA, FC_MIN, PointerPipeline
@@ -75,6 +79,55 @@ def _latency(models_dir, X):
             "frames": len(rows)}
 
 
+def _signs(models_dir, X, y):
+    """One real recorded hand per pose (the middle frame of its recording): its shape, the ratios the
+    hand-written rules measure on it, and what the rules and the trained network each call it."""
+    if X is None:
+        return None
+    model, labels = os.path.join(models_dir, "pose_mlp.joblib"), os.path.join(models_dir, "labels.json")
+    clf, rules, out = (PoseClassifier.load(model, labels) if os.path.exists(model) else None), RuleClassifier(), []
+    tips = (("thumb", F.THUMB_TIP), ("index", F.INDEX_TIP), ("middle", F.MIDDLE_TIP), ("ring", F.RING_TIP), ("pinky", F.PINKY_TIP))
+    for pose in POSES:
+        rows = X[y == pose]
+        if not len(rows):
+            continue
+        pts = F.to_array(rows[len(rows) // 2])
+        palm = np.linalg.norm(pts[F.MIDDLE_MCP, :2] - pts[F.WRIST, :2]) + 1e-6
+        said, conf = clf.predict(pts) if clf else (None, None)
+        out.append({"pose": pose, "pts": pts[:, :2].tolist(), "pinch": F.pinch_ratio(pts),
+                    "ext": {name: float(np.linalg.norm(pts[i, :2] - pts[F.WRIST, :2]) / palm) for name, i in tips},
+                    "rule": rules.predict(pts)[0], "mlp": said, "conf": conf})
+    return out
+
+
+def _helper(root):
+    """The AI helper's measurements, as written by `python -m airpoint.helper_eval`. None until that has run."""
+    path = os.path.join(root, "results", "helper_eval.json")
+    if not os.path.exists(path):
+        return None
+    with open(path) as f:
+        r = json.load(f)
+    p, errands = r.get("pointing"), r.get("errands") or []
+    return {"model": r.get("model"), "date": r.get("date"), "what": r.get("what"),
+            "seconds_per_step": r.get("median_seconds_per_step"), "calls": r.get("calls"),
+            "pointing": None if not p else {k: p[k] for k in ("n", "hits", "median_err_px", "max_err_px", "smallest_box")},
+            "errands": [{"name": e["name"], "passed": e["passed"], "steps": len(e["steps"]),
+                         "asked": e["asked_yes_or_no"], "answered": e["answered"]} for e in errands]}
+
+
+def _web(root):
+    """How many of the browser port's answers agree with Python's, counted now by running the check."""
+    script, node = os.path.join(root, "try", "parity.mjs"), shutil.which("node")
+    if not node or not os.path.exists(script):
+        return None
+    try:
+        out = subprocess.run([node, script], capture_output=True, text=True, timeout=120).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    found = re.search(r"(\d+) of (\d+) checks agree", out)
+    return {"agree": int(found.group(1)), "checks": int(found.group(2))} if found else None
+
+
 def _run(session, mode):
     p = PointerPipeline()
     p.mode = mode
@@ -133,6 +186,7 @@ def build(root, tremor_seconds=60, tremor_seeds=(0, 1, 2)):
         "dataset": dataset, "classifier": _classifier(models_dir, dataset, X, y), "latency": _latency(models_dir, X),
         "tremor": _tremor(tremor_seconds, tremor_seeds),
         "pointing": _pointing(os.path.join(root, "results", "trials.jsonl")),
+        "signs": _signs(models_dir, X, y), "helper": _helper(root), "web": _web(root),
     })
 
 
@@ -157,6 +211,11 @@ def main():
               f"dwell works {lvl['smooth']['dwell_ok'] * 100:.0f}% -> {lvl['full']['dwell_ok'] * 100:.0f}%")
     print(f"pointing  : {p['blocks']} blocks from {p['participants']} people" if p["blocks"]
           else "pointing  : not measured yet (run python -m airpoint.lab)")
+    h, w = r["helper"], r["web"]
+    print(f"AI helper : {h['pointing']['hits']}/{h['pointing']['n']} pointing, "
+          f"{sum(e['passed'] for e in h['errands'])}/{len(h['errands'])} errands ({h['model']}, {h['date']}, drawn screens)"
+          if h and h["pointing"] else "AI helper : not measured yet (run python -m airpoint.helper_eval)")
+    print(f"browser   : {w['agree']} of {w['checks']} parity checks agree" if w else "browser   : parity not checked (needs node)")
     print(f"wrote {path}")
 
 

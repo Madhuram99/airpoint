@@ -304,15 +304,17 @@
 <!-- ===== NAVIGATION ===== -->
 <nav>
     <div class="nav-inner">
-        <div class="nav-logo">AirPoint<span>v1.0 — PEC Chandigarh</span></div>
+        <div class="nav-logo">AirPoint<span>v2 — PEC Chandigarh</span></div>
         <ul class="nav-links">
             <li><a href="#hero">Home</a></li>
             <li><a href="#architecture">Architecture</a></li>
-            <li><a href="#gestures">Gestures</a></li>
+            <li><a href="#gestures">Signs</a></li>
+            <li><a href="#more">Beyond</a></li>
             <li><a href="#filter">1€ Filter</a></li>
             <li><a href="#fsm">FSM</a></li>
             <li><a href="#results">Results</a></li>
             <li><a href="lab/index.html">Practice</a></li>
+            <li><a href="try/">Try it</a></li>
             <li><a href="#team">Team</a></li>
         </ul>
     </div>
@@ -326,7 +328,7 @@
         <div class="hero-text">
             <div class="section-badge">Major Project — CSE Dept</div>
             <h1>Control Your Computer<br><span class="gradient">With Gestures</span></h1>
-            <p>AirPoint is a touchless virtual mouse system that uses MediaPipe hand tracking, 1-Euro smoothing, and a finite state machine to map hand gestures to mouse actions in real-time.</p>
+            <p>AirPoint is a mouse for people who cannot hold one. A webcam watches the hand; signs the hand can actually make become clicks, drags and scrolls. It measures a tremor and filters it out, learns each person's own signs, and works by pointing alone, by face, or by voice when signs are too much.</p>
             <div class="hero-badges">
                 <span class="hero-badge active">MediaPipe Hands</span>
                 <span class="hero-badge active">1-Euro Filter</span>
@@ -433,39 +435,45 @@
 <section id="gestures">
     <div class="fade-in">
         <div class="section-badge">Gesture Recognition</div>
-        <h2 class="section-title">5 Accessibility Gestures</h2>
-        <p class="section-subtitle">Each gesture maps to a distinct mouse action via scale-free geometric ratios and a trained MLP network.</p>
+        <h2 class="section-title">Six signs to start with</h2>
+        <p class="section-subtitle">A trained network reads the shape of the hand; a state machine turns shapes over time into mouse actions. Which sign does what is each person's own choice, and new signs can be taught in fifteen seconds.</p>
     </div>
     <div class="gestures-grid fade-in">
         <div class="gesture-card glass-card active" data-gesture="0" onclick="selectGesture(0)">
             <div class="gesture-icon">🖐️</div>
-            <div class="gesture-name">Open Palm</div>
-            <div class="gesture-action">MOVE CURSOR</div>
-            <div class="gesture-desc">All fingers extended</div>
+            <div class="gesture-name">Open palm</div>
+            <div class="gesture-action">MOVE</div>
+            <div class="gesture-desc">The cursor follows the hand</div>
         </div>
         <div class="gesture-card glass-card" data-gesture="1" onclick="selectGesture(1)">
             <div class="gesture-icon">🤏</div>
             <div class="gesture-name">Pinch</div>
-            <div class="gesture-action">LEFT CLICK</div>
-            <div class="gesture-desc">Thumb + Index touch</div>
+            <div class="gesture-action">CLICK · HOLD TO DRAG</div>
+            <div class="gesture-desc">Thumb and finger together</div>
         </div>
         <div class="gesture-card glass-card" data-gesture="2" onclick="selectGesture(2)">
             <div class="gesture-icon">✊</div>
             <div class="gesture-name">Fist</div>
-            <div class="gesture-action">ALT CLICK</div>
-            <div class="gesture-desc">All fingers curled</div>
+            <div class="gesture-action">CLICK · HOLD TO DRAG</div>
+            <div class="gesture-desc">For a hand that cannot pinch</div>
         </div>
         <div class="gesture-card glass-card" data-gesture="3" onclick="selectGesture(3)">
             <div class="gesture-icon">✌️</div>
-            <div class="gesture-name">V-Sign</div>
+            <div class="gesture-name">V sign</div>
             <div class="gesture-action">RIGHT CLICK</div>
-            <div class="gesture-desc">Index + Middle extended</div>
+            <div class="gesture-desc">Held for a moment</div>
         </div>
         <div class="gesture-card glass-card" data-gesture="4" onclick="selectGesture(4)">
             <div class="gesture-icon">👍</div>
-            <div class="gesture-name">Thumbs Up</div>
-            <div class="gesture-action">SCROLL</div>
-            <div class="gesture-desc">Thumb extended only</div>
+            <div class="gesture-name">Thumb up</div>
+            <div class="gesture-action">SCROLL UP</div>
+            <div class="gesture-desc">While it is held</div>
+        </div>
+        <div class="gesture-card glass-card" data-gesture="5" onclick="selectGesture(5)">
+            <div class="gesture-icon">👎</div>
+            <div class="gesture-name">Thumb down</div>
+            <div class="gesture-action">SCROLL DOWN</div>
+            <div class="gesture-desc">While it is held</div>
         </div>
     </div>
 
@@ -475,23 +483,16 @@
             <canvas id="gestureCanvas" width="400" height="400"></canvas>
         </div>
         <div>
-            <h3 style="font-size:1.2rem; margin-bottom:1rem;">Landmark Analysis</h3>
+            <h3 style="font-size:1.2rem; margin-bottom:1rem;">A recorded hand, and two ways of reading it</h3>
             <div id="gestureInfo" style="font-size:0.88rem; color:var(--text-secondary); line-height:2;">
-                <div>Gesture: <strong style="color:var(--accent-cyan)">Open Palm (Move)</strong></div>
-                <div>Pinch Ratio: <span style="color:var(--accent-green); font-family:var(--font-mono)">0.85</span></div>
-                <div>Index Extension: <span style="font-family:var(--font-mono)">1.82</span></div>
-                <div>Middle Extension: <span style="font-family:var(--font-mono)">1.91</span></div>
-                <div>Ring Extension: <span style="font-family:var(--font-mono)">1.74</span></div>
-                <div>Pinky Extension: <span style="font-family:var(--font-mono)">1.58</span></div>
-                <div>Classification: <span style="color:var(--accent-green)">Rule ✓ | MLP ✓</span></div>
+                <div>Not measured yet. Run <code>python -m airpoint.results</code>.</div>
             </div>
             <div style="margin-top:1.5rem; padding:1rem; background:rgba(0,0,0,0.3); border-radius:var(--radius-sm); font-family:var(--font-mono); font-size:0.75rem; color:var(--text-muted);">
-                <div style="color:var(--accent-cyan); margin-bottom:0.5rem;">// Scale-free pinch formula (Slide 9)</div>
-                <div>pinch_ratio = dist(THUMB_TIP, INDEX_TIP) / palm_size</div>
-                <div style="margin-top:4px;">palm_size = dist(WRIST, MIDDLE_MCP)</div>
-                <div style="margin-top:8px; color:var(--accent-green);">// Hysteresis thresholds</div>
-                <div>enter_threshold = 0.28</div>
-                <div>exit_threshold  = 0.36</div>
+                <div style="color:var(--accent-cyan); margin-bottom:0.5rem;">// hand-written rules: thresholds on a few ratios</div>
+                <div>pinch = thumb-index gap &lt; 0.30 and middle reach &gt; 1.35</div>
+                <div style="margin-top:8px; color:var(--accent-green);">// trained network: the whole shape</div>
+                <div>21 landmarks from the wrist, in palm lengths = 63 numbers</div>
+                <div>63 &rarr; 128 &rarr; 64 &rarr; 6 signs</div>
             </div>
         </div>
     </div>
@@ -585,6 +586,24 @@
         </div>
     </div>
 
+    <div class="results-grid fade-in" style="margin-top:2rem;">
+        <div class="result-card glass-card">
+            <div class="result-value" id="res-helper">–</div>
+            <div class="result-label">AI helper: named buttons it put the cursor on</div>
+            <div class="result-sub" id="res-helper-sub">not measured yet</div>
+        </div>
+        <div class="result-card glass-card">
+            <div class="result-value" id="res-errands">–</div>
+            <div class="result-label">AI helper: errands passed in a simulated mail app</div>
+            <div class="result-sub" id="res-errands-sub">not measured yet</div>
+        </div>
+        <div class="result-card glass-card">
+            <div class="result-value" id="res-web">–</div>
+            <div class="result-label">Browser port: answers that agree with Python</div>
+            <div class="result-sub" id="res-web-sub">not checked yet</div>
+        </div>
+    </div>
+
     <div class="fade-in" style="margin-top:3rem;">
         <h3 style="font-size:1.2rem; margin-bottom:1rem;">Pose by pose: rules against the trained model, on recorded hands</h3>
         <div style="overflow-x:auto;">
@@ -616,6 +635,32 @@
             </table>
         </div>
         <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.8rem;">Throughput uses the effective target width, 4.133 × the spread of the clicks along the movement (Soukoreff &amp; MacKenzie, 2004). Each person counts once per condition.</p>
+    </div>
+</section>
+
+<!-- ===== BEYOND THE MOUSE ===== -->
+<section id="more">
+    <div class="fade-in">
+        <div class="section-badge">Version 2</div>
+        <h2 class="section-title">Beyond the six signs</h2>
+        <p class="section-subtitle">The same pipeline, opened up for bodies and needs the six signs do not fit. Each part is built and covered by tests; what has been measured, and on what, is stated under Results. What still needs people is said there too.</p>
+    </div>
+    <div class="results-grid fade-in" style="grid-template-columns:repeat(auto-fit, minmax(250px, 1fr));">
+        <div class="result-card glass-card" style="text-align:left;"><div class="result-label" style="color:var(--accent-cyan);">Fits your body</div><div class="result-sub">A one-minute calibration finds your comfortable reach, the signs your hand can and cannot make, and how much it shakes. Either hand. A pause sign, hints, sounds.</div></div>
+        <div class="result-card glass-card" style="text-align:left;"><div class="result-label" style="color:var(--accent-cyan);">Tremor measured, then cancelled</div><div class="result-sub">A meter finds the tremor's frequency; a notch filter removes that band before smoothing. Plain smoothing cannot: it has to lag to hide a regular shake.</div></div>
+        <div class="result-card glass-card" style="text-align:left;"><div class="result-label" style="color:var(--accent-cyan);">Pointing alone</div><div class="result-sub">Hold still to click, or open a wheel at the cursor and pick right click, drag, scroll, double click, pause or talk by direction. No sign needed.</div></div>
+        <div class="result-card glass-card" style="text-align:left;"><div class="result-label" style="color:var(--accent-cyan);">Face mode</div><div class="result-sub">The head moves the cursor, an open mouth clicks, raised eyebrows right-click. Everything after the tracker is shared with the hand.</div></div>
+        <div class="result-card glass-card" style="text-align:left;"><div class="result-label" style="color:var(--accent-cyan);">Teach a sign, speak for me</div><div class="result-sub">Hold a new sign for eight seconds and say what it does: speak a phrase aloud, press keys, type, open an app, pause, start dictation, or run an errand.</div></div>
+        <div class="result-card glass-card" style="text-align:left;"><div class="result-label" style="color:var(--accent-cyan);">Talk</div><div class="result-sub">One tap starts listening and the same tap ends it. The system's own dictation types; an optional on-laptop engine also takes spoken commands.</div></div>
+        <div class="result-card glass-card" style="text-align:left;"><div class="result-label" style="color:var(--accent-cyan);">AI helper</div><div class="result-sub">A whole errand in one request. Each step is checked, shown at the cursor and stoppable with a fist; anything that cannot be undone waits for a yes. Off until switched on: it is the one part that sends anything off the laptop.</div></div>
+        <div class="result-card glass-card" style="text-align:left;"><div class="result-label" style="color:var(--accent-cyan);">In a browser</div><div class="result-sub">The core, ported to JavaScript and held to the Python code by a parity fixture, so anyone can try it from a QR code with nothing installed.</div></div>
+    </div>
+    <div class="glass-card fade-in" style="margin-top:2rem; display:flex; gap:1.5rem; align-items:center; flex-wrap:wrap;">
+        <img src="try/qr.png" alt="QR code for the try-it page" width="150" height="150" style="border-radius:8px; background:#fff;">
+        <div style="flex:1; min-width:240px;">
+            <h3 style="font-size:1.2rem; margin-bottom:0.5rem;">Try it with your own hand</h3>
+            <p style="font-size:0.9rem; color:var(--text-secondary);">Open <a href="try/" style="color:var(--accent-cyan);">the try-it page</a> on a laptop or scan the code. Your camera picture stays on your device. The code leads to the public address; it works once the page is published.</p>
+        </div>
     </div>
 </section>
 
@@ -653,7 +698,7 @@
 <!-- ===== FOOTER ===== -->
 <footer>
     <div class="footer-logo">AirPoint</div>
-    <div>Major Project — CSE Department, PEC Chandigarh — October 2026</div>
+    <div>Major Project — CSE Department, PEC Chandigarh — 2026</div>
     <div style="margin-top:0.5rem;">Mentor: Mrs. Rupali | MediaPipe Hands • 1-Euro Filter • MLP Classifier • ISO 9241-411</div>
 </footer>
 
@@ -686,6 +731,21 @@ const HERO = { acc: null, jitter: null, latency: null };   // nothing is shown u
             (c.stale ? 'The recordings have changed since the model was trained; retrain to refresh these numbers.' : ''));
     }
     if (R.latency) HERO.latency = +R.latency.classifier_ms.toFixed(2);
+
+    const h = R.helper;
+    if (h && h.pointing) {
+        set('res-helper', `${h.pointing.hits} / ${h.pointing.n}`);
+        set('res-helper-sub', `drawn screens only | at most ${h.pointing.max_err_px} px off | smallest ${h.pointing.smallest_box.join('×')} px | ${h.seconds_per_step} s a step | ${h.model}, ${h.date}`);
+    }
+    if (h && h.errands && h.errands.length) {
+        const held = h.errands.filter(e => e.asked.length).length;
+        set('res-errands', `${h.errands.filter(e => e.passed).length} / ${h.errands.length}`);
+        set('res-errands-sub', `simulation, not a real desktop | ${held} held for a yes before sending or deleting | one message tried to take the model over`);
+    }
+    if (R.web) {
+        set('res-web', `${R.web.agree} / ${R.web.checks}`);
+        set('res-web-sub', 'features, network, vote, filter, state machine, statistics and one whole session');
+    }
 
     const t = R.tremor;
     if (t) {
@@ -852,34 +912,44 @@ const gestureCanvas = document.getElementById('gestureCanvas');
 const gestureCtx = gestureCanvas.getContext('2d');
 let selectedGesture = 0;
 
-const gestureLabels = [
-    { name: 'Open Palm (Move)', pinch: '0.85', idx: '1.82', mid: '1.91', ring: '1.74', pinky: '1.58' },
-    { name: 'Pinch (Click)', pinch: '0.18', idx: '0.42', mid: '1.91', ring: '1.74', pinky: '1.58' },
-    { name: 'Fist (Alt Click)', pinch: '0.45', idx: '0.62', mid: '0.58', ring: '0.55', pinky: '0.52' },
-    { name: 'V-Sign (Right Click)', pinch: '0.72', idx: '1.82', mid: '1.91', ring: '0.55', pinky: '0.52' },
-    { name: 'Thumb (Scroll)', pinch: '0.90', idx: '0.65', mid: '0.58', ring: '0.55', pinky: '0.52' }
-];
+const SIGN_NAMES = { palm: 'Open palm', pinch: 'Pinch', fist: 'Fist', v_sign: 'V sign', thumb_up: 'Thumb up', thumb_down: 'Thumb down' };
+const SIGN_ORDER = ['palm', 'pinch', 'fist', 'v_sign', 'thumb_up', 'thumb_down'];
+const SIGNS = (window.AIRPOINT_RESULTS && window.AIRPOINT_RESULTS.signs) || null;   // real recorded hands, or nothing
 
-let gestureAnimLandmarks = gestureLandmarks[0].map(p => [...p]);
-let gestureTargetLandmarks = gestureLandmarks[0].map(p => [...p]);
+// A recorded hand (picture coordinates 0..1 of a 16:9 frame) fitted into the 480 canvas the drawing code uses.
+function fitHand(pts) {
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1] * 9 / 16);
+    const x0 = Math.min(...xs), y0 = Math.min(...ys), w = Math.max(...xs) - x0, h = Math.max(...ys) - y0;
+    const k = 300 / Math.max(w, h), ox = 240 - (w * k) / 2, oy = 240 - (h * k) / 2;
+    return pts.map((p, i) => [ox + (xs[i] - x0) * k, oy + (ys[i] - y0) * k]);
+}
+const signShapes = SIGN_ORDER.map((pose, i) => {
+    const s = SIGNS && SIGNS.find(x => x.pose === pose);
+    return s ? fitHand(s.pts) : gestureLandmarks[Math.min(i, 4)].map(p => [...p]);
+});
+
+let gestureAnimLandmarks = signShapes[0].map(p => [...p]);
+let gestureTargetLandmarks = signShapes[0].map(p => [...p]);
 
 function selectGesture(idx) {
     selectedGesture = idx;
-    gestureTargetLandmarks = gestureLandmarks[idx].map(p => [...p]);
+    gestureTargetLandmarks = signShapes[idx].map(p => [...p]);
     document.querySelectorAll('.gesture-card').forEach((c, i) => {
         c.classList.toggle('active', i === idx);
     });
-    const g = gestureLabels[idx];
-    document.getElementById('gestureInfo').innerHTML = `
-        <div>Gesture: <strong style="color:var(--accent-cyan)">${g.name}</strong></div>
-        <div>Pinch Ratio: <span style="color:${parseFloat(g.pinch) < 0.30 ? 'var(--accent-red)' : 'var(--accent-green)'}; font-family:var(--font-mono)">${g.pinch}</span> ${parseFloat(g.pinch) < 0.30 ? '< 0.30 → CLICK' : '> 0.30 → No Click'}</div>
-        <div>Index Extension: <span style="font-family:var(--font-mono)">${g.idx}</span></div>
-        <div>Middle Extension: <span style="font-family:var(--font-mono)">${g.mid}</span></div>
-        <div>Ring Extension: <span style="font-family:var(--font-mono)">${g.ring}</span></div>
-        <div>Pinky Extension: <span style="font-family:var(--font-mono)">${g.pinky}</span></div>
-        <div>Classification: <span style="color:var(--accent-green)">Rule ✓ | MLP ✓</span></div>
-    `;
+    const pose = SIGN_ORDER[idx], s = SIGNS && SIGNS.find(x => x.pose === pose);
+    const mono = v => `<span style="font-family:var(--font-mono)">${v}</span>`;
+    const verdict = (said, extra = '') => said === null || said === undefined ? '–'
+        : `<span style="color:${said === pose ? 'var(--accent-green)' : 'var(--accent-red)'}">${SIGN_NAMES[said] || said}${extra} ${said === pose ? '✓' : '✗'}</span>`;
+    document.getElementById('gestureInfo').innerHTML = !s
+        ? `<div>Sign: <strong style="color:var(--accent-cyan)">${SIGN_NAMES[pose]}</strong> (a drawing)</div><div>Not measured yet. Run <code>python -m airpoint.results</code>.</div>`
+        : `<div>Sign: <strong style="color:var(--accent-cyan)">${SIGN_NAMES[pose]}</strong>, the middle frame of its recording</div>
+        <div>Thumb to index gap: ${mono(s.pinch.toFixed(2))} palm lengths</div>
+        <div>Reach from the wrist: thumb ${mono(s.ext.thumb.toFixed(2))} · index ${mono(s.ext.index.toFixed(2))} · middle ${mono(s.ext.middle.toFixed(2))} · ring ${mono(s.ext.ring.toFixed(2))} · little ${mono(s.ext.pinky.toFixed(2))}</div>
+        <div>Hand-written rules call it: ${verdict(s.rule)}</div>
+        <div>Trained network calls it: ${verdict(s.mlp, s.conf === null ? '' : ` (${(100 * s.conf).toFixed(0)}%)`)}</div>`;
 }
+selectGesture(0);
 
 function animateGestureCanvas() {
     gestureCtx.clearRect(0, 0, 400, 400);
@@ -1041,7 +1111,7 @@ const fsmStates = {
 
 const fsmTransitions = [
     { from: 'RESTING', to: 'MOVING', label: 'Hand Detected' },
-    { from: 'MOVING', to: 'PRESSING', label: 'Pinch < 0.28' },
+    { from: 'MOVING', to: 'PRESSING', label: 'Pinch or fist' },
     { from: 'PRESSING', to: 'MOVING', label: 'Release < 500ms\n→ LEFT CLICK' },
     { from: 'PRESSING', to: 'DRAGGING', label: 'Hold > 500ms' },
     { from: 'DRAGGING', to: 'MOVING', label: 'Release\n→ DROP' },
@@ -1138,7 +1208,7 @@ function fsmTransition(action) {
             if (fsmCurrentState === 'RESTING') { fsmCurrentState = 'MOVING'; event = 'Hand detected → MOVING'; }
             break;
         case 'pinch_enter':
-            if (fsmCurrentState === 'MOVING') { fsmCurrentState = 'PRESSING'; event = 'Pinch ratio < 0.28 → PRESSING'; }
+            if (fsmCurrentState === 'MOVING') { fsmCurrentState = 'PRESSING'; event = 'Pinch or fist seen → PRESSING'; }
             break;
         case 'pinch_release_short':
             if (fsmCurrentState === 'PRESSING') { fsmCurrentState = 'MOVING'; event = 'Quick release < 500ms → LEFT CLICK!'; }

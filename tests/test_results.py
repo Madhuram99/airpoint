@@ -62,3 +62,37 @@ def test_an_empty_project_says_nothing_was_measured_instead_of_inventing_numbers
     text = open(path).read()
     assert text.startswith("window.AIRPOINT_RESULTS = ") and text.rstrip().endswith(";")
     assert json.loads(text[len("window.AIRPOINT_RESULTS = "):].rstrip().rstrip(";"))["dataset"] is None
+
+
+def test_signs_are_real_recorded_hands_with_what_each_classifier_says(tmp_path):
+    r = results.build(project(tmp_path), **QUICK)
+    assert [s["pose"] for s in r["signs"]] == ["palm", "pinch", "fist", "v_sign", "thumb_up", "thumb_down"]
+    for s in r["signs"]:
+        assert len(s["pts"]) == 21 and len(s["pts"][0]) == 2 and s["mlp"] == s["pose"] and 0.5 < s["conf"] <= 1.0
+        assert set(s["ext"]) == {"thumb", "index", "middle", "ring", "pinky"} and s["pinch"] > 0 and s["rule"] in results.POSES
+
+
+def test_helper_and_browser_sections_are_empty_until_measured(tmp_path):
+    root = project(tmp_path)
+    r = results.build(root, **QUICK)
+    assert r["helper"] is None and r["web"] is None
+    (tmp_path / "results").mkdir(exist_ok=True)
+    (tmp_path / "results" / "helper_eval.json").write_text(json.dumps({
+        "model": "gpt-6.1-sol", "date": "2026-11-25", "what": "drawn screens", "calls": 9, "median_seconds_per_step": 3.5,
+        "pointing": {"n": 4, "hits": 4, "median_err_px": 1.0, "max_err_px": 1.6, "median_seconds": 3.5, "smallest_box": [52, 27], "rows": []},
+        "errands": [{"name": "reply and send", "request": "x", "passed": True, "steps": ["a", "b"], "asked_yes_or_no": ['click "Send"'],
+                     "answered": "yes", "ended": "Sent.", "seconds": 20.0}]}))
+    h = results.build(root, **QUICK)["helper"]
+    assert h["pointing"] == {"n": 4, "hits": 4, "median_err_px": 1.0, "max_err_px": 1.6, "smallest_box": [52, 27]}
+    assert h["errands"] == [{"name": "reply and send", "passed": True, "steps": 2, "asked": ['click "Send"'], "answered": "yes"}]
+    assert h["seconds_per_step"] == 3.5 and h["model"] == "gpt-6.1-sol"
+
+
+def test_the_real_project_counts_its_browser_parity_checks():
+    import os
+    import shutil
+    import pytest
+    if shutil.which("node") is None:
+        pytest.skip("node is not installed")
+    w = results._web(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    assert w["agree"] == w["checks"] > 3000
