@@ -11,11 +11,13 @@ venv/bin/python -m airpoint.lab                # tutorial + pointing test at htt
 
 # 3. Live demo (q quit | m mouse | d dwell | w wheel | o glow | f face | b filter | k rules/mlp | c calibrate | v mini | z zoom | x x-ray |
 #               t simulated tremor, [ ] size, { } speed | p pause | l talk | a AI helper | h hints | s sounds | n new sign | r record |
+#               ? all keys, on screen |
 #               1-6 pose | space start/redo)
 venv/bin/python run_demo.py                    # MLP if models/pose_mlp.joblib exists, else rules
 venv/bin/python run_demo.py --mouse            # same, OS mouse control already ON
 venv/bin/python run_demo.py --rules            # force rules
 venv/bin/python run_demo.py --user <name>      # loads profiles/<name>.json (fc_min + personal model) if calibrated
+venv/bin/python run_demo.py --theme dark       # window colours: dark or light; default follows the system
 venv/bin/python run_demo.py --record --user <name>   # record poses to data/<name>.csv
 #    palm = move | pinch/fist < 0.5 s = click | hold = drag | v-sign 0.3 s = right click
 #    thumb up / down = scroll | hand out of frame = rest
@@ -25,7 +27,7 @@ venv/bin/python run_demo.py --record --user <name>   # record poses to data/<nam
 #    talk demo  : once: System Settings > Keyboard > Dictation on, Shortcut > Customize > control+option+d.
 #                 m -> click into Notes with a pinch -> wheel up (talk) or your talk sign -> speak -> the same again to stop
 #    teach demo : n -> type a name -> hold a new sign 8 s -> 1 (speak) -> type a phrase -> Enter; hold the sign: it speaks
-#    tremor demo: m (mouse on) -> t (cursor shakes, tag reads SIMULATED) -> wait 2 s for LOCKED ->
+#    tremor demo: m (mouse on) -> t (cursor shakes, the glow reads Simulated tremor) -> wait 2 s for "Locked on" in the message line ->
 #                 b twice (smoothing only, then off) to compare on the real cursor -> x to show why
 
 # 3b. Your profile (made by calibration; edit by hand if a sign is hard for you)

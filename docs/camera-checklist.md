@@ -8,6 +8,9 @@ Roughly: stages 1 to 6 an hour and a quarter, stage 7 fifteen minutes, stage 8 t
 fifteen. Stages 7 (on-laptop speech), 8 and 9.9 each start with a decision that is yours: an install,
 sending screen pictures to OpenAI, and publishing the page.
 
+After your first look on 25 November the window, the glow, the wheel and talk were rebuilt: Stage 11
+at the end has the checks for that, and the older items below now use the new words.
+
 Start AirPoint in one terminal and the lab in another:
 
 ```bash
@@ -18,15 +21,15 @@ venv/bin/python -m airpoint.lab
 
 ## Stage 1 — camera, tremor, X-ray (and the three Week 2 checks)
 
-- [ ] **1.0 Launch line** reads `camera 0 1920x1080 @ 30 fps -> view 640x360`. The banner shows about 30 fps, also in a dim room.
+- [ ] **1.0 Launch line** reads `camera 0 1920x1080 @ 30 fps -> view 640x360`. X-ray (`x`) shows about 30 fps, also in a dim room.
 - [ ] **1.1 Feel.** `m` turns the mouse on. Cursor speed and smoothness match Week 1. `z` steps the window size.
-- [ ] **1.2 Calibration (Week 2).** `c`: hold still, six poses, "Learning your hand...", then "done" with a percentage. The prompt strip is at the top and never covers the hand. `profiles/madhuram.json` exists; relaunching shows `mlp/madhuram`.
+- [ ] **1.2 Calibration (Week 2).** `c`: hold still, six poses, "Learning your hand...", then "done" with a percentage. The card is at the top of the picture and never covers the hand. `profiles/madhuram.json` exists; relaunching shows `mlp/madhuram`.
 - [ ] **1.3 Dwell (Week 2).** `d`, hold the palm still over an icon: the ring fills in about a second, one click, no repeat until the hand moves away and stops again.
 - [ ] **1.4 Mini view (Week 2).** `v`: 320×240 in the top-right corner, staying above a full-screen browser.
-- [ ] **1.5 Simulated tremor.** `t`: the cursor shakes and a red line reads SIMULATED TREMOR. Within about 2 seconds it reads LOCKED near 6 Hz and the cursor steadies. `]` makes the shake bigger, `}` faster; the lock follows.
+- [ ] **1.5 Simulated tremor.** `t`: the cursor shakes and the message line reads `Simulated tremor 6.0 Hz. Measuring...`. Within about 2 seconds it reads `Locked on` near 6 Hz and the cursor steadies. `]` makes the shake bigger, `}` faster; the lock follows.
 - [ ] **1.6 Filter comparison.** `b` once (smoothing only): a visible wobble returns. `b` again (OFF): the raw shake. `b` again: full.
-- [ ] **1.7 A real shake.** Simulator off (`t`). Shake your own hand on purpose for 5 seconds. Does LOCKED appear, and at what frequency?
-- [ ] **1.8 False locks.** Two minutes of normal use: move, click, drag, scroll. Note any LOCKED flash.
+- [ ] **1.7 A real shake.** Simulator off (`t`). Shake your own hand on purpose for 5 seconds. Does `Locked on` appear in the message line, and at what frequency?
+- [ ] **1.8 False locks.** Two minutes of normal use: move, click, drag, scroll. Note any `Locked on` flash.
 - [ ] **1.9 X-ray.** `x`: the bars follow your signs, the state boxes light up, the scope and spectrum move, and the frame rate stays near 30.
 - [ ] **1.10 Guard rails.** In record (`r`) and calibrate (`c`) the `t` key does nothing.
 
@@ -47,13 +50,13 @@ Report: the "Measured so far" table as it stands, and any block that landed unde
 
 ## Stage 3 — fits your body
 
-- [ ] **3.1 Calibration with reach.** `c`: after HOLD STILL comes REACH (6 s). Move your hand as far as is comfortable in every direction, elbow resting if you like. After "done", the yellow box on the view is your comfort box and small hand movements cover the whole screen.
+- [ ] **3.1 Calibration with reach.** `c`: after Hold still comes Reach (6 s). Move your hand as far as is comfortable in every direction, elbow resting if you like. After "done", the blue corner marks on the picture are your comfort box and small hand movements cover the whole screen.
 - [ ] **3.2 Feel in the box.** Does the cursor still feel steady and reach every screen corner? Too jumpy or too slow?
 - [ ] **3.3 Other hand.** Use your other hand without recalibrating: the same signs should work.
 - [ ] **3.4 Back of the hand.** Turn your hand so its back faces the camera: palm and V-sign should still read.
 - [ ] **3.5 A sign you "cannot" make.** Calibrate again but show an open palm when asked for thumb down. The result line should say `skipped: thumb_down`, and thumb down should no longer scroll. Then `venv/bin/python -m airpoint.profile madhuram --reset-roles` and calibrate normally to restore it.
-- [ ] **3.6 Pause.** `p`: the banner reads PAUSED and nothing clicks. Hold an open palm still: the ring fills in 2 s and control returns.
-- [ ] **3.7 Hints.** Take your hand out for 3 s; cover the camera; hold the hand very close and very far; move it to the frame edge. Each should give a sensible line at the bottom. `h` turns them off.
+- [ ] **3.6 Pause.** `p`: the word in the side panel reads Paused and nothing clicks. Hold an open palm still: the ring fills in 2 s and control returns.
+- [ ] **3.7 Hints.** Take your hand out for 3 s; cover the camera; hold the hand very close and very far; move it to the frame edge. Each should give a sensible sentence in the message line (a missing hand shows as the word `No hand`). `h` turns them off.
 - [ ] **3.8 Sounds.** Click, right-click, drag and pause each make a sound when the mouse is on. `s` turns them off.
 - [ ] **3.9 Role edit by hand.** `venv/bin/python -m airpoint.profile madhuram --role right_click=fist --role grip=pinch`, relaunch: a held fist right-clicks and no longer drags. Restore with `--reset-roles`.
 
@@ -74,8 +77,8 @@ Report: the percentages from 4.1 and 4.3, the false fires from 4.4, whether 4.5 
 
 ## Stage 5 — glow at the cursor, point-only wheel
 
-- [ ] **5.1 Glow.** With the mouse on, a thin ring follows the real cursor. It vanishes when the mouse is off or you enter record / calibrate / teach. `o` switches it.
-- [ ] **5.2 What it shows.** Dwell on (`d`): an arc fills at the cursor before the click, then a ripple. Drag: a DRAG tag. Thumb scroll: SCROLL. `p`: PAUSED with the resume countdown. `t`: SIMULATED. A hint (hand out for 3 s) appears under the cursor.
+- [ ] **5.1 Glow.** With the mouse on, a ring in a soft halo follows the real cursor. It vanishes when the mouse is off or you enter record / calibrate / teach. `o` switches it.
+- [ ] **5.2 What it shows.** Dwell on (`d`): an arc fills at the cursor before the click, then a ripple. Drag: the ring turns yellow and reads `Dragging`. Thumb scroll: `Scrolling up`. `p`: `Paused` with the resume countdown. `t`: `Simulated tremor`. A hint (hand out for 3 s) appears under the cursor.
 - [ ] **5.3 Click-through.** With a real mouse, click a button that sits under the glow: the click must reach it.
 - [ ] **5.4 Above everything.** Put a browser in full screen, switch Spaces, and (if you have one) move to a second display: does the glow stay with the cursor?
 - [ ] **5.5 Wheel basics.** `w`, hold the palm still for a second: the wheel opens at the cursor and in the camera view, and the cursor stops following. Stay put: it clicks after a little under a second.
@@ -88,7 +91,7 @@ Report: 5.3 and 5.4 exactly as they behaved, and the answers to 5.7.
 
 ## Stage 6 — face mode
 
-- [ ] **6.1 Switch.** Mouse on, look at the middle of the screen, press `f`. After a moment the cursor sits near the middle and the banner reads `face`. A box and a nose dot are drawn on your face in the view.
+- [ ] **6.1 Switch.** Mouse on, look at the middle of the screen, press `f`. After a moment the cursor sits near the middle and the Face switch in the side panel reads on and the list of signs becomes the face's. A box and a nose dot are drawn on your face in the view.
 - [ ] **6.2 Head pointing.** Turn your head left, right, up, down: the cursor follows the same way and reaches every screen edge without straining. Is it steady when you hold still?
 - [ ] **6.3 Mouth and eyebrows.** Open your mouth briefly: one click. Hold it open and turn your head: a drag; close to drop. Raise your eyebrows for a moment: a right click.
 - [ ] **6.4 Wheel with the face.** Hold your head still for a second: the wheel opens. Pick scroll and pause with head movement alone.
@@ -104,13 +107,15 @@ Report: steadiness in 6.2, unwanted clicks in 6.6, and whether 6.5 changed the f
 
 Once, before these: System Settings › Keyboard › Dictation › on; Shortcut › Customize › press
 `control+option+d`. Then `venv/bin/python -m airpoint.speech` should print the same shortcut.
+Your profile was switched to the on-laptop engine on 25 November, so for 7.2 to 7.8 (macOS dictation)
+switch back first: `venv/bin/python -m airpoint.profile madhuram --speech system`.
 
 - [ ] **7.1 A key combo with control.** (A fix from this stage: `control` used to be dropped from every combo.) Teach a sign (`n`) with action 2, keys `ctrl+up`. Hold the sign: Mission Control must open.
-- [ ] **7.2 Start and stop by wheel.** Mouse on, `w`. Click into a note in Notes with the wheel. Open the wheel and move up (talk): the macOS microphone appears and the banner and the glow read LISTENING with a countdown. Say a sentence: it is typed into the note. Wheel up again: the microphone goes away.
+- [ ] **7.2 Start and stop by wheel.** Mouse on, `w`. Click into a note in Notes with the wheel. Open the wheel and move up (talk): the macOS microphone appears and the message line and the glow read Listening, with the seconds left. Say a sentence: it is typed into the note. Wheel up again: the microphone goes away.
 - [ ] **7.3 A sign for it.** `n`, name it, hold a sign, action 6 (talk). Use that sign to start, and again to stop.
 - [ ] **7.4 It ends by itself.** Start talk and say nothing for 20 s: the microphone must go away by itself, and AirPoint must read idle. If macOS and AirPoint ever disagree (one listening, one not), note what you did just before; pressing `l` once puts them back in step.
 - [ ] **7.5 Mouse off and pause.** While it is listening press `m`: dictation must end first. With the mouse off, talk must refuse to start and say why. The same for `p`.
-- [ ] **7.6 Its own window.** Click on the AirPoint window so it is in front, press `l`, speak, press `l`: nothing is typed anywhere, AirPoint must not react to any letter, and it must still be running.
+- [ ] **7.6 Its own window.** Click on the AirPoint window so it is in front, press `l`, speak, press `l`: the words go to the app you used before AirPoint's window, which comes forward (with no such app nothing is typed and the message line says so). AirPoint must not react to any letter, and it must still be running.
 - [ ] **7.7 Face mode.** `f`, start talk from the wheel, speak two sentences: count the clicks while speaking (there should be none). Stop talk: about a second later an open mouth clicks again.
 - [ ] **7.8 Hindi.** Switch the dictation language in the macOS microphone pop-up to Hindi and repeat 7.2.
 
@@ -124,9 +129,9 @@ venv/bin/python -m airpoint.speech --listen 5           # speak: prints what was
 venv/bin/python -m airpoint.profile madhuram --speech local
 ```
 
-- [ ] **7.9 Microphone.** The first `--listen` asks for microphone access for your terminal. Allow it. The line must show a peak well above 0.01 while you speak; a peak of 0.000 means access was refused.
-- [ ] **7.10 Commands and text.** In AirPoint (start-up line reads `talk: on this laptop`): start talk, say "scroll down", stop: the page scrolls and the banner shows `heard "Scroll down."`. Say a full sentence: it is typed. Say "select all", then "copy", then "paste". Say "tab key" (the bare word "tab" was heard as "time" from synthesized voices). Which commands does it mishear from you?
-- [ ] **7.11 Silence.** Start and stop talk without speaking: nothing may be typed (the banner says `heard nothing`). Try it once with a fan or music on.
+- [ ] **7.9 Microphone.** The first `--listen` may ask for microphone access for your terminal. Allow it. The line must show a peak well above 0.01 while you speak; a peak of 0.000 means access was refused.
+- [ ] **7.10 Commands and text.** In AirPoint (start-up line reads `talk: on this laptop`): start talk, say "scroll down", stop: the page scrolls and the message line shows `Heard "Scroll down.".` Say a full sentence: it is typed. Say "select all", then "copy", then "paste". Say "tab key" (the bare word "tab" was heard as "time" from synthesized voices). Which commands does it mishear from you?
+- [ ] **7.11 Silence.** Start and stop talk without speaking: nothing may be typed (the message line says `Talk: heard nothing.`). Try it once with a fan or music on.
 - [ ] **7.12 Speed.** How long from the second tap to the words appearing? Is `tiny.en` (`--model tiny.en`, then `--speech-model tiny.en`) good enough and faster?
 
 Report: 7.1, 7.4 and 7.6 exactly as they behaved; the click count in 7.7; for the on-laptop engine the
@@ -140,13 +145,13 @@ display at every step, to OpenAI. Close anything you would not want in that pict
 Before: in the terminal that will start AirPoint, `export OPENAI_API_KEY=...` (your key; never put it
 in a file here). Then `venv/bin/python run_demo.py --user madhuram --mouse`.
 
-- [ ] **8.1 Switching on.** `a`: the prompt reads SWITCH ON THE AI HELPER with the red line saying what is sent. Esc: nothing is on. `a`, Enter: the banner now ends with `AI [a] ON`.
-- [ ] **8.2 A harmless errand.** Open TextEdit with an empty document and click into it. `a`, type `write hello from AirPoint in this document`, Enter. Watch: THINKING, then the cursor goes to the target, the glow says `AI 1/12: ...` with a countdown, then it acts. At the end a line is spoken. Note the seconds per step.
+- [ ] **8.1 Switching on.** `a`: the card reads `Switch on the AI helper` with the red line saying what is sent. Esc: nothing is on. `a`, Enter: the AI helper switch in the side panel reads on.
+- [ ] **8.2 A harmless errand.** Open TextEdit with an empty document and click into it. `a`, type `write hello from AirPoint in this document`, Enter. Watch: the word reads `AI helper`, the cursor goes to the target, the glow says `AI step 1 of 12` with a countdown, then it acts. At the end a line is spoken. Note the seconds per step.
 - [ ] **8.3 A question.** With any page or document in front: `a`, `what is the title of this window?`. The answer is spoken and shown.
 - [ ] **8.4 Your own window is hidden.** With the AirPoint camera window visible: `a`, `is there a black rectangle on the screen, and where?`. It should describe one where the AirPoint window is: that is what the model gets instead of your camera picture.
 - [ ] **8.5 Stop by fist.** Start a longer errand (`open Calculator and work out 15 times 12`). Make a fist: it stops with the low sound. Keep the fist a moment, then open your hand: nothing may be clicked. A pinch after the open palm clicks as usual.
 - [ ] **8.6 Stop by moving.** Start it again and swipe your hand quickly sideways: it stops. Start it once more and rest your hand normally for the whole errand: it must not stop by itself. If it did, say what your hand was doing.
-- [ ] **8.7 A step that waits.** In TextEdit with a few words typed: `a`, `close this document without saving`. Before the click that discards it, the helper must stop and ask: the glow says YES OR NO? Thumb down: nothing is lost. Repeat and say yes with a thumb up.
+- [ ] **8.7 A step that waits.** In TextEdit with a few words typed: `a`, `close this document without saving`. Before the click that discards it, the helper must stop and ask: the glow says `yes or no?` Thumb down: nothing is lost. Repeat and say yes with a thumb up.
 - [ ] **8.8 Yes and no by pointing.** Repeat 8.7 with an open palm only: a two-way wheel appears in the camera view; point up for yes or down for no and hold.
 - [ ] **8.9 Wrong clicks.** Over three or four errands in real apps (Finder, Safari, Notes): did it ever click the wrong thing, or miss a small target? Which app?
 - [ ] **8.10 One sign, one errand.** `n`, teach a sign with action 7 and a request you would use daily. Hold the sign: the errand starts.
@@ -183,3 +188,24 @@ Report: frames a second in 9.1 and 9.10, wrong signs in 9.2, anything that faile
 - [ ] **10.4 Backup video.** Record the three-minute demo once it runs clean (QuickTime › New Screen Recording, with the camera view visible).
 - [ ] **10.5 Report and slides.** `docs/endsem/report-draft.md` and `slides-outline.md` are drafts in plain text: put them into the department's format, check every reference against its source, and fill the places marked to measure and the performa block.
 - [ ] **10.6 Viva.** Read `docs/endsem/viva-guide.md` with the team; each person should be able to answer the table "what is measured, and what is not".
+
+## Stage 11: after the first look (window, glow, wheel, talk)
+
+Built on 25 November from what you said after your first session. Start as before. The window follows
+the system's light or dark look; `--theme dark` or `--theme light` forces one.
+
+- [ ] **11.1 Sharp.** Text in the window is as sharp as in any Mac app, at each `z` zoom.
+- [ ] **11.2 The word.** No hand: `No hand`. A palm: `Moving`. Pinch: `Pressing`, held: `Dragging`. Thumb up: `Scrolling up`. V sign: `V sign`. Does it ever lag or say the wrong thing?
+- [ ] **11.3 The signs.** The row of the sign you are making lights up: blue for the palm, yellow for a sign that acts. After a calibration that skipped a sign its row is grey and says `not used`. A taught sign appears under the six.
+- [ ] **11.4 The switches.** `m d w o b f p`: the row changes at once, and the message line says in a sentence what the key did.
+- [ ] **11.5 All keys.** `?` lists every key over the picture; `?` again hides the list.
+- [ ] **11.6 Mouse off.** At the start the message line says mouse control is off and to press `M`.
+- [ ] **11.7 Glow.** Blue ring while the cursor follows; yellow and filled while you pinch; the words click, drag, drop and right click appear under it. Readable over a white page and over a dark one?
+- [ ] **11.8 Keys that show themselves.** Press `w`: the wheel appears at the cursor for two seconds with "The wheel is on. Hold still for 1 s to open it.", even with the mouse off. Press `o` twice: "This ring follows your cursor".
+- [ ] **11.9 Wheel.** Open it: a picture and a word in each slice, the pointed slice yellow, a line under it saying how to use it. Any slice you cannot read?
+- [ ] **11.10 Talk does not freeze.** `m`, `l`, speak, `l`: the picture keeps moving the whole time. Do this ten times, also while clicking and dragging between words. If the window ever stops, do not close it: tell Claude first, so the stuck process can be looked at.
+- [ ] **11.11 Talk reaches your app.** Click into Notes, click the AirPoint window, `l`, say a sentence, `l`: Notes comes forward and the sentence is typed there. The message line says where it went.
+- [ ] **11.12 Small view and X-ray.** `v`: the word and one line under the picture. `x`: the numbers, in the side panel's place.
+- [ ] **11.13 Cards.** `r`, `c`, `n`, `a`: each card over the picture is readable and in plain sentences.
+
+Report: 11.10 exactly as it behaved, any wording that was unclear, anything that still looks wrong.

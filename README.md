@@ -34,8 +34,22 @@ cursor : middle knuckle → tremor canceller → One-Euro filter → screen
 - **Either hand.** Training adds a mirrored copy of every example, so one model reads both hands and both
   faces of a hand. It does not rely on MediaPipe's left/right label, which follows the hand's facing.
 - **Pause.** `p` stops everything reaching the system. Hold an open palm still for two seconds to resume.
-- **Hints and sounds.** A strip at the bottom says what is in the way (show your hand, too dark, move
-  closer, sign not clear). Clicks, drags and the pause each have a system sound. `h` and `s` switch them.
+- **Hints and sounds.** The message line says what is in the way (too dark, move closer, sign not
+  clear). Clicks, drags and the pause each have a system sound. `h` and `s` switch them.
+
+### The window
+
+The camera picture, with nothing drawn over it but the hand, the pointer and the comfort box. Beside it
+a panel that explains itself: one plain word for what is happening (No hand, Moving, Pressing, Dragging,
+Scrolling up, Paused), the signs with a picture of each and what it does under this user's roles (the
+one in view is lit), and the switches with their keys. Under both, one message line that says, in a
+sentence, what the key just pressed did or why it did nothing. `?` lists every key.
+
+Blue means AirPoint is tracking, yellow means an action is happening or a choice is lit, red is a
+warning, and a word always says the same thing as the colour. The numbers a developer wants
+(probabilities, votes, the state machine, the tremor spectrum, the frame rate) are in X-ray (`x`),
+which takes the panel's place. The window follows the system's light or dark look (`--theme`), and is
+drawn at the display's real pixel size, so its text is as sharp as any other app's at each zoom (`z`).
 
 ### Point only
 
@@ -46,9 +60,13 @@ the button and lets go at the next dwell; scroll follows how far the hand is abo
 stopped. Choice is by direction, so it works the same whatever the comfort box. If calibration finds
 no clicking sign the hand can make, it turns both on.
 
-On macOS a glow follows the real cursor (a second, click-through window): the dwell countdown, a
-ripple on each action, DRAG / SCROLL / PAUSED / LISTENING / SIMULATED tags, the current hint, and the wheel. `o`
-switches it; `--no-overlay` starts without it. The wheel is also drawn in the camera view.
+On macOS a glow follows the real cursor (a second, click-through window): a ring in a soft halo,
+blue while the cursor follows and yellow while a button is down or a sign acts, with the dwell
+countdown, a ripple and a word for each action (click, right click, drag, drop), a word for each state
+that lasts (Dragging, Scrolling up, Paused, Listening), the current hint, and the wheel: a picture and
+a word in each slice, the pointed slice lit, and a line under it that says how to use it. `o` switches
+the glow; `--no-overlay` starts without it. Pressing `w` or `o` shows, at the cursor, what was just
+switched on. The wheel is also drawn in the camera view.
 
 ### Face mode
 
@@ -115,7 +133,8 @@ labelled as a simulation, and measured pointing results. Anything not yet measur
 For someone who cannot type. One tap starts listening and the same tap ends it: a sign taught for it
 (`n`, action 6), the top of the wheel, or `l`. It is tap to talk, not hold to talk, because holding a
 sign for a whole sentence is what these users find hard; listening also ends by itself after twenty
-seconds. Click where the words should go first, and keep the mouse switch on.
+seconds. Click where the words should go first, and keep the mouse switch on. Started with `l` from
+AirPoint's own window, the words go to the app that was in front before it, which is brought forward.
 
 There are two engines, chosen per profile:
 
@@ -142,9 +161,13 @@ There are two engines, chosen per profile:
   venv/bin/python -m airpoint.speech --listen 5     # check: what five seconds of your voice are heard as
   ```
 
-No sound is saved, and none leaves the laptop. Keystrokes go out on their own thread, in order, so a
-long sentence never freezes the camera loop; and keys AirPoint types are never read back as its own
-commands when its window happens to be in front.
+No sound is saved, and none leaves the laptop. The on-laptop engine runs in a process of its own
+(`python -m airpoint.speech --serve`, started by the app): the app never opens the microphone or loads
+the recognizer, every step has a time limit, and that process ends with the app, so the microphone
+cannot stay open behind it. This followed a freeze the first time talk met a real microphone; the
+cause was not reproduced without one (see the Stage 11 design note), so the app is fenced off from it
+rather than proven fixed. Keystrokes go out on their own thread, in order, so a long sentence never
+holds up the camera loop; and keys AirPoint types are never read back as its own commands.
 
 ### AI helper
 
@@ -228,7 +251,7 @@ venv/bin/python run_demo.py                      # live demo; m = mouse on/off, 
 venv/bin/python run_demo.py --mouse              # start with the mouse already on
 venv/bin/python run_demo.py --user you           # loads profiles/you.json once calibrated; c = calibrate (~1 min)
 #   d = dwell click on/off | v = mini always-on-top view | c = hold still 5 s, 6 poses x 5 s, retrain, hot-swap
-#   t = simulated tremor ([ ] size, { } speed) | b = filter full / smoothing only / off | x = X-ray panel | z = zoom
+#   t = simulated tremor ([ ] size, { } speed) | b = filter full / smoothing only / off | x = X-ray | z = zoom | ? = all keys
 #   p = pause (open palm held still 2 s resumes) | h = hints on/off | s = sounds on/off
 #   n = teach a new sign: name it, hold it 8 s, choose speak / keys / type / open / pause / talk
 #   w = point-only wheel (stay = click; talk / right / drag / scroll / double / pause by direction) | o = glow at the cursor
@@ -236,6 +259,7 @@ venv/bin/python run_demo.py --user you           # loads profiles/you.json once 
 #   a = AI helper: switch it on, then type an errand (see AI helper)
 #   f = face mode: head moves the cursor, mouth open clicks, eyebrows right-click; c calibrates the face
 venv/bin/python run_demo.py --no-overlay         # without the glow at the cursor (the glow is macOS only)
+venv/bin/python run_demo.py --theme dark         # or light; default: follow the system
 venv/bin/python -m airpoint.profile you          # show or edit your profile: roles, comfort box, dwell, sounds
 venv/bin/python -m airpoint.speech               # what talk can use on this laptop
 venv/bin/python -m airpoint.helper_eval          # measure the AI helper's model on drawn screens (needs the key)
@@ -258,7 +282,8 @@ airpoint/        package — camera, tracker, features, filters, tremor, pointer
                  recorder, calibration, train, session, modes/ (live, record, calibrate), app,
                  lab/ (server, stats, store), results, sim_pointer, profile, hints, sounds, effects,
                  modes/teach, wheel, overlay, face, modes/face_calibrate, speech,
-                 llm, screen, helper, modes/ask, helper_eval, export_web, qr
+                 llm, screen, helper, modes/ask, helper_eval, export_web, qr,
+                 ui (palette, typeface, scale-aware canvas), panel (what the window says), glyphs, proc
 lab/             practice pages and the pointing test (plain HTML/JS, served by airpoint.lab)
 try/             AirPoint as a web page: the JavaScript port, its parity fixture, a robot hand, the QR code
 results/         saved test sessions (trials.jsonl)

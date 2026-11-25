@@ -10,8 +10,8 @@ venv/bin/python run_demo.py --user madhuram --mouse     # calibrated profile; mo
 open index.html                                         # second screen or behind
 ```
 
-- Sit where the wall behind you is plain and your face is lit from the front. Check the banner says
-  30 fps. If it says 15, the room is too dim: turn a light on.
+- Sit where the wall behind you is plain and your face is lit from the front. Press `x`: X-ray must say
+  30 fps. If it says 15, the room is too dim: turn a light on. Press `x` again to close it.
 - Open Notes with an empty note, and a long web page.
 - Press `v` once to see the mini view sits in the corner, and again to bring the big view back.
 - If you will show the helper: `export OPENAI_API_KEY=...` before starting AirPoint, and check the
@@ -24,7 +24,7 @@ open index.html                                         # second screen or behin
 | 0:00 | Open palm, move the cursor across the screen. Pinch a folder open. | "A webcam and a hand. No glove, no sensor. Pinch is click." |
 | 0:20 | Hold a pinch, drag a window, release. Thumb down on the web page. V sign on a file. | "Hold to drag. Thumbs scroll. A V is right-click. Six signs, read by a small network we trained, thirty times a second." |
 | 0:45 | Press `x`. | "This is what it sees: the 21 points, the probability of each sign, the vote, the state machine." |
-| 1:00 | Press `t`. The cursor shakes. Wait two seconds for LOCKED. Press `b` twice, then back. | "Now the hard part. This is a simulated tremor, six times a second. Ordinary smoothing cannot hide a regular shake without lagging. So we measure its frequency and cut out exactly that band. Filter off... and on." |
+| 1:00 | Press `t`. The cursor shakes. Wait two seconds for "Locked on" in the message line. Press `b` twice, then back. | "Now the hard part. This is a simulated tremor, six times a second. Ordinary smoothing cannot hide a regular shake without lagging. So we measure its frequency and cut out exactly that band. Filter off... and on." |
 | 1:30 | Press `t` off. Press `w`. Hold still: the wheel opens. Pick scroll. | "Not everyone can pinch. Holding still opens a wheel; you choose by direction. The whole computer by pointing." |
 | 1:50 | Press `f`. Move the cursor with your head, open your mouth to click. Press `f`. | "Or no hand at all. Same pipeline, a different tracker in front." |
 | 2:10 | Make your taught sign: the laptop speaks. | "And signs you teach it in fifteen seconds. This one speaks for someone who cannot." |

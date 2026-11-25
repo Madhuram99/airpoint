@@ -48,6 +48,12 @@ documents and the final dashboard pass are done (`docs/endsem/`); its measuremen
 video are the user's. From Stage 2 on the user approved every stage in advance and tests them all in
 one session; that session's checklist is `docs/camera-checklist.md`.
 
+Stage 11 (2026-11-25, after the user's first look; design `2026-11-25-airpoint-stage11-first-look-design.md`):
+the window, the glow and the wheel were redrawn so that they explain themselves, the on-laptop speech
+engine was moved into a process of its own after it froze the app with a real microphone, and words
+spoken from AirPoint's own window now reach the app used before it. The freeze was not reproduced
+without a microphone; whether it is gone is item 11.10 of the checklist.
+
 Size is relative: S, M, L. "You" = work only the user can do (camera, people).
 
 ### Stage 1 — Tremor switch, tremor canceller, X-ray view (M)
