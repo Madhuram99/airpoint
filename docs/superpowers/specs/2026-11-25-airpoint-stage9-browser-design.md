@@ -1,8 +1,8 @@
 # AirPoint Stage 9 — Try it in your browser
 
 Date: 2026-11-25
-Status: approved in advance (user, 2026-11-25); built the same day. Publishing the page (GitHub Pages)
-waits for the user's OK.
+Status: approved in advance (user, 2026-11-25); built the same day. Published with GitHub Pages later that
+day, on the user's go: https://madhuram99.github.io/airpoint/try/
 Roadmap: `2026-11-25-airpoint-v2-roadmap.md`, Stage 9
 
 ## 1. Goal
@@ -57,5 +57,4 @@ Done on 2026-11-25, in Chrome on this laptop, from a local web server:
 
 ## 4. Not checked without a person
 
-The camera itself: permission, a real hand in a real room, phones. And whether the page is reachable
-at its public address, which does not exist until Pages is switched on.
+The camera itself: permission, a real hand in a real room, phones.

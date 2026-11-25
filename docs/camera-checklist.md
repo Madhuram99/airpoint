@@ -170,7 +170,7 @@ cd ~/Projects/airpoint && venv/bin/python -m http.server 8801      # leave runni
 - [ ] **9.6 Safari and Firefox.** Repeat 9.1 and one tutorial step in each.
 - [ ] **9.7 Refusing the camera.** Block the camera: the card must say what to do, not hang.
 - [ ] **9.8 The robot.** `http://127.0.0.1:8801/try/?replay&robot=tutorial`: a recorded hand finishes the tutorial by itself (this is what was checked without a camera, and a fallback for the demo).
-- [ ] **9.9 Putting it online (your decision).** GitHub › the repo › Settings › Pages › Deploy from a branch › `main` and `/ (root)` › Save. After a minute `https://madhuram99.github.io/airpoint/try/` opens, and `try/qr.png` leads there.
+- [ ] **9.9 It is online.** Pages was switched on 2026-11-25 on your go: `https://madhuram99.github.io/airpoint/try/` (dashboard at `https://madhuram99.github.io/airpoint/`). Open it from another network (phone data) to be sure it is reachable. To take it down again: GitHub › the repo › Settings › Pages › Unpublish site.
 - [ ] **9.10 A phone.** After 9.9: scan the code with a phone, prop the phone up, and try 9.1 to 9.3. Note the frames a second.
 
 Report: frames a second in 9.1 and 9.10, wrong signs in 9.2, anything that failed in 9.6 and 9.7.

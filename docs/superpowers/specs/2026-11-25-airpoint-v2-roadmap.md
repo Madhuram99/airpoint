@@ -41,9 +41,9 @@ Relation to the 2026-11-13 spec:
 
 ## 2. Stages
 
-Status (kept current): all ten stages built 2026-11-25. Stage 7's on-laptop speech engine is written
-but not installed (that download is the user's call). Stage 8's model was measured on drawn screens
-only. Stage 9's page is not published (switching on GitHub Pages is the user's call). Stage 10's
+Status (kept current): all ten stages built 2026-11-25. Stage 7's on-laptop speech engine is installed
+(on the user's yes) and measured on synthesized speech. Stage 8's model was measured on drawn screens
+only. Stage 9's page is published (on the user's go) at https://madhuram99.github.io/airpoint/try/. Stage 10's
 documents and the final dashboard pass are done (`docs/endsem/`); its measurement day and the backup
 video are the user's. From Stage 2 on the user approved every stage in advance and tests them all in
 one session; that session's checklist is `docs/camera-checklist.md`.

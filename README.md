@@ -214,8 +214,9 @@ node try/parity.mjs                            # the port must still agree
 venv/bin/python -m airpoint.qr https://<you>.github.io/airpoint/try/ try/qr.png
 ```
 
-To put it online, switch on GitHub Pages for this repository (Settings › Pages › Deploy from a
-branch › `main`, `/ (root)`); `try/qr.png` already points at that address.
+It is online at <https://madhuram99.github.io/airpoint/try/> (GitHub Pages serves this repository's
+`main` branch as it is; `try/qr.png` is the QR code for that address). The dashboard is at
+<https://madhuram99.github.io/airpoint/>.
 
 ## Run
 

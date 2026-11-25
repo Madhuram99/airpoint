@@ -7,4 +7,5 @@ Code lives in the commits, suite green each time. Baseline `319 passed`, end `32
   `try/parity.mjs`; pytest runs the Node check.
 - [x] **2. The page** — `try/index.html`, `app.js`, `pointer.js`, styles; static hook in `lab/lab.js`.
 - [x] **3. In a real browser** — engine loads, a robot hand does the tutorial and the test, self-test passes.
-- [x] **4. QR code, docs, checklist, push.** Pages itself stays off until the user says so.
+- [x] **4. QR code, docs, checklist, push.**
+- [x] **5. Published** — GitHub Pages switched on 2026-11-25 on the user's go; checked at the public address.
