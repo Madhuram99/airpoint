@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from . import features as F
-from . import hud
+from . import hud, panel, ui
 from .actions import ACTIVE_REGION, FOCUS_SETTLE_S, Focus
 from .classifier import PoseClassifier, VoteSmoother
 from .effects import Effects
@@ -32,6 +32,11 @@ UNLOCK_S, UNLOCK_STILL_PX = 2.0, 20.0   # an open palm held this still, this lon
 FACE_GAIN = 1.6     # a head is a noisier pointer than a hand: smooth it as if it were a hand in a small box
 FACE_CENTRE_FRAMES = 20   # uncalibrated face: the first frames set where "straight ahead" is
 SIM_NUDGES = {ord("["): (0.0, -0.05), ord("]"): (0.0, 0.05), ord("{"): (-0.5, 0.0), ord("}"): (0.5, 0.0)}
+ACTING = ("PRESSING", "DRAGGING", "HOLD", "SCROLLING")     # states in which a sign is doing something
+FILTER_SAYS = {"full": "Filter: full. The shake is measured and cancelled, then the path is smoothed.",
+               "smooth": "Filter: smoothing only. The shake is not cancelled.",
+               "off": "Filter: off. The cursor follows the raw hand."}
+NEEDS_NAME = "needs your name. Start AirPoint with --user <name>."
 
 
 @dataclass
@@ -57,7 +62,7 @@ class Session:
 
     def __init__(self, runner, rules, mlp, *, root, user=None, profile=None, dwell_on=None,
                  train_fn=train_personal, sounds=None, effects=None, overlay=None, talker=None, helper=None,
-                 focus=None):
+                 focus=None, theme=None, backing=1.0):
         self.runner, self.rules, self.mlp, self.base_mlp = runner, rules, mlp, mlp
         self.clf = mlp or rules
         self.root, self.user, self.train_fn = root, user, train_fn
@@ -88,10 +93,13 @@ class Session:
         self.face_pointer, self.face_signs = FacePointer(self.face_cfg), FaceSigns(self.face_cfg)
         self.face_centring = None       # a list of (yaw, pitch) while the first look is being taken as the centre
         self.mini, self.view_dirty = False, False
-        self.zoom, self.xray, self.ms_tracker = 1.5, False, 0.0
+        self.zoom, self.xray, self.ms_tracker = 1.25, False, 0.0
+        self.theme, self.backing = theme or ui.DARK, float(backing)      # backing: real pixels per point of the display
+        self.toast = self.did = None    # (sentence, tone, since) for the message line; (what just happened, since)
+        self.lines, self.help, self._drawn = (), False, {}
         self.recorder, self.rejected = None, 0
         self.mode = LiveMode()
-        self.last_event, self.mini_label, self.prev_t = "none", "", None
+        self.last_event, self.prev_t = "none", None
         self.obs, self.live_t = None, None
 
     def tick(self, frame, pts, hand, t, tracker_ms=0.0, face=None):
@@ -101,9 +109,10 @@ class Session:
         if self.focus_t is None or not 0.0 <= t - self.focus_t < FOCUS_EVERY_S:
             self.focus_t = t
             self.focus.note()
-        view = hud.canon_view(frame)
-        h, w = view.shape[:2]
-        luma = float(view[::8, ::8].mean())
+        w, h = hud.canon_size(frame)                   # positions and thresholds stay in canonical units
+        luma = hud.brightness(frame)
+        k = self.zoom * self.backing
+        view = hud.stage(frame, k)                     # the picture at the size it is shown
         raw = None
         if self.source == "face":
             pts, hand = None, None
@@ -117,17 +126,37 @@ class Session:
             face = None
             if self.sim.on:
                 pts = self.sim.apply(pts, t, w, h)
-            hud.draw_skeleton(view, pts)
+            hud.draw_skeleton(view, pts, lit=self.fsm.state in ACTING)
             raw = (float(pts[F.MIDDLE_MCP, 0] * w), float(pts[F.MIDDLE_MCP, 1] * h))
         self.obs = Obs(t, pts, hand, raw, w, h, fps, luma, face if self.source == "face" else None)
+        self.lines = ()
         self.mode.tick(self, self.obs, view)
         self._write_live(t)
-        if self.mode.name == "live":
-            if self.mini:
-                return hud.mini_frame(view, self.mini_label)
-            if self.xray:
-                view = np.hstack([view, hud.draw_xray(h, self.taps())])
-        return hud.zoomed(view, self.zoom)
+        live = self.mode.name == "live"
+        if self.help:
+            hud.draw_help(view)
+        if live and self.mini:
+            return hud.mini_frame(view, panel.mini_model(self, t, self.lines), self.theme, self.backing)
+        if live and self.xray:
+            side = hud.draw_xray(h, self.taps(), k, self.theme)
+        else:
+            side = self._drawn_once("side", (panel.panel_model(self), k, h),
+                                    lambda key: hud.draw_panel(key[0], self.theme, k, h))
+        width = (view.shape[1] + side.shape[1]) / k
+        bar = self._drawn_once("bar", (panel.bar_model(self, t, self.lines), k, width),
+                               lambda key: hud.draw_bar(key[0], self.theme, k, width))
+        return hud.compose(view, side, bar, self.theme)
+
+    def _drawn_once(self, name, key, draw):
+        """The side panel and the message line change a few times a second, not every frame."""
+        old = self._drawn.get(name)
+        if old is None or old[0] != key:
+            old = self._drawn[name] = (key, draw(key))
+        return old[1]
+
+    def say(self, text, t=None, tone="track"):
+        """One sentence for the message line: what a key just did, or why it did nothing."""
+        self.toast = (text, tone, (self.prev_t or 0.0) if t is None else t)
 
     def taps(self):
         """Everything the X-ray panel shows, read from where it already lives."""
@@ -192,17 +221,22 @@ class Session:
         runner, so talk needs the mouse switch on and does not start during a pause."""
         if self.talker.state == "idle" and (not self.runner.enabled or self.runner.locked):
             self.last_event = "talk is off while paused" if self.runner.enabled else "talk needs mouse ON [m]"
+            self.say("Talk is off while paused. Press P first." if self.runner.enabled
+                     else "Talk needs mouse control. Press M first.", t, "warn")
             return
         if self.talker.state == "idle" and not self.talker.local:      # macOS types where the keyboard is
             somewhere, name = self.keys_home()
             if not somewhere:
                 self.last_event = "talk: nowhere to type: click where the words should go first"
+                self.say("Nowhere to type. Click where the words should go, then start talk again.", t, "warn")
                 return
             if name:
                 self.runner.apply([Event("settle", FOCUS_SETTLE_S)])
         was, now = self.talker.state, self.talker.toggle(t)
         if now == was:
-            self.last_event = f"talk: {self.talker.problem}" if self.talker.problem else self.last_event
+            if self.talker.problem:
+                self.last_event = f"talk: {self.talker.problem}"
+                self.say(f"Talk: {self.talker.problem}.", t, "warn")
             return
         self.last_event = "talk: listening" if now == "listening" else "talk: stopped"
         if self.talker.local:                       # macOS dictation makes its own sounds
@@ -352,74 +386,107 @@ class Session:
             return
         if self.source == "face" and key in (ord("r"), ord("n"), ord("t")):
             print("[AirPoint] record, teach and the tremor simulator are for the hand: press f first")
+            self.say("Record, teach and the simulated tremor are for the hand. Press F first.", t, "warn")
             return
+        live = self.mode.name == "live"
         if key == ord("m"):
             self.stop_talking()
             self.runner.toggle()
-        elif key == ord("l") and self.mode.name == "live":
+            self.say("Mouse control is on. Your hand moves the real cursor: an open palm moves it, a pinch clicks."
+                     if self.runner.enabled else "Mouse control is off. Nothing is clicked: practise freely.", t)
+        elif key == ord("l") and live:
             self.toggle_talk(t)
-        elif key == ord("a") and self.mode.name == "live":
+        elif key == ord("a") and live:
             problem = None if self.helper.armed else self.helper.problem()
             if problem:
                 self.last_event = "AI helper: " + problem
                 print(f"[AirPoint] AI helper: {problem}")
+                self.say(f"AI helper: {problem}.", t, "warn")
             else:
                 self.runner.release()
                 self.set_mode(AskMode(self))
         elif key == ord("d"):
             self.dwell_on = not self.dwell_on
             self.dwell.reset()
+            self.say("Dwell click is on. Hold the cursor still for 1 s and it clicks: no sign needed."
+                     if self.dwell_on else "Dwell click is off.", t)
         elif key == ord("w"):
             self.wheel_on = not self.wheel_on
             self.runner.apply(self.wheel.reset())
+            self.say("The wheel is on. Hold still for 1 s and a menu opens at the cursor: point at a choice to pick it."
+                     if self.wheel_on else "The wheel is off.", t)
         elif key == ord("k") and self.mlp is not None:
             self.clf = self.rules if self.clf is self.mlp else self.mlp
             self.smoother.reset()
+            self.say("Reading signs with the trained network." if self.clf is self.mlp
+                     else "Reading signs with the hand-written rules, for comparison.", t)
         elif key == ord("v"):
             self.mini, self.view_dirty = not self.mini, True
+            self.say("Small view, always on top. V brings the full window back." if self.mini else "Full window.", t)
         elif key == ord("z"):
             self.zoom = hud.ZOOMS[(hud.ZOOMS.index(self.zoom) + 1) % len(hud.ZOOMS)]
             self.view_dirty = True
+            self.say(f"Zoom {self.zoom:g}x.", t)
         elif key == ord("x"):
             self.xray, self.view_dirty = not self.xray, True
+            self.say("X-ray is on: what the system sees and decides, frame by frame." if self.xray else "X-ray is off.", t)
         elif key == ord("p"):
             self.set_locked(not self.runner.locked)
         elif key == ord("o") and self.overlay is not None:
             self._hide_overlay()
             self.overlay_on = not self.overlay_on
-        elif key == ord("n") and self.mode.name == "live":
+            self.say(("The glow is on. A ring follows the real cursor and shows what AirPoint is doing."
+                      + ("" if self.runner.enabled else " It appears once mouse control is on (M)."))
+                     if self.overlay_on else "The glow is off.", t)
+        elif key == ord("o"):
+            self.say("No glow here: AirPoint was started without it.", t, "warn")
+        elif key == ord("n") and live:
             if not self.user:
                 print("[AirPoint] teaching a sign needs --user <name>")
+                self.say(f"Teaching a sign {NEEDS_NAME}", t, "warn")
             else:
                 self.runner.release()
                 self.set_mode(TeachMode(self, t))
         elif key == ord("s"):
             self.sounds.enabled = not self.sounds.enabled
+            self.say("Sounds are on." if self.sounds.enabled else "Sounds are off.", t)
         elif key == ord("h"):
             self.hints_on = not self.hints_on
+            self.say("Hints are on." if self.hints_on else "Hints are off.", t)
         elif key == ord("b"):
             self.pointer.cycle_mode()
-        elif key == ord("f") and self.mode.name == "live":
+            self.say(FILTER_SAYS[self.pointer.mode], t)
+        elif key == ord("f") and live:
             self.set_source("face" if self.source == "hand" else "hand")
-        elif key == ord("t") and self.mode.name == "live":
+            self.say("Face mode. Turn your head to move, open your mouth to click, raise your eyebrows for a right click."
+                     if self.source == "face" else "Hand mode.", t)
+        elif key == ord("t") and live:
             self.sim.on = not self.sim.on
+            self.say("Simulated tremor is on, for the demo: the hand in the picture shakes and the filter has to cancel it."
+                     if self.sim.on else "Simulated tremor is off.", t)
         elif key in SIM_NUDGES:
             self.sim.nudge(*SIM_NUDGES[key])
+            self.say(f"Simulated tremor: {self.sim.hz:.1f} Hz, size {self.sim.amp:.2f} of the palm.", t)
         elif key == ord("r") and self.user and self.mode.name != "calibrate":
             self.runner.release()
-            self.set_mode(RecordMode(self) if self.mode.name == "live" else LiveMode())
+            self.set_mode(RecordMode(self) if live else LiveMode())
+        elif key == ord("r") and not self.user:
+            self.say(f"Recording {NEEDS_NAME}", t, "warn")
         elif key == ord("c") and self.source == "face":
-            if self.mode.name == "live":
+            if live:
                 self.runner.release()
                 self.set_mode(FaceCalibrateMode(self, t))
         elif key == ord("c") and self.mode.name != "record":
             if not self.user:
                 print("[AirPoint] calibration needs --user <name>")
-            elif self.mode.name == "live":
+                self.say(f"Calibration {NEEDS_NAME}", t, "warn")
+            elif live:
                 self.runner.release()
                 self.set_mode(CalibrateMode(self, t))
             elif not self.mode.busy:
                 self.set_mode(LiveMode())
+        elif key in (ord("?"), ord("/")):
+            self.help = not self.help
 
     def close(self):
         self.stop_helper("AirPoint is closing")

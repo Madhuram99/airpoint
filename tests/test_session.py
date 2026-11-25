@@ -10,6 +10,7 @@ from airpoint.classifier import RuleClassifier
 from airpoint.effects import Effects
 from airpoint.face import FaceObs
 from airpoint.helper import Helper
+from airpoint import panel
 from airpoint.profile import Profile
 from airpoint.modes.live import helper_line, shake_line, talk_line
 from airpoint.tremor import Reading, TremorSim
@@ -113,7 +114,7 @@ def test_mini_view_is_320x240_in_live_mode_only(tmp_path):
     assert s.view_dirty
     assert s.tick(blank(), BY_POSE["palm"], "Right", 0.0).shape == (240, 320, 3)
     s.on_key(ord("r"), 0.1)
-    assert s.tick(blank(), BY_POSE["palm"], "Right", 0.2).shape == (540, 960, 3)   # full view at zoom 1.5
+    assert s.tick(blank(), BY_POSE["palm"], "Right", 0.2).shape == (495, 1150, 3)  # picture + panel over the message line, zoom 1.25
 
 
 def test_z_cycles_the_zoom_of_the_full_view(tmp_path):
@@ -124,7 +125,7 @@ def test_z_cycles_the_zoom_of_the_full_view(tmp_path):
         s.view_dirty = False
         s.on_key(ord("z"), i * DT)
         assert s.view_dirty
-    assert shapes == [(540, 960), (720, 1280), (360, 640)]
+    assert shapes == [(495, 1150), (594, 1380), (396, 920)]
 
 
 def test_the_pointer_does_not_depend_on_camera_resolution(tmp_path):
@@ -306,19 +307,22 @@ def test_shake_line_says_what_is_measured_and_what_is_left():
     sim, idle = TremorSim(), Reading(status="steady")
     assert shake_line(sim, idle, idle) is None
     sim.on = True
-    assert shake_line(sim, idle, idle) == "SIMULATED TREMOR 6.0 Hz | measuring..."
+    assert shake_line(sim, idle, idle) == "Simulated tremor 6.0 Hz. Measuring..."
     locked = Reading(status="tremor", amp=12.4, locked=True, lock_hz=6.1)
     left = Reading(status="steady", amp=0.83)
-    assert shake_line(sim, locked, left) == "SIMULATED TREMOR 6.0 Hz | LOCKED 6.1 Hz: shake 12 px -> 0.8 px"
+    assert shake_line(sim, locked, left) == "Simulated tremor 6.0 Hz. Locked on 6.1 Hz: shake 12 px down to 0.8 px."
     sim.on = False
-    assert shake_line(sim, locked, left) == "LOCKED 6.1 Hz: shake 12 px -> 0.8 px"
+    assert shake_line(sim, locked, left) == "Locked on 6.1 Hz: shake 12 px down to 0.8 px."
 
 
-def test_mini_label_carries_the_simulator_and_lock_tags(tmp_path):
+def test_the_message_line_and_the_small_view_carry_the_simulator_and_the_lock(tmp_path):
     s, _ = make(tmp_path)
     s.on_key(ord("t"), 0.0)
-    feed(s, "palm", 6.0, 0.0)
-    assert " | SIM" in s.mini_label and " | LOCK " in s.mini_label
+    assert "Simulated tremor is on" in panel.bar_model(s, 0.0)["text"]        # first, what the key did
+    t = feed(s, "palm", 8.0, 0.0)
+    line = panel.bar_model(s, t, s.lines)
+    assert line["text"].startswith("Simulated tremor 6.0 Hz. Locked on ") and line["tone"] == "warn"
+    assert panel.mini_model(s, t, s.lines) == dict(word="Moving", tone="track", line=line["text"])
 
 
 def test_x_adds_the_xray_panel_in_live_mode_only(tmp_path):
@@ -327,13 +331,13 @@ def test_x_adds_the_xray_panel_in_live_mode_only(tmp_path):
     s.on_key(ord("x"), 0.0)
     assert s.view_dirty
     t = feed(s, "palm", 0.5, 0.0)
-    assert s.tick(blank(), BY_POSE["palm"], "Right", t).shape == (360, 640 + 400, 3)
-    assert s.tick(blank(), None, None, t + DT).shape == (360, 1040, 3)          # no hand: still draws
+    assert s.tick(blank(), BY_POSE["palm"], "Right", t).shape == (360 + 36, 640 + 400, 3)   # X-ray takes the panel's place
+    assert s.tick(blank(), None, None, t + DT).shape == (396, 1040, 3)          # no hand: still draws
     s.on_key(ord("v"), t)
     assert s.tick(blank(), BY_POSE["palm"], "Right", t + 2 * DT).shape == (240, 320, 3)   # mini wins
     s.on_key(ord("v"), t)
     s.on_key(ord("r"), t)
-    assert s.tick(blank(), BY_POSE["palm"], "Right", t + 3 * DT).shape == (360, 640, 3)   # not while recording
+    assert s.tick(blank(), BY_POSE["palm"], "Right", t + 3 * DT).shape == (396, 920, 3)   # not while recording
     s.close()
 
 
@@ -407,7 +411,8 @@ def test_hints_appear_after_a_while_and_h_turns_them_off(tmp_path):
     for _ in range(100):                             # 3.3 s with no hand, in a lit room
         s.tick(blank(), None, None, t)
         t += DT
-    assert s.hint == "show your hand to the camera" and s.mini_label.startswith("! show your hand")
+    assert s.hint == "show your hand to the camera" and panel.status(s)[:2] == ("No hand", "Show your hand to the camera.")
+    assert panel.bar_model(s, t, s.lines)["text"] == ""          # the word already says it; the line stays free
     for _ in range(100):                             # a black frame: the room is dark
         s.tick(dark(), None, None, t)
         t += DT
@@ -937,24 +942,26 @@ def test_overlay_and_banner_say_listening_then_what_was_heard(tmp_path):
     assert talk_line(s.talker, t) is None
     s.on_key(ord("l"), t)
     t = feed(s, "palm", 0.2, t)
-    assert ov.states[-1]["tag"] == "LISTENING" and "LISTENING" in s.mini_label
+    assert ov.states[-1]["tag"] == "LISTENING"
     line = talk_line(s.talker, t)
-    assert line.startswith("LISTENING [l]: say a command or a sentence") and line.endswith("20 s")
+    assert line.startswith("Listening. Say a command or a sentence.") and line.endswith("20 s left.")
+    assert panel.bar_model(s, t, s.lines) == dict(text=line, tone="act")
+    assert [r for r in panel.switch_rows(s) if r["key"] == "L"] == [dict(key="L", name="Talk", value="listening", tone="act")]
     s.on_key(ord("l"), t)
-    assert talk_line(s.talker, t) == "THINKING: working out what you said"
+    assert talk_line(s.talker, t) == "Working out what you said."
     s.tick(blank(), BY_POSE["palm"], "Right", t)
     assert ov.states[-1]["tag"] in ("THINKING", None)            # the answer may already be in
     t = run_until_idle(s, t + DT)
-    assert talk_line(s.talker, t) == 'heard "Scroll down."' and talk_line(s.talker, t + 5.0) is None
+    assert talk_line(s.talker, t) == 'Heard "Scroll down.".' and talk_line(s.talker, t + 5.0) is None
     quiet = Talker(Ears(""), Mic())
     quiet.toggle(0.0)
     quiet.toggle(1.0)
     while quiet.state != "idle":
         quiet.poll(1.5)
-    assert talk_line(quiet, 2.0) == "talk: heard nothing"
+    assert talk_line(quiet, 2.0) == "Talk: heard nothing."
     system = Talker()
     system.toggle(0.0)
-    assert "macOS dictation is typing" in talk_line(system, 8.0) and talk_line(system, 8.0).endswith("12 s")
+    assert "macOS dictation is typing" in talk_line(system, 8.0) and talk_line(system, 8.0).endswith("12 s left.")
 
 
 # ---- the AI helper in the live loop
@@ -999,7 +1006,8 @@ def test_a_switches_the_helper_on_under_a_consent_line_and_an_errand_runs_shown_
     before = len(mouse.calls)
     t = until(s, t)
     assert mouse.calls[before:] == [("move", 300, 200)]              # the cursor goes to the target and waits there
-    assert s.helper.state == "showing" and 'AI 1/12: click "Note field" in 1.' in helper_line(s, t)
+    assert s.helper.state == "showing" and 'AI step 1 of 12: click "Note field" in 1.' in helper_line(s, t)
+    assert panel.status(s)[0] == "AI helper" and panel.bar_model(s, t, s.lines)["tone"] == "act"
     t = feed_at(s, 40, 0, 0.5, t)                                    # the hand drifts: it does not move the cursor
     t = feed(s, "pinch", 0.3, t)                                     # and a pinch is not a click
     assert mouse.calls[before:] == [("move", 300, 200)]
@@ -1148,7 +1156,7 @@ def risky(tmp_path, **kw):
 def test_a_risky_step_waits_and_a_thumb_up_says_yes(tmp_path):
     s, mouse, t = risky(tmp_path)
     line = helper_line(s, t)
-    assert line.startswith('AI 1/12: click "Send button"? thumb up = yes, thumb down = no, or point up / down | ')
+    assert line.startswith('AI step 1 of 12: click "Send button"? Thumb up = yes, thumb down = no, or point up or down. ')
     t = feed(s, "palm", 3.0, t)                                      # nothing runs on its own
     assert s.helper.state == "asking" and ("click",) not in mouse.calls
     t = feed(s, "thumb_up", 0.9, t)
@@ -1199,7 +1207,7 @@ def test_in_face_mode_the_mouth_says_yes_and_the_eyebrows_stop_or_say_no(tmp_pat
     while s.helper.state == "thinking":
         t = face_feed(s, DT, t)
         time.sleep(0.003)
-    assert s.helper.state == "asking" and "open mouth = yes, eyebrows = no" in helper_line(s, t)
+    assert s.helper.state == "asking" and "Open mouth = yes, eyebrows = no" in helper_line(s, t)
     t = face_feed(s, 0.9, t, jaw=0.8)
     assert ("click",) in mouse.calls and s.helper.state == "settling"
     t = face_feed(s, 1.3, t)
@@ -1237,7 +1245,7 @@ def test_the_glow_follows_the_helper_and_hides_while_the_picture_is_taken(tmp_pa
     t = feed(s, "palm", 0.75, t)
     last = ov.states[-1]
     assert (last["x"], last["y"], last["tag"], last["hint"]) == (300.0, 200.0, "AI 1/12", 'click "Note field"')
-    assert 0.4 < last["ring"] < 0.6 and "AI 1/12 | click" in s.mini_label
+    assert 0.4 < last["ring"] < 0.6 and 'AI step 1 of 12: click "Note field"' in panel.mini_model(s, t, s.lines)["line"]
     t = feed(s, "palm", 1.0, t)
     assert [st["pulse"] for st in ov.states if "pulse" in st] == ["click"]
     t = until(s, feed(s, "palm", 1.3, t))

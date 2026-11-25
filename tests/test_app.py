@@ -33,7 +33,8 @@ def test_main_runs_frames_through_the_session_and_quits_on_q(monkeypatch, capsys
     monkeypatch.setattr(app.cv2, "imshow", lambda name, img: shown.append(img.shape))
     monkeypatch.setattr(app.cv2, "waitKey", lambda ms: next(keys))
     monkeypatch.setattr(app.cv2, "destroyAllWindows", lambda: None)
-    monkeypatch.setattr(app, "show_window", lambda mini, screen_w: None)
+    fitted = []
+    monkeypatch.setattr(app, "fit_window", lambda shape, backing, mini, screen_w: fitted.append((shape, mini)))
     overlays = []
 
     class NoOverlay:
@@ -55,8 +56,9 @@ def test_main_runs_frames_through_the_session_and_quits_on_q(monkeypatch, capsys
     app.main(["--rules"])
 
     assert len(shown) == 6                                  # q on the sixth frame ends the loop
-    assert shown[0] == (540, 960, 3)                        # 1080p camera -> 640-wide view at zoom 1.5
-    assert shown[2] == (540, 1560, 3)                       # x added the X-ray panel
+    assert shown[0] == (495, 1150, 3)                       # 1080p camera at zoom 1.25: picture 800x450, panel 350, line 45
+    assert shown[2] == (495, 1300, 3)                       # x put the wider X-ray panel in the side panel's place
+    assert fitted[0] == ((495, 1150), False) and ((495, 1300), False) in fitted      # the window follows each new size
     assert len(overlays) == 1 and overlays[0].sent >= 6 and overlays[0].closed
     out = capsys.readouterr().out
     assert "1920x1080 @ 30 fps -> view 640x360" in out and "classifier rules" in out
@@ -83,7 +85,6 @@ def _patch_loop(monkeypatch, keys):
     monkeypatch.setattr(app.cv2, "imshow", lambda name, img: None)
     monkeypatch.setattr(app.cv2, "waitKey", lambda ms: next(it, ord("q")))
     monkeypatch.setattr(app.cv2, "destroyAllWindows", lambda: None)
-    monkeypatch.setattr(app, "show_window", lambda mini, screen_w: None)
 
 
 def test_f_starts_the_face_tracker_and_feeds_its_observations(monkeypatch):

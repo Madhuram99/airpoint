@@ -1,6 +1,7 @@
 import os
 
 from .. import hud
+from ..panel import name_of
 from ..recorder import Recorder, RecordSession, capture
 
 
@@ -17,14 +18,15 @@ class RecordMode:
         phase, pose, left = self.session.update(o.t)
         lost = capture(self.session, s.recorder, pose, o.pts, o.hand, o.t)
         s.rejected += lost
+        sign = name_of(pose).lower() if pose else ""
         title, sub = {
-            "idle": (f"RECORD {s.user}", "SPACE = all six poses | 1-6 = one pose | r = back"),
-            "countdown": (f"make {pose}   {left:.0f}", "raise your hand"),
-            "capturing": (f"HOLD {pose}   {left:.0f}s", "tilt, move closer, move away"),
-            "done": ("done", "1-6 = redo one pose | r = back | q = quit"),
+            "idle": (f"Record signs for {s.user}", "Space records all six signs. 1 to 6 records one. R goes back."),
+            "countdown": (f"Make the {sign} sign in {left:.0f}", "Raise your hand."),
+            "capturing": (f"Hold the {sign} sign: {left:.0f} s", "Tilt it, move closer, move away."),
+            "done": ("Done", "1 to 6 records one sign again. R goes back."),
         }[phase]
-        hud.draw_prompt(frame, title, f"{sub} | kept {s.recorder.count} | rejected {s.rejected}",
-                        "SIGN LOST - this frame was not saved" if lost else None)
+        hud.draw_prompt(frame, title, f"{sub} Kept {s.recorder.count}, rejected {s.rejected}.",
+                        "Sign lost: this frame was not saved." if lost else None)
 
     def on_key(self, s, key, t):
         if key == ord(" "):

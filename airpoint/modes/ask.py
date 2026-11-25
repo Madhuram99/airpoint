@@ -16,9 +16,9 @@ class AskMode:
         self.first = not s.helper.armed
 
     def tick(self, s, o, frame):
-        hud.draw_prompt(frame, "SWITCH ON THE AI HELPER" if self.first else "ASK THE AI HELPER",
-                        f"{self.text[-SHOWN:]}_   Enter = go | Esc = cancel",
-                        f"this {CONSENT}" if self.first else None)
+        hud.draw_prompt(frame, "Switch on the AI helper" if self.first else "Ask the AI helper",
+                        f"{self.text[-SHOWN:]}_      Enter sends it. Esc cancels.",
+                        f"This {CONSENT}." if self.first else None)
 
     def on_key(self, s, key, t):
         if key == ESC:

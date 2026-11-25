@@ -2,6 +2,7 @@ import os
 from collections import Counter
 
 from .. import hud
+from ..panel import name_of
 from .. import profile as profiles
 from ..calibration import CalibSession, Trainer, comfort_box
 from ..poses import POSES
@@ -42,18 +43,19 @@ class CalibrateMode:
                 self.trainer.start()
             elif self.trainer.done:
                 self._finish(s)
+        sign = name_of(pose).lower() if pose else ""
         title, sub = {
-            "countdown": (f"CALIBRATE   {left:.0f}", "open palm, hold still"),
-            "still": (f"HOLD STILL   {left:.0f}s", "measuring how steady your hand is"),
-            "reach": (f"REACH   {left:.0f}s", "move your hand as far as is comfortable, in every direction"),
-            "poses_countdown": (f"make {pose}   {left:.0f}", "raise your hand"),
-            "capturing": (f"HOLD {pose}   {left:.0f}s", "tilt a little, keep the sign"),
-            "training": ("Learning your hand...", "a few seconds"),
-            "done": ("done", calib.message),
-            "failed": ("retrain failed", f"old model kept: {calib.message}"),
+            "countdown": (f"Calibration starts in {left:.0f}", "Open your palm and hold it still."),
+            "still": (f"Hold still: {left:.0f} s", "Measuring how steady your hand is."),
+            "reach": (f"Reach: {left:.0f} s", "Move your hand as far as is comfortable, in every direction."),
+            "poses_countdown": (f"Make the {sign} sign in {left:.0f}", "Raise your hand."),
+            "capturing": (f"Hold the {sign} sign: {left:.0f} s", "Tilt a little, keep the sign."),
+            "training": ("Learning your hand...", "A few seconds."),
+            "done": ("Done", calib.message + "."),
+            "failed": ("Could not learn your hand", f"The old model is kept: {calib.message}."),
         }[phase]
-        hud.draw_prompt(frame, title, f"{sub} | kept {self.rec.count} | c = close",
-                        "SIGN LOST - this frame was not saved" if lost else None)
+        hud.draw_prompt(frame, title, f"{sub} Kept {self.rec.count}. C closes this.",
+                        "Sign lost: this frame was not saved." if lost else None)
 
     def _finish(self, s):
         calib, trainer, self.trainer = self.calib, self.trainer, None
@@ -78,8 +80,8 @@ class CalibrateMode:
         profiles.save(s.root, prof)
         calib.phase = "done"
         calib.message = (f"{r['acc_on_own_frames'] * 100:.0f}% on your frames"
-                         + (f" | skipped: {', '.join(prof.skipped)}" if prof.skipped else "")
-                         + (" | dwell wheel ON" if no_grip else ""))
+                         + (f"; skipped: {', '.join(prof.skipped)}" if prof.skipped else "")
+                         + ("; dwell and the wheel are on" if no_grip else ""))
 
     def on_key(self, s, key, t):
         return False

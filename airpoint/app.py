@@ -4,7 +4,7 @@ import time
 
 import cv2
 
-from . import hud
+from . import hud, ui
 from .actions import ActionRunner, PyAutoGuiMouse
 from . import profile as profiles
 from .camera import Camera
@@ -23,7 +23,7 @@ WINDOW, MINI_MARGIN = "AirPoint", 20
 DRAIN_FRAMES = 5     # after AirPoint types, this many frames without a key before keys are commands again
 KEYS = ("q quit | m mouse | d dwell | w wheel | b filter full/smooth/off | k rules/mlp | c calibrate | f face/hand | v mini | z zoom | x x-ray | o cursor glow | "
         "t simulated tremor ([ ] size, { } speed) | p pause | l talk | a AI helper | h hints | s sounds | n new sign | r record | 1-6 pose | "
-        "space start/redo")
+        "space start/redo | ? all keys")
 
 
 def load_classifiers(force_rules, profile=None):
@@ -40,19 +40,19 @@ def load_classifiers(force_rules, profile=None):
     return rules, mlp
 
 
-def show_window(mini, screen_w):
-    """Recreate the window; mini = always on top in the top-right corner."""
+def fit_window(shape, backing, mini, screen_w):
+    """Size the window in points for a picture drawn in real pixels: on a Retina display the picture has
+    twice as many pixels as the window has points, which is what makes its text sharp. The small view
+    also stays above other windows, in the top-right corner."""
+    w, h = max(round(shape[1] / backing), 1), max(round(shape[0] / backing), 1)
+    cv2.resizeWindow(WINDOW, w, h)
     try:
-        cv2.destroyWindow(WINDOW)
+        cv2.setWindowProperty(WINDOW, cv2.WND_PROP_TOPMOST, 1 if mini else 0)
     except cv2.error:
-        pass
-    cv2.namedWindow(WINDOW, cv2.WINDOW_AUTOSIZE)
-    if mini:
-        try:
-            cv2.setWindowProperty(WINDOW, cv2.WND_PROP_TOPMOST, 1)
-        except cv2.error:
+        if mini:
             print("[AirPoint] always-on-top not supported by this OpenCV build")
-        cv2.moveWindow(WINDOW, screen_w - hud.MINI_SIZE[0] - MINI_MARGIN, MINI_MARGIN)
+    if mini:
+        cv2.moveWindow(WINDOW, screen_w - w - MINI_MARGIN, MINI_MARGIN)
 
 
 def main(argv=None):
@@ -63,6 +63,7 @@ def main(argv=None):
     ap.add_argument("--mouse", action="store_true", help="start with OS mouse control ON")
     ap.add_argument("--dwell", action="store_true", help="start with dwell click ON")
     ap.add_argument("--no-overlay", action="store_true", help="no glow at the cursor (the overlay is macOS only)")
+    ap.add_argument("--theme", choices=sorted(ui.THEMES), help="window colours; default: follow the system's light or dark look")
     ap.add_argument("--helper", action="store_true",
                     help=f"start with the AI helper switched on; it {CONSENT}")
     args = ap.parse_args(argv)
@@ -75,8 +76,10 @@ def main(argv=None):
     runner = ActionRunner(mouse, mouse.size())
     if args.mouse:
         runner.toggle()
+    theme, backing = ui.THEMES[args.theme] if args.theme else ui.system_theme(), ui.backing_scale()
     s = Session(runner, rules, mlp, root=ROOT, user=args.user, profile=profile,
-                dwell_on=True if args.dwell else None, overlay=None if args.no_overlay else Overlay())
+                dwell_on=True if args.dwell else None, overlay=None if args.no_overlay else Overlay(),
+                theme=theme, backing=backing)
     if args.record:
         s.set_mode(RecordMode(s))
     if args.helper:
@@ -89,7 +92,8 @@ def main(argv=None):
           f"view {hud.CANON_W}x{view_h} | classifier {s.clf.name} | fc_min {s.pointer.fc_min} | "
           f"talk: {'on this laptop' if s.talker.local else 'macOS dictation'} | {KEYS}")
 
-    draining = 0
+    draining, shape = 0, None
+    cv2.namedWindow(WINDOW, cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)
     try:
         for frame in camera.frames():
             t = time.time()
@@ -106,11 +110,11 @@ def main(argv=None):
             else:
                 pts, hand = tracker.detect(frame)
             shown = s.tick(frame, pts, hand, t, tracker_ms=(time.perf_counter() - t0) * 1000.0, face=face)
-            if s.view_dirty:
-                show_window(s.mini, runner.screen_w)
-                s.view_dirty = False
             cv2.imshow(WINDOW, shown)
             key = cv2.waitKey(1) & 0xFF
+            if shown.shape[:2] != shape or s.view_dirty:      # a new size (zoom, x-ray, small view): fit the window to it
+                shape, s.view_dirty = shown.shape[:2], False
+                fit_window(shape, backing, s.mini, runner.screen_w)
             if runner.typing:
                 draining = DRAIN_FRAMES
             if draining:                 # with this window in front, what AirPoint types comes back here: not commands

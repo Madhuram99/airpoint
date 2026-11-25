@@ -38,9 +38,9 @@ class TeachMode:
     # ---- one frame
     def tick(self, s, o, frame):
         if self.phase == "name":
-            taught = " | ".join(f"{i + 1} forgets {n}" for i, n in enumerate(list(s.profile.signs)[:9]))
-            hud.draw_prompt(frame, "NEW SIGN: type a name", f"{self.text}_   Enter = next | Esc = cancel"
-                            + (f" | {taught}" if taught and not self.text else ""), self.error or None)
+            taught = ", ".join(f"{i + 1} forgets {n}" for i, n in enumerate(list(s.profile.signs)[:9]))
+            hud.draw_prompt(frame, "New sign: type a name", f"{self.text}_      Enter goes on. Esc cancels."
+                            + (f" Or: {taught}." if taught and not self.text else ""), self.error or None)
         elif self.phase == "capture":
             phase, pose, left = self.capture.update(o.t)
             capture(self.capture, self.rec, pose, o.pts, o.hand, o.t)
@@ -53,22 +53,22 @@ class TeachMode:
                 else:
                     self.phase = "action"
             else:
-                title = f"make {self.sign}   {left:.0f}" if phase == "countdown" else f"HOLD {self.sign}   {left:.0f}s"
-                hud.draw_prompt(frame, title, f"tilt, move closer, move away | kept {self.frames}",
-                                "no hand in view" if phase == "capturing" and o.pts is None else None)
+                title = f"Make {self.sign} in {left:.0f}" if phase == "countdown" else f"Hold {self.sign}: {left:.0f} s"
+                hud.draw_prompt(frame, title, f"Tilt it, move closer, move away. Kept {self.frames}.",
+                                "No hand in view." if phase == "capturing" and o.pts is None else None)
         if self.phase == "action":
-            menu = " | ".join(f"{i + 1} {label}" for i, (_, label, _) in enumerate(ACTIONS))
-            hud.draw_prompt(frame, f"WHAT DOES {self.sign} DO?", menu + " | Esc = cancel")
+            menu = ",  ".join(f"{i + 1} {label}" for i, (_, label, _) in enumerate(ACTIONS))
+            hud.draw_prompt(frame, f"What does {self.sign} do?", menu + ".  Esc cancels.")
         elif self.phase == "arg":
-            hud.draw_prompt(frame, ACTIONS[self.action][2], f"{self.text}_   Enter = teach | Esc = cancel",
+            hud.draw_prompt(frame, ACTIONS[self.action][2].capitalize(), f"{self.text}_      Enter teaches it. Esc cancels.",
                             self.error or None)
         elif self.phase == "training":
             if self.trainer.done:
                 self._finish(s)
-            hud.draw_prompt(frame, "Learning...", "a few seconds")
+            hud.draw_prompt(frame, "Learning...", "A few seconds.")
         if self.phase in ("done", "failed"):
-            hud.draw_prompt(frame, "done" if self.phase == "done" else "could not teach",
-                            f"{self.message} | any key = back")
+            hud.draw_prompt(frame, "Done" if self.phase == "done" else "Could not teach it",
+                            f"{self.message[:1].upper() + self.message[1:]}. Any key goes back.")
 
     # ---- keys
     def on_key(self, s, key, t):

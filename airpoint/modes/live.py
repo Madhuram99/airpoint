@@ -3,7 +3,7 @@ import time
 import numpy as np
 
 from .. import features as F
-from .. import hud
+from .. import hud, panel
 from ..actions import FOCUS_SETTLE_S
 from ..fsm import Event
 from ..face import FACE_LABELS, NEUTRAL
@@ -12,51 +12,58 @@ from ..pointer import PRECLICK_RATIO
 from ..poses import NONE, UNKNOWN
 
 
-FILTER_NAMES = {"full": "full", "smooth": "smooth only", "off": "OFF"}
+
 HEARD_S = 4.0     # how long the banner keeps what was heard
 NOTE_S = 8.0      # how long it keeps how the AI helper's errand ended
 
 
 def shake_line(sim, reading, left):
-    """Third banner line: what the tremor meter sees, and what is left after the filters.
+    """The message line's tremor read-out: what the meter sees, and what is left after the filters.
     None when there is nothing to say (no simulator, no lock)."""
     parts = []
     if sim.on:
-        parts.append(f"SIMULATED TREMOR {sim.hz:.1f} Hz")
+        parts.append(f"Simulated tremor {sim.hz:.1f} Hz.")
     if reading.locked:
-        parts.append(f"LOCKED {reading.lock_hz:.1f} Hz: shake {reading.amp:.0f} px -> {left.amp:.1f} px")
+        parts.append(f"Locked on {reading.lock_hz:.1f} Hz: shake {reading.amp:.0f} px down to {left.amp:.1f} px.")
     elif sim.on:
-        parts.append("measuring...")
-    return " | ".join(parts) or None
+        parts.append("Measuring...")
+    return " ".join(parts) or None
 
 
 def talk_line(talker, t):
-    """Third banner line while talk is in use: listening, thinking, then what was heard for a moment."""
+    """The message line while talk is in use: listening, thinking, then what was heard for a moment."""
     if talker.state == "listening":
-        how = "say a command or a sentence" if talker.local else "macOS dictation is typing what you say"
-        return f"LISTENING [l]: {how} | the same sign or l ends it | {talker.left(t):.0f} s"
+        how = ("Say a command or a sentence. L or the same sign ends it." if talker.local
+               else "macOS dictation is typing what you say. The same sign ends it.")
+        return f"Listening. {how} {talker.left(t):.0f} s left."
     if talker.state == "thinking":
-        return "THINKING: working out what you said"
+        return "Working out what you said."
     if talker.t_end is not None and t - talker.t_end < HEARD_S and (talker.heard or talker.problem):
-        return f'heard "{talker.heard}"' if talker.heard else f"talk: {talker.problem}"
+        return f'Heard "{talker.heard}".' if talker.heard else f"Talk: {talker.problem}."
     return None
 
 
+def talk_tone(talker):
+    if talker.state == "listening":
+        return "act"
+    return "warn" if talker.state == "idle" and talker.problem and not talker.heard else "track"
+
+
 def helper_line(s, t):
-    """Third banner line for the AI helper: what it is about to do, what it asks, how the errand ended."""
+    """The message line for the AI helper: what it is about to do, what it asks, how the errand ended."""
     h = s.helper
     if not h.active:
         recent = h.t_note is not None and t - h.t_note < NOTE_S and h.note
         return (("AI done: " if h.ok else "AI: ") + h.note) if recent else None
     v = h.view(t)
-    head = f"AI {v['n']}/{v['of']}: {v['text']}"
+    head = f"AI step {v['n']} of {v['of']}: {v['text']}"
     if v["state"] == "asking":
-        how = "open mouth = yes, eyebrows = no" if s.source == "face" else "thumb up = yes, thumb down = no"
-        return f"{head} {how}, or point up / down | {max(ASK_S - (t - h.t_state), 0.0):.0f} s"
-    stop = "eyebrows or a quick move stop it" if s.source == "face" else "a fist or a quick move stops it"
+        how = "Open mouth = yes, eyebrows = no" if s.source == "face" else "Thumb up = yes, thumb down = no"
+        return f"{head} {how}, or point up or down. {max(ASK_S - (t - h.t_state), 0.0):.0f} s left."
+    stop = "Eyebrows or a quick move stop it." if s.source == "face" else "A fist or a quick move stops it."
     if v["state"] == "showing":
-        return f"{head} in {max(SHOW_S - (t - h.t_state), 0.0):.1f} s | {stop}"
-    return f"{head} | {stop}"
+        return f"{head} in {max(SHOW_S - (t - h.t_state), 0.0):.1f} s. {stop}"
+    return f"{head}. {stop}"
 
 
 def helper_overlay(s, view, events):
@@ -174,25 +181,7 @@ class LiveMode:
         if s.overlay is not None and s.overlay_on:
             s.overlay.send(helper_overlay(s, view, events))
         hud.draw_region(frame, s.runner.active_region, s.runner.enabled)
-        s.mini_label = f"AI {view['n']}/{view['of']} | {view['text']}" if view else s.last_event
-        line = helper_line(s, t)
-        self._banner(s, o, frame, "AI HELPER", label, conf, (line, hud.ACCENT_ON) if line else None)
-
-    def _banner(self, s, o, frame, head, label, conf, line3):
-        if s.mini:
-            return
-        hud.draw_banner(
-            frame,
-            f"{head} | pose {label} {conf:.2f} | {self.detail} | "
-            f"{'face' if s.source == 'face' else s.clf.name} | {o.fps:.0f} fps",
-            f"last: {s.last_event} | mouse [m] {'ON' if s.runner.enabled else 'OFF'} | "
-            f"dwell [d] {'ON' if s.dwell_on else 'OFF'} | wheel [w] {'ON' if s.wheel_on else 'OFF'} | "
-            f"filter [b] {FILTER_NAMES[s.pointer.mode]}" + (" | AI [a] ON" if s.helper.armed else ""),
-            s.runner.enabled,
-            line3=line3,
-        )
-        if s.hint:
-            hud.draw_hint(frame, s.hint)
+        s.lines = ((helper_line(s, t), "act"),)
 
     def tick(self, s, o, frame):
         seen, conf, preclick = (self._read_face if s.source == "face" else self._read_hand)(s, o)
@@ -242,8 +231,12 @@ class LiveMode:
         s.runner.apply(events)
         if lost:
             s.last_event = "nowhere to type: click where the words should go first"
+            s.say("Nowhere to type. Click where the words should go, then talk again.", o.t, "warn")
         if events:
             s.last_event = ", ".join(brief(e) for e in events if e.kind != "settle") + (f" -> {went}" if went else "")
+            what = panel.did(events)
+            if what and s.runner.enabled and not s.runner.locked:
+                s.did = (what[:-1] + f", in {went}." if went else what, o.t)
             if s.runner.enabled:
                 for e in events:
                     s.sounds.play(e.kind)
@@ -268,22 +261,9 @@ class LiveMode:
         if s.overlay is not None and s.overlay_on:
             s.overlay.send(overlay_state(s, o, smooth, progress, events))
         shake = shake_line(s.sim, s.pointer.reading, s.pointer.left)
-        talk, note = talk_line(s.talker, o.t), helper_line(s, o.t)
-        if s.runner.locked:
-            line3 = ("PAUSED [p]: hold an open palm still for 2 s to resume", hud.ACCENT_ON)
-        elif note:
-            line3 = (note, hud.ACCENT_ON)
-        elif talk:
-            line3 = (talk, hud.ACCENT_ON)
-        else:
-            line3 = (shake, hud.ALERT if s.sim.on else hud.MINT) if shake else None
-        s.mini_label = ("! " + s.hint) if s.hint else (
-            ("PAUSED | " if s.runner.locked else "")
-            + ("" if s.talker.state == "idle" else s.talker.state.upper() + " | ")
-            + f"{state} | {label} {conf:.2f} | mouse {'ON' if s.runner.enabled else 'OFF'}"
-            + (" | SIM" if s.sim.on else "")
-            + (f" | LOCK {s.pointer.reading.lock_hz:.1f}Hz" if s.pointer.reading.locked else ""))
-        self._banner(s, o, frame, state, label, conf, line3)
+        hint = s.hint[0].upper() + s.hint[1:] + "." if s.hint and not s.hint.startswith("show your") else None
+        s.lines = ((helper_line(s, o.t), "act"), (talk_line(s.talker, o.t), talk_tone(s.talker)), (hint, "warn"),
+                   (shake, "warn" if s.sim.on else "track"))
 
     def on_key(self, s, key, t):
         return False

@@ -3,10 +3,10 @@ from .. import profile as profiles
 from ..face import FaceCalib
 
 PROMPTS = {
-    "rest": ("LOOK AT THE SCREEN", "rest your head where it is comfortable"),
-    "reach": ("TURN YOUR HEAD", "as far as is comfortable: left, right, up, down"),
-    "mouth": ("OPEN YOUR MOUTH", "wide, and hold it"),
-    "brows": ("RAISE YOUR EYEBROWS", "and hold them up"),
+    "rest": ("Look at the screen", "Rest your head where it is comfortable."),
+    "reach": ("Turn your head", "As far as is comfortable: left, right, up, down."),
+    "mouth": ("Open your mouth", "Wide, and hold it."),
+    "brows": ("Raise your eyebrows", "And hold them up."),
 }
 
 
@@ -25,7 +25,7 @@ class FaceCalibrateMode:
         if phase != "done":
             self.calib.add(o.t, o.face)
             title, sub = PROMPTS[phase]
-            hud.draw_prompt(frame, f"{title}   {left:.0f}s", sub, None if o.face is not None else "no face in view")
+            hud.draw_prompt(frame, f"{title}: {left:.0f} s", sub, None if o.face is not None else "No face in view.")
             return
         if not self.finished:
             self.finished = True
@@ -39,8 +39,8 @@ class FaceCalibrateMode:
                     profiles.save(s.root, s.profile)
                 s.refresh_face()
                 self.message = (f"head range {result['span_yaw']:.0f} x {result['span_pitch']:.0f} degrees"
-                                + (f" | not seen: {', '.join(self.calib.dropped)}" if self.calib.dropped else ""))
-        hud.draw_prompt(frame, "done", f"{self.message} | any key = back")
+                                + (f"; not seen: {', '.join(self.calib.dropped)}" if self.calib.dropped else ""))
+        hud.draw_prompt(frame, "Done", f"{self.message[0].upper() + self.message[1:]}. Any key goes back.")
 
     def on_key(self, s, key, t):
         if self.finished or key == 27:
