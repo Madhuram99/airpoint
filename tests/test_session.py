@@ -820,6 +820,76 @@ def test_local_engine_types_what_was_said_and_carries_out_spoken_commands(tmp_pa
     assert s.runner.locked
 
 
+class Keyboard:
+    """Stands in for Focus: says whether AirPoint's own window is in front and which app was before it."""
+
+    def __init__(self, ours=True, before="Notes"):
+        self.ours, self.before, self.given = ours, before, 0
+
+    def note(self):
+        return self.ours
+
+    def give_back(self):
+        self.given += 1
+        return self.before
+
+
+def test_words_spoken_from_airpoints_own_window_go_to_the_app_that_was_in_front_before(tmp_path):
+    keyboard = Keyboard()
+    s, mouse = make(tmp_path, talker=Talker(Ears("I will be late."), Mic()), focus=keyboard)
+    t = feed(s, "palm", 0.3, 0.0)
+    s.on_key(ord("l"), t)
+    s.on_key(ord("l"), t + 0.5)
+    t = run_until_idle(s, t + 0.5)
+    keys = [c for c in mouse.calls if c[0] in ("settle", "write")]
+    assert keys == [("settle", 0.35), ("write", "I will be late. ")] and keyboard.given == 1
+    assert s.last_event == "type I will be late.  -> Notes"
+
+    s.talker.engine.recognizer.text = "Select all."              # a spoken key combo needs the same home
+    s.on_key(ord("l"), t)
+    s.on_key(ord("l"), t + 0.5)
+    t = run_until_idle(s, t + 0.5)
+    assert mouse.calls[-2:] == [("settle", 0.35), ("hotkey", "command", "a")] and keyboard.given == 2
+
+    s.talker.engine.recognizer.text = "Scroll down."             # not a keystroke: goes where the cursor is
+    s.on_key(ord("l"), t)
+    s.on_key(ord("l"), t + 0.5)
+    run_until_idle(s, t + 0.5)
+    assert mouse.calls[-1] == ("scroll", -5) and keyboard.given == 2
+
+
+def test_with_nowhere_to_type_the_words_are_not_typed_and_the_banner_says_so(tmp_path):
+    s, mouse = make(tmp_path, talker=Talker(Ears("I will be late."), Mic()), focus=Keyboard(before=None))
+    t = feed(s, "palm", 0.3, 0.0)
+    s.on_key(ord("l"), t)
+    s.on_key(ord("l"), t + 0.5)
+    run_until_idle(s, t + 0.5)
+    assert not any(c[0] in ("write", "settle") for c in mouse.calls) and "nowhere to type" in s.last_event
+
+
+def test_another_app_in_front_gets_the_words_directly(tmp_path):
+    keyboard = Keyboard(ours=False)
+    s, mouse = make(tmp_path, talker=Talker(Ears("I will be late."), Mic()), focus=keyboard)
+    t = feed(s, "palm", 0.3, 0.0)
+    s.on_key(ord("l"), t)
+    s.on_key(ord("l"), t + 0.5)
+    run_until_idle(s, t + 0.5)
+    assert ("write", "I will be late. ") in mouse.calls and keyboard.given == 0
+    assert not any(c[0] == "settle" for c in mouse.calls)
+
+
+def test_system_dictation_started_from_airpoints_window_is_sent_to_the_app_before_it(tmp_path):
+    keyboard = Keyboard()
+    s, mouse = make(tmp_path, focus=keyboard)
+    t = feed(s, "palm", 0.3, 0.0)
+    s.on_key(ord("l"), t)
+    assert kinds(mouse) == ["settle", "hotkey"] and keyboard.given == 1 and s.talker.state == "listening"
+    nowhere, mouse2 = make(tmp_path, focus=Keyboard(before=None))
+    t = feed(nowhere, "palm", 0.3, 0.0)
+    nowhere.on_key(ord("l"), t)
+    assert kinds(mouse2) == [] and nowhere.talker.state == "idle" and "nowhere to type" in nowhere.last_event
+
+
 def test_what_was_said_is_dropped_when_the_mouse_went_off_meanwhile(tmp_path):
     s, mouse = make(tmp_path, talker=Talker(Ears("I will be late."), Mic()))
     t = feed(s, "palm", 0.3, 0.0)

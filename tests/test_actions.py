@@ -3,7 +3,7 @@ import time
 
 import pytest
 
-from airpoint.actions import PG_KEYS, ActionRunner, FakeMouse, PyAutoGuiMouse, typable
+from airpoint.actions import Focus, PG_KEYS, ActionRunner, FakeMouse, PyAutoGuiMouse, typable
 from airpoint.fsm import Event
 
 
@@ -168,3 +168,69 @@ def test_point_puts_the_cursor_on_a_screen_point_and_the_runner_remembers_where(
     r.lock()
     r.apply([Event("point", (1.0, 1.0))])
     assert r.last_xy == r.to_screen(0.5, 0.5)
+
+
+class App:
+    """Stands in for a running macOS app."""
+
+    def __init__(self, pid, name, alive=True, comes=True):
+        self.pid, self.name, self.alive, self.comes, self.activated = pid, name, alive, comes, []
+
+    def processIdentifier(self):
+        return self.pid
+
+    def isTerminated(self):
+        return not self.alive
+
+    def activateWithOptions_(self, options):
+        self.activated.append(options)
+        return self.comes
+
+    def localizedName(self):
+        return self.name
+
+
+class Workspace:
+    def __init__(self, front=None, broken=False):
+        self.front, self.broken = front, broken
+
+    def frontmostApplication(self):
+        if self.broken:
+            raise RuntimeError("no window server")
+        return self.front
+
+
+def test_focus_remembers_the_app_before_ours_and_brings_it_back():
+    notes, ours = App(11, "Notes"), App(99, "Python")
+    ws = Workspace(notes)
+    f = Focus(ws, pid=99)
+    assert f.give_back() is None                              # nothing seen yet
+    assert f.note() is False and f.last is notes
+    ws.front = ours
+    assert f.note() is True and f.last is notes               # our own window does not replace what is remembered
+    assert f.give_back() == "Notes" and notes.activated == [2]
+    notes.comes = False
+    assert f.give_back() is None                              # the system refused to bring it forward
+    notes.alive = False
+    assert f.give_back() is None and f.last is None           # it has quit
+
+
+def test_focus_never_raises_and_then_just_knows_nothing():
+    f = Focus(Workspace(broken=True), pid=99)
+    assert f.note() is False and f.give_back() is None
+    assert Focus(Workspace(None), pid=99).note() is False
+
+
+def test_settle_holds_back_the_keys_behind_it_without_holding_up_a_frame(monkeypatch):
+    pg, slept = SlowKeys(), []
+    monkeypatch.setattr("airpoint.actions.time.sleep", lambda seconds: slept.append(seconds) or pg.calls.append(("slept", seconds)))
+    m = PyAutoGuiMouse(pg)
+    t0 = time.perf_counter()
+    m.settle(0.35)
+    m.write("hi")
+    assert time.perf_counter() - t0 < 0.05
+    assert m.flush(2.0) and pg.calls[0] == ("slept", 0.35) and pg.calls[-1] == ("write", "hi")     # in that order
+    fake, r = make()
+    r.toggle()
+    r.apply([Event("settle", 0.35), Event("type", "hi")])
+    assert fake.calls == [("settle", 0.35), ("write", "hi")]

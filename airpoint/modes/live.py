@@ -4,7 +4,8 @@ import numpy as np
 
 from .. import features as F
 from .. import hud
-from ..actions import in_front
+from ..actions import FOCUS_SETTLE_S
+from ..fsm import Event
 from ..face import FACE_LABELS, NEUTRAL
 from ..helper import ASK_S, SHOW_S, Reins
 from ..pointer import PRECLICK_RATIO
@@ -79,6 +80,7 @@ def brief(e):
 
 
 PULSES = ("click", "double_click", "right_click", "drag_start", "drag_end")
+KEYED = ("type", "hotkey")      # events that are keystrokes: they land in whichever app has the keyboard
 
 
 def overlay_state(s, o, smooth, progress, events):
@@ -230,11 +232,18 @@ class LiveMode:
         events = [e for e in events if e.kind != "talk"] + s.heard_events(o.t)
         if smooth is not None:
             hud.draw_dwell_ring(frame, smooth, progress)
+        went, lost = None, False
+        if s.runner.enabled and not s.runner.locked and any(e.kind in KEYED for e in events):
+            somewhere, went = s.keys_home()          # words spoken from AirPoint's own window go to the app before it
+            if not somewhere:
+                events, lost = [e for e in events if e.kind not in KEYED], True
+            elif went:
+                events = [Event("settle", FOCUS_SETTLE_S)] + events
         s.runner.apply(events)
+        if lost:
+            s.last_event = "nowhere to type: click where the words should go first"
         if events:
-            s.last_event = ", ".join(brief(e) for e in events)
-            if s.runner.enabled and any(e.kind == "type" for e in events) and in_front():
-                s.last_event = "nowhere to type: click where the words should go first"
+            s.last_event = ", ".join(brief(e) for e in events if e.kind != "settle") + (f" -> {went}" if went else "")
             if s.runner.enabled:
                 for e in events:
                     s.sounds.play(e.kind)

@@ -1,10 +1,13 @@
+import os
 import queue
 import threading
+import time
 import unicodedata
 
 ACTIVE_REGION = (0.15, 0.15, 0.85, 0.80)  # inner frame box that maps to the whole screen
 PG_KEYS = {"control": "ctrl"}             # our key names -> pyautogui's, where they differ
 HOTKEY_GAP_S = 0.04                       # between the keys of a combo: macOS needs a moment to see a modifier go down
+FOCUS_SETTLE_S = 0.35                     # after another app is brought forward, before keys are sent to it
 PLAIN = str.maketrans({"\u2018": "'", "\u2019": "'", "\u201c": '"', "\u201d": '"', "\u2013": "-", "\u2014": "-",
                        "\u2026": "...", "\u00a0": " "})
 
@@ -50,20 +53,57 @@ class FakeMouse:
     def write(self, text):
         self.calls.append(("write", text))
 
+    def settle(self, seconds):
+        self.calls.append(("settle", seconds))
+
     def flush(self, timeout=2.0):
         return True
 
     typing = False
 
 
-def in_front():
-    """True when AirPoint's own window has the keyboard (macOS). Words typed then have nowhere to go."""
-    try:
-        import os
-        from AppKit import NSWorkspace
-        return NSWorkspace.sharedWorkspace().frontmostApplication().processIdentifier() == os.getpid()
-    except Exception:
+class Focus:
+    """Which app had the keyboard before AirPoint's own window took it (macOS). A key pressed in
+    AirPoint's window starts talk, but the words belong in that other app: AirPoint's window has
+    nowhere to put them."""
+
+    def __init__(self, workspace=None, pid=None):
+        self.workspace, self.pid, self.last = workspace, os.getpid() if pid is None else pid, None
+
+    def _front(self):
+        try:
+            if self.workspace is None:
+                from AppKit import NSWorkspace
+                self.workspace = NSWorkspace.sharedWorkspace()
+            return self.workspace.frontmostApplication()
+        except Exception:
+            return None
+
+    def note(self):
+        """Look at which app is in front and remember it if it is not ours. -> True when ours is."""
+        try:
+            app = self._front()
+            if app is None:
+                return False
+            if app.processIdentifier() == self.pid:
+                return True
+            self.last = app
+        except Exception:
+            pass
         return False
+
+    def give_back(self):
+        """Bring the remembered app forward. -> its name, or None when there is none to bring."""
+        app = self.last
+        try:
+            if app is None or app.isTerminated():
+                self.last = None
+                return None
+            if not app.activateWithOptions_(2):            # 2 = NSApplicationActivateIgnoringOtherApps
+                return None
+            return str(app.localizedName() or "the other app")
+        except Exception:
+            return None
 
 
 class PyAutoGuiMouse:
@@ -124,6 +164,10 @@ class PyAutoGuiMouse:
 
     def write(self, text):
         self.keys.put(lambda: self.pg.write(typable(text), interval=0.0))
+
+    def settle(self, seconds):
+        """Hold the keystrokes behind this one back for a moment, without holding up a frame."""
+        self.keys.put(lambda: time.sleep(seconds))
 
     def flush(self, timeout=2.0):
         """Wait for the keystrokes already queued. -> False if they did not finish in time."""
@@ -190,6 +234,8 @@ class ActionRunner:
                 self.mouse.hotkey(*e.arg)
             elif e.kind == "type":
                 self.mouse.write(e.arg)
+            elif e.kind == "settle":
+                self.mouse.settle(e.arg)
 
     def release(self):
         if self.button_down:

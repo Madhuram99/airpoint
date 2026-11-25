@@ -7,7 +7,7 @@ import numpy as np
 
 from . import features as F
 from . import hud
-from .actions import ACTIVE_REGION
+from .actions import ACTIVE_REGION, FOCUS_SETTLE_S, Focus
 from .classifier import PoseClassifier, VoteSmoother
 from .effects import Effects
 from .face import GRIP as FACE_GRIP, HOLD_EVENTS as FACE_HOLD, FacePointer, FaceSigns, default_face
@@ -27,6 +27,7 @@ from .wheel import Wheel
 
 
 LIVE_EVERY_S = 1.0   # how often results/live.json is rewritten for the lab
+FOCUS_EVERY_S = 0.3  # how often the app in front is looked at, to know where typed words should go
 UNLOCK_S, UNLOCK_STILL_PX = 2.0, 20.0   # an open palm held this still, this long, ends a pause
 FACE_GAIN = 1.6     # a head is a noisier pointer than a hand: smooth it as if it were a hand in a small box
 FACE_CENTRE_FRAMES = 20   # uncalibrated face: the first frames set where "straight ahead" is
@@ -55,7 +56,8 @@ class Session:
     """
 
     def __init__(self, runner, rules, mlp, *, root, user=None, profile=None, dwell_on=None,
-                 train_fn=train_personal, sounds=None, effects=None, overlay=None, talker=None, helper=None):
+                 train_fn=train_personal, sounds=None, effects=None, overlay=None, talker=None, helper=None,
+                 focus=None):
         self.runner, self.rules, self.mlp, self.base_mlp = runner, rules, mlp, mlp
         self.clf = mlp or rules
         self.root, self.user, self.train_fn = root, user, train_fn
@@ -67,6 +69,7 @@ class Session:
         self.sounds = sounds or Sounds(enabled=self.profile.sounds)
         self.effects = effects or Effects(voice=self.profile.voice)
         self.overlay, self.overlay_on = overlay, overlay is not None     # the cursor glow; None = none
+        self.focus, self.focus_t = focus or Focus(), None                # the app the keyboard was in before ours
         self.talker = talker or make_talker(self.profile, press=lambda keys: runner.apply([Event("hotkey", keys)]))
         size = (runner.screen_w, runner.screen_h)
         self.helper = helper or Helper(thinker(), lambda: screen.shot(size, hide=screen.own_windows({os.getpid()})),
@@ -95,6 +98,9 @@ class Session:
         self.ms_tracker = tracker_ms
         fps = 0.0 if self.prev_t is None else 1.0 / max(t - self.prev_t, 1e-5)
         self.prev_t = t
+        if self.focus_t is None or not 0.0 <= t - self.focus_t < FOCUS_EVERY_S:
+            self.focus_t = t
+            self.focus.note()
         view = hud.canon_view(frame)
         h, w = view.shape[:2]
         luma = float(view[::8, ::8].mean())
@@ -173,12 +179,27 @@ class Session:
             self.apply_region(self.profile.region)
             self.wheel_on = self.wheel_before_face
 
+    def keys_home(self):
+        """Keystrokes need somewhere to land. With AirPoint's own window in front, the app that was in
+        front before it is brought forward. -> (there is somewhere, that app's name or None if nothing moved)."""
+        if not self.focus.note():
+            return True, None
+        name = self.focus.give_back()
+        return name is not None, name
+
     def toggle_talk(self, t):
         """One tap starts listening, the next ends it. What is heard is typed or carried out through the
         runner, so talk needs the mouse switch on and does not start during a pause."""
         if self.talker.state == "idle" and (not self.runner.enabled or self.runner.locked):
             self.last_event = "talk is off while paused" if self.runner.enabled else "talk needs mouse ON [m]"
             return
+        if self.talker.state == "idle" and not self.talker.local:      # macOS types where the keyboard is
+            somewhere, name = self.keys_home()
+            if not somewhere:
+                self.last_event = "talk: nowhere to type: click where the words should go first"
+                return
+            if name:
+                self.runner.apply([Event("settle", FOCUS_SETTLE_S)])
         was, now = self.talker.state, self.talker.toggle(t)
         if now == was:
             self.last_event = f"talk: {self.talker.problem}" if self.talker.problem else self.last_event
