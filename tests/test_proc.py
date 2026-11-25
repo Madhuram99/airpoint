@@ -35,3 +35,16 @@ def test_a_sound_and_a_run_to_completion_do_not_fork_either(monkeypatch, tmp_pat
 def test_a_program_that_does_not_exist_is_an_oserror():
     with pytest.raises(OSError):
         proc.spawn(["no-such-program-anywhere"])
+
+
+@pytest.mark.skipif(not subprocess._USE_POSIX_SPAWN, reason="no posix_spawn on this platform")
+def test_airpoints_own_modules_start_from_any_folder_without_a_fork(monkeypatch, tmp_path):
+    cmd, env = proc.module("airpoint.speech", "--serve", "--model", "base.en")
+    assert cmd[1:] == ["-m", "airpoint.speech", "--serve", "--model", "base.en"] and env["PYTHONPATH"].startswith(proc.ROOT)
+    monkeypatch.chdir(tmp_path)                                    # not the project folder
+    no_fork(monkeypatch)
+    found = proc.spawn([sys.executable, "-c", "import airpoint.proc, sys; sys.exit(0)"], env=env)
+    assert found.wait(timeout=20) == 0
+    lost = subprocess.Popen([sys.executable, "-c", "import airpoint.proc"], close_fds=False, stderr=subprocess.DEVNULL,
+                            env={k: v for k, v in env.items() if k != "PYTHONPATH"})
+    assert lost.wait(timeout=20) != 0                              # without being told, it would not find the package

@@ -20,6 +20,7 @@ import subprocess
 import sys
 import time
 
+from . import proc
 from .proc import spawn
 
 SIZE = 440                      # window side, points
@@ -44,7 +45,8 @@ class Overlay:
     def __init__(self, cmd=None):
         self.proc = None
         try:
-            self.proc = spawn(cmd or [sys.executable, "-m", "airpoint.overlay"], stdin=subprocess.PIPE)
+            own, env = proc.module("airpoint.overlay")
+            self.proc = spawn(cmd or own, stdin=subprocess.PIPE, **({} if cmd else {"env": env}))
             os.set_blocking(self.proc.stdin.fileno(), False)     # a stuck overlay must never stall a frame
         except (OSError, ValueError):
             self.proc = None

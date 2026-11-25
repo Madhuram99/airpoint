@@ -206,7 +206,8 @@ class Ear:
 
     def __init__(self, model="base.en", cmd=None, clock=time.monotonic, spawn=proc.spawn):
         self.model, self.clock, self.spawn = model, clock, spawn
-        self.cmd = cmd or [sys.executable, "-m", "airpoint.speech", "--serve", "--model", model]
+        own, env = proc.module("airpoint.speech", "--serve", "--model", model)
+        self.cmd, self.env = cmd or own, None if cmd else env
         self.proc, self.inbox, self.ready, self.failed = None, queue.Queue(), False, ""
         self.waiting, self.deadline, self.t_listen, self.t_launch = None, 0.0, 0.0, 0.0   # waiting: ack | words | answer
         self._launch()
@@ -218,7 +219,8 @@ class Ear:
     def _launch(self):
         self.ready, self.failed, self.inbox, self.t_launch = False, "", queue.Queue(), self.clock()
         try:
-            self.proc = self.spawn(self.cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+            self.proc = self.spawn(self.cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                   **({"env": self.env} if self.env else {}))
             os.set_blocking(self.proc.stdin.fileno(), False)
         except (OSError, ValueError):
             self.proc = None
