@@ -33,6 +33,7 @@ FACE_GAIN = 1.6     # a head is a noisier pointer than a hand: smooth it as if i
 FACE_CENTRE_FRAMES = 20   # uncalibrated face: the first frames set where "straight ahead" is
 SIM_NUDGES = {ord("["): (0.0, -0.05), ord("]"): (0.0, 0.05), ord("{"): (-0.5, 0.0), ord("}"): (0.5, 0.0)}
 ACTING = ("PRESSING", "DRAGGING", "HOLD", "SCROLLING")     # states in which a sign is doing something
+DEMO_S = 2.2                    # how long the glow shows what w or o just switched on
 FILTER_SAYS = {"full": "Filter: full. The shake is measured and cancelled, then the path is smoothed.",
                "smooth": "Filter: smoothing only. The shake is not cancelled.",
                "off": "Filter: off. The cursor follows the raw hand."}
@@ -97,6 +98,7 @@ class Session:
         self.theme, self.backing = theme or ui.DARK, float(backing)      # backing: real pixels per point of the display
         self.toast = self.did = None    # (sentence, tone, since) for the message line; (what just happened, since)
         self.lines, self.help, self._drawn = (), False, {}
+        self.demo = None                # ("wheel" | "glow", until): the glow shows what a key just switched on
         self.recorder, self.rejected = None, 0
         self.mode = LiveMode()
         self.last_event, self.prev_t = "none", None
@@ -413,6 +415,7 @@ class Session:
         elif key == ord("w"):
             self.wheel_on = not self.wheel_on
             self.runner.apply(self.wheel.reset())
+            self.demo = ("wheel", t + DEMO_S) if self.wheel_on else None
             self.say("The wheel is on. Hold still for 1 s and a menu opens at the cursor: point at a choice to pick it."
                      if self.wheel_on else "The wheel is off.", t)
         elif key == ord("k") and self.mlp is not None:
@@ -435,6 +438,7 @@ class Session:
         elif key == ord("o") and self.overlay is not None:
             self._hide_overlay()
             self.overlay_on = not self.overlay_on
+            self.demo = ("glow", t + DEMO_S) if self.overlay_on else None
             self.say(("The glow is on. A ring follows the real cursor and shows what AirPoint is doing."
                       + ("" if self.runner.enabled else " It appears once mouse control is on (M)."))
                      if self.overlay_on else "The glow is off.", t)

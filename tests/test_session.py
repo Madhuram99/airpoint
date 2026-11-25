@@ -560,12 +560,12 @@ def test_overlay_gets_the_cursor_position_ring_and_pulses(tmp_path):
     last = ov.states[-1]
     move = [c for c in mouse.calls if c[0] == "move"][-1]
     assert last["show"] and abs(last["x"] - move[1]) <= 1 and abs(last["y"] - move[2]) <= 1
-    assert 0.4 < last["ring"] < 0.7 and last["tag"] is None and "wheel" not in last
+    assert 0.4 < last["ring"] < 0.7 and last["tag"] is None and last["tone"] == "track" and "wheel" not in last
     t = feed(s, "palm", 0.6, t)
     assert [st["pulse"] for st in ov.states if "pulse" in st] == ["click"]      # the dwell click, reported once
     s.on_key(ord("p"), t)
     t = feed(s, "palm", 0.2, t)
-    assert ov.states[-1]["tag"] == "PAUSED"
+    assert (ov.states[-1]["tag"], ov.states[-1]["tone"]) == ("Paused", "warn")
 
 
 def test_overlay_is_hidden_when_the_mouse_is_off_outside_live_mode_and_after_o(tmp_path):
@@ -603,10 +603,38 @@ def test_overlay_shows_the_wheel_at_its_anchor_and_scroll_and_simulated_tags(tmp
     s.on_key(ord("w"), t)
     s.on_key(ord("t"), t)
     t = feed(s, "palm", 0.2, t)
-    assert ov.states[-1]["tag"] == "SIMULATED" and "wheel" not in ov.states[-1]
+    assert ov.states[-1]["tag"] == "Simulated tremor" and ov.states[-1]["tone"] == "warn" and "wheel" not in ov.states[-1]
     s.on_key(ord("t"), t)
     t = feed(s, "thumb_up", 0.5, t)
-    assert ov.states[-1]["tag"] == "SCROLL"
+    assert (ov.states[-1]["tag"], ov.states[-1]["tone"]) == ("Scrolling up", "act")
+    t = feed(s, "palm", 0.3, t)
+    t = feed(s, "pinch", 0.2, t)
+    assert (ov.states[-1]["tag"], ov.states[-1]["tone"]) == (None, "act")          # a press: the ring fills before any word
+    feed(s, "pinch", 0.6, t)
+    assert (ov.states[-1]["tag"], ov.states[-1]["tone"]) == ("Dragging", "act")
+
+
+def test_pressing_w_or_o_shows_at_the_cursor_what_was_switched_on(tmp_path):
+    ov = FakeOverlay()
+    s, mouse = make(tmp_path, overlay=ov, mouse_on=False)
+    t = feed(s, "palm", 0.3, 0.0)
+    assert ov.states[-1] == {"show": False}                      # mouse off: no glow
+    s.on_key(ord("w"), t)
+    t = feed(s, "palm", 0.2, t)
+    shown = ov.states[-1]
+    assert shown["show"] and shown["wheel"] == {"items": list(s.wheel.items), "pick": -1, "progress": 0.0, "preview": True}
+    assert (shown["x"], shown["y"]) == mouse.where()             # at the real cursor: the hand is not driving it yet
+    t = feed(s, "palm", 2.5, t)
+    assert ov.states[-1] == {"show": False}                      # a moment later it is gone
+    s.on_key(ord("o"), t)
+    s.on_key(ord("o"), t)                                        # off and on again
+    feed(s, "palm", 0.2, t)
+    assert ov.states[-1]["tag"] == "This ring follows your cursor" and "wheel" not in ov.states[-1]
+    on, _ = make(tmp_path, overlay=(ov2 := FakeOverlay()))       # with the hand driving, the preview sits where the cursor is
+    t = feed(on, "palm", 0.3, 0.0)
+    on.on_key(ord("w"), t)
+    feed(on, "palm", 0.2, t)
+    assert ov2.states[-1]["wheel"]["preview"] and ov2.states[-1]["tone"] == "track"
 
 
 def face_feed(s, seconds, t, yaw=0.0, pitch=0.0, jaw=0.0, brow=0.0, seen=True):
@@ -942,7 +970,7 @@ def test_overlay_and_banner_say_listening_then_what_was_heard(tmp_path):
     assert talk_line(s.talker, t) is None
     s.on_key(ord("l"), t)
     t = feed(s, "palm", 0.2, t)
-    assert ov.states[-1]["tag"] == "LISTENING"
+    assert (ov.states[-1]["tag"], ov.states[-1]["tone"]) == ("Listening", "act")
     line = talk_line(s.talker, t)
     assert line.startswith("Listening. Say a command or a sentence.") and line.endswith("20 s left.")
     assert panel.bar_model(s, t, s.lines) == dict(text=line, tone="act")
@@ -950,7 +978,7 @@ def test_overlay_and_banner_say_listening_then_what_was_heard(tmp_path):
     s.on_key(ord("l"), t)
     assert talk_line(s.talker, t) == "Working out what you said."
     s.tick(blank(), BY_POSE["palm"], "Right", t)
-    assert ov.states[-1]["tag"] in ("THINKING", None)            # the answer may already be in
+    assert ov.states[-1]["tag"] in ("Thinking", None)            # the answer may already be in
     t = run_until_idle(s, t + DT)
     assert talk_line(s.talker, t) == 'Heard "Scroll down.".' and talk_line(s.talker, t + 5.0) is None
     quiet = Talker(Ears(""), Mic())
@@ -1244,10 +1272,10 @@ def test_the_glow_follows_the_helper_and_hides_while_the_picture_is_taken(tmp_pa
     t = until(s, t)
     t = feed(s, "palm", 0.75, t)
     last = ov.states[-1]
-    assert (last["x"], last["y"], last["tag"], last["hint"]) == (300.0, 200.0, "AI 1/12", 'click "Note field"')
+    assert (last["x"], last["y"], last["tag"], last["hint"]) == (300.0, 200.0, "AI step 1 of 12", 'click "Note field"')
     assert 0.4 < last["ring"] < 0.6 and 'AI step 1 of 12: click "Note field"' in panel.mini_model(s, t, s.lines)["line"]
     t = feed(s, "palm", 1.0, t)
     assert [st["pulse"] for st in ov.states if "pulse" in st] == ["click"]
     t = until(s, feed(s, "palm", 1.3, t))
     feed(s, "palm", 0.2, t)
-    assert ov.states[-1]["tag"] == "AI 2/12: YES OR NO?" and ov.states[-1]["hint"] == 'click "Send button"?'
+    assert ov.states[-1]["tag"] == "AI step 2 of 12: yes or no?" and ov.states[-1]["hint"] == 'click "Send button"?'

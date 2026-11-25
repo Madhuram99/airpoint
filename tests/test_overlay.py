@@ -44,12 +44,19 @@ def test_every_state_paints_off_screen(tmp_path):
     c = overlay.SIZE // 2
     assert not alpha({"show": False}).any()                                          # hidden: nothing at all
     glow = alpha({"show": True})
-    assert glow[c, c + 14] > 100 and glow[c, c] == 0 and glow[c, c + 60] == 0        # a thin ring, hollow inside
+    assert glow[c, c + 14] > 200 and glow[c, c] < 120 and glow[c, c + 60] == 0       # a ring in a soft halo, see-through inside
+    acting = alpha({"show": True, "tone": "act"})
+    assert acting[c, c] > 200                                                        # an action: the ring fills
     ring = alpha({"show": True, "ring": 0.5})
-    assert ring[c, c + 21] > 100 and ring[c, c - 21] == 0                            # half an arc: right side only
+    assert ring[c, c + 21] > 200 and ring[c, c - 21] < 90                            # half an arc: right side only
     ripple = alpha({"show": True}, pulse=("click", 10.0))
     assert ripple.sum() > glow.sum()
-    tagged = alpha({"show": True, "tag": "DRAG", "hint": "move closer to the camera"})
-    assert tagged[c + 30:c + 90].any() and not glow[c + 30:c + 90].any()             # pills under the cursor
+    assert ripple[c + 36:c + 70].any() and not glow[c + 36:c + 70].any()             # the ripple brings its word: click
+    assert not alpha({"show": True}, pulse=("click", 8.0))[c + 36:c + 70].any()      # which goes again
+    tagged = alpha({"show": True, "tone": "act", "tag": "Dragging", "hint": "move closer to the camera"})
+    assert tagged[c + 36:c + 60].any() and tagged[c + 66:c + 90].any()               # the word, and the hint under it
     wheel = alpha({"show": True, "wheel": {"items": items, "pick": 1, "progress": 0.5, "dot": (0.3, -0.2)}})
     assert wheel[c, c + 100] > 100 and wheel[c - 100, c] > 100 and wheel[5, 5] == 0  # a disc, not the corners
+    assert wheel[c + 170:c + 195].any()                                              # the line that says how to use it
+    preview = alpha({"show": True, "wheel": {"items": items, "pick": -1, "progress": 0.0, "preview": True}})
+    assert preview[c, c + 100] > 100 and preview[c + 170:c + 195].any()

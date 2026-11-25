@@ -72,9 +72,10 @@ def helper_overlay(s, view, events):
     if xy is None or view["hide"] or not s.runner.enabled:
         return {"show": False}                   # also hidden while the picture of the screen is taken
     asking, showing = view["state"] == "asking", view["state"] == "showing"
-    state = {"show": True, "x": round(xy[0], 1), "y": round(xy[1], 1),
+    state = {"show": True, "x": round(xy[0], 1), "y": round(xy[1], 1), "tone": "act",
              "ring": round(s.chooser.progress if asking else view["progress"] if showing else 0.0, 3),
-             "tag": f"AI {view['n']}/{view['of']}" + (": YES OR NO?" if asking else ""), "hint": view["text"][:44] or None}
+             "tag": f"AI step {view['n']} of {view['of']}" + (": yes or no?" if asking else ""),
+             "hint": view["text"][:44] or None}
     pulse = next((e.kind for e in events if e.kind in PULSES), None)
     if pulse:
         state["pulse"] = pulse
@@ -91,23 +92,42 @@ KEYED = ("type", "hotkey")      # events that are keystrokes: they land in which
 
 
 def overlay_state(s, o, smooth, progress, events):
-    """One line for the cursor glow: where the real cursor is and what to show around it."""
+    """One line for the cursor glow: where the real cursor is, what is happening there, and in which tone
+    (track = following, act = an action, warn). Just after w or o was pressed it also shows what that key
+    switched on, at the real cursor, even while the hand is not driving it."""
+    demo = s.demo[0] if s.demo is not None and o.t < s.demo[1] else None
+    preview = {"items": list(s.wheel.items), "pick": -1, "progress": 0.0, "preview": True}
     if not s.runner.enabled or smooth is None:
-        return {"show": False}
+        if demo is None:
+            return {"show": False}
+        x, y = s.runner.where()
+        state = {"show": True, "x": round(x, 1), "y": round(y, 1), "tone": "track"}
+        if demo == "wheel":
+            state["wheel"] = preview
+        else:
+            state["tag"] = "This ring follows your cursor"
+        return state
     wheel = s.wheel.view if s.wheel_on else None
     at = wheel["anchor"] if wheel and s.wheel.frozen else smooth       # a frozen cursor waits at the anchor
     x, y = s.runner.to_screen(at[0] / o.w, at[1] / o.h)
-    scrolling = s.fsm.state == "SCROLLING" or (wheel is not None and wheel["mode"] == "scroll")
-    tag = ("PAUSED" if s.runner.locked else "LISTENING" if s.talker.state == "listening" else
-           "THINKING" if s.talker.state == "thinking" else "DRAG" if s.runner.button_down else
-           "SCROLL" if scrolling else "SIMULATED" if s.sim.on else None)
-    state = {"show": True, "x": round(x, 1), "y": round(y, 1), "ring": round(progress, 3), "tag": tag, "hint": s.hint}
+    wheel_scroll = wheel is not None and wheel["mode"] == "scroll"
+    scrolling = s.fsm.state == "SCROLLING" or wheel_scroll
+    tag = ("Paused" if s.runner.locked else "Listening" if s.talker.state == "listening" else
+           "Thinking" if s.talker.state == "thinking" else "Dragging" if s.runner.button_down else
+           "Scrolling" if wheel_scroll else ("Scrolling up" if s.fsm.scroll_dir > 0 else "Scrolling down") if scrolling else
+           "Simulated tremor" if s.sim.on else None)
+    acting = s.runner.button_down or scrolling or s.fsm.state in ("PRESSING", "HOLD") or s.talker.state == "listening"
+    tone = "warn" if s.runner.locked or tag == "Simulated tremor" else "act" if acting else "track"
+    state = {"show": True, "x": round(x, 1), "y": round(y, 1), "ring": round(progress, 3), "tag": tag, "tone": tone,
+             "hint": s.hint}
     pulse = next((e.kind for e in events if e.kind in PULSES), None)
     if pulse:
         state["pulse"] = pulse
     if wheel and wheel["mode"] == "open":
         state["wheel"] = {"items": wheel["items"], "pick": wheel["pick"], "progress": round(wheel["progress"], 3),
                           "dot": [round(v, 3) for v in wheel["dot"]]}
+    elif demo == "wheel" and s.wheel_on:
+        state["wheel"] = preview
     return state
 
 

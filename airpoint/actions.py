@@ -56,6 +56,11 @@ class FakeMouse:
     def settle(self, seconds):
         self.calls.append(("settle", seconds))
 
+    def where(self):
+        moves = [c for c in self.calls if c[0] == "move"]
+        w, h = self.size()
+        return (float(moves[-1][1]), float(moves[-1][2])) if moves else (w / 2.0, h / 2.0)
+
     def flush(self, timeout=2.0):
         return True
 
@@ -139,6 +144,11 @@ class PyAutoGuiMouse:
 
     def move(self, x, y):
         self.pg.moveTo(x, y)
+
+    def where(self):
+        """Where the real cursor is, in screen points."""
+        x, y = self.pg.position()
+        return float(x), float(y)
 
     def click(self):
         self.pg.click()
@@ -245,6 +255,14 @@ class ActionRunner:
     def flush(self, timeout=2.0):
         """Wait for keystrokes that are still on their way to the OS."""
         return self.mouse.flush(timeout)
+
+    def where(self):
+        """Where the real cursor is now, whoever moved it there. The middle of the screen if it cannot be told."""
+        try:
+            x, y = self.mouse.where()
+            return float(x), float(y)
+        except Exception:
+            return self.last_xy or (self.screen_w / 2.0, self.screen_h / 2.0)
 
     @property
     def typing(self):
