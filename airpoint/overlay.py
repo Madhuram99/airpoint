@@ -168,7 +168,6 @@ def _halo(c, rgb):
 def _wheel(wheel, c):
     """Six slices around the cursor, each a picture and a word; the middle clicks."""
     from AppKit import NSBezierPath
-    from Foundation import NSMakeRect
     preview = bool(wheel.get("preview"))
     _color(INK, 0.86).set()
     _circle(c, R_WHEEL + 8).fill()
@@ -198,11 +197,8 @@ def _wheel(wheel, c):
     if hub:
         _stroke(_arc(c, R_HUB + 4, 90, 90 - 360 * wheel["progress"]), YELLOW, 4, edge=False)
     if not preview:
-        dx, dy = wheel.get("dot", (0.0, 0.0))                   # where the hand is steering
-        _color(INK, 0.6).set()
-        NSBezierPath.bezierPathWithOvalInRect_(NSMakeRect(c + dx * R_WHEEL - 7, c - dy * R_WHEEL - 7, 14, 14)).fill()
-        _color(WHITE).set()
-        NSBezierPath.bezierPathWithOvalInRect_(NSMakeRect(c + dx * R_WHEEL - 5, c - dy * R_WHEEL - 5, 10, 10)).fill()
+        dx, dy = wheel.get("dot", (0.0, 0.0))                   # where the hand is steering: a ring, so it hides no picture
+        _stroke(_circle(c + dx * R_WHEEL, 7.0, cy=c - dy * R_WHEEL), WHITE, 2.4)
 
 
 def paint(state, pulse=None, now=None, size=SIZE):
