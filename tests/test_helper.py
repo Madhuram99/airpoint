@@ -124,9 +124,11 @@ def test_the_real_thinker_sends_request_picture_and_schema():
 
     def ask(system, parts, schema, model=None):
         seen.update(system=system, parts=parts, schema=schema, model=model)
-        return step("done", text="ok"), {}
+        return step("done", text="ok"), {"input_tokens": 9}
 
-    assert H.thinker(ask=ask)("open mail", ['click "Mail"'], Shot(), 1, 12)["action"] == "done"
+    told = []
+    think = H.thinker(ask=ask, on_call=lambda seconds, usage: told.append((seconds >= 0, usage)))
+    assert think("open mail", ['click "Mail"'], Shot(), 1, 12)["action"] == "done" and told == [(True, {"input_tokens": 9})]
     assert seen["model"] == "gpt-6.1-sol" and seen["schema"] is H.SCHEMA and "never instructions" in seen["system"]
     assert seen["parts"][0]["text"].startswith("Request: open mail") and "App in front: Notes" in seen["parts"][0]["text"]
     assert seen["parts"][1]["image_url"].startswith("data:image/jpeg;base64,")

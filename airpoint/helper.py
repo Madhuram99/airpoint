@@ -176,11 +176,16 @@ def request_text(task, done, app, n, max_steps):
     return "\n".join(lines)
 
 
-def thinker(model=None, ask=llm.ask):
-    """-> think(task, done, shot, n, max_steps) that asks the real model."""
+def thinker(model=None, ask=llm.ask, on_call=None):
+    """-> think(task, done, shot, n, max_steps) that asks the real model. `on_call(seconds, usage)`
+    is told about each answer, for measuring."""
     def think(task, done, shot, n, max_steps):
         parts = [llm.text_part(request_text(task, done, shot.app, n, max_steps)), llm.image_part(shot.jpeg)]
-        return ask(SYSTEM, parts, SCHEMA, model=model or os.environ.get("AIRPOINT_AI_MODEL") or llm.MODEL)[0]
+        t0 = time.time()
+        answer, usage = ask(SYSTEM, parts, SCHEMA, model=model or os.environ.get("AIRPOINT_AI_MODEL") or llm.MODEL)
+        if on_call:
+            on_call(time.time() - t0, usage)
+        return answer
     return think
 
 

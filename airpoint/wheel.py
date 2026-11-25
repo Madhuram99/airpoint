@@ -38,7 +38,8 @@ class Wheel:
     def view(self):
         """What to draw: mode, anchor, pointed item (-1 = centre), countdown 0..1, where the hand is steering."""
         return {"mode": self.mode, "anchor": self.anchor, "pick": self.pick, "progress": self.progress,
-                "items": list(self.items), "dot": (self.offset[0] / R_OUT, self.offset[1] / R_OUT)}
+                "items": list(self.items), "centre": self.centre,
+                "dot": (self.offset[0] / R_OUT, self.offset[1] / R_OUT)}
 
     def reset(self):
         """Close without acting. -> the events needed to leave the system in a clean state."""

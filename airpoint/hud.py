@@ -128,9 +128,11 @@ def draw_wheel(frame, view, r_in=16, r_out=70):
         size = cv2.getTextSize(label, FONT, 0.38, 1)[0]
         org = (int(c[0] + 44 * np.cos(a) - size[0] / 2), int(c[1] + 44 * np.sin(a) + size[1] / 2))
         cv2.putText(frame, label, org, FONT, 0.38, ACCENT_ON if lit else WHITE, 1, cv2.LINE_AA)
-    size = cv2.getTextSize("click", FONT, 0.30, 1)[0]
-    cv2.putText(frame, "click", (c[0] - size[0] // 2, c[1] + r_in + 6 + size[1]), FONT, 0.30,    # under the centre:
-                ACCENT_ON if view["pick"] == -1 else WHITE, 1, cv2.LINE_AA)                       # the cursor dot sits in it
+    centre = view.get("centre")
+    if centre:                                           # what staying put does, under the centre: the cursor dot sits in it
+        size = cv2.getTextSize(centre, FONT, 0.30, 1)[0]
+        cv2.putText(frame, centre, (c[0] - size[0] // 2, c[1] + r_in + 6 + size[1]), FONT, 0.30,
+                    ACCENT_ON if view["pick"] == -1 else WHITE, 1, cv2.LINE_AA)
     if view["pick"] == -1:
         cv2.ellipse(frame, c, (r_in + 4, r_in + 4), -90, 0, 360 * view["progress"], ACCENT_ON, 2)
 
