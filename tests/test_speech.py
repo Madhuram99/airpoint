@@ -156,9 +156,13 @@ def test_the_profile_picks_the_engine_and_a_missing_local_one_falls_back(monkeyp
     assert not k.local and k.keys == ("command", "shift", "d")
     assert "local speech is off: faster-whisper is not installed" in capsys.readouterr().out
     monkeypatch.setattr(WhisperRecognizer, "missing", staticmethod(lambda size: None))
-    monkeypatch.setattr(WhisperRecognizer, "warm", lambda self: None)
-    k = make_talker(p)
-    assert k.local and k.recognizer.size == "base.en"
+
+    class Process:                                  # stands in for the speech process: none is started here
+        def __init__(self, model):
+            self.model = model
+
+    k = make_talker(p, ear=Process)
+    assert k.local and k.engine.model == "base.en" and k.keys == ("command", "shift", "d")
 
 
 def test_on_this_laptop_the_local_engine_reports_what_it_lacks():
