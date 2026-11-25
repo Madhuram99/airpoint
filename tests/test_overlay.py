@@ -35,7 +35,7 @@ def test_every_state_paints_off_screen(tmp_path):
     import cv2
 
     from airpoint import overlay
-    items = ["click", "right", "drag", "scroll", "double", "pause"]
+    items = ["talk", "right", "drag", "scroll", "double", "pause"]
 
     def alpha(state, pulse=None):
         path = overlay.render_png(state, str(tmp_path / "s.png"), pulse=pulse, now=10.1)

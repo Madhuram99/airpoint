@@ -19,7 +19,7 @@ import time
 SIZE = 320                      # window side, points
 PULSE_S = 0.35
 R_GLOW, R_RING, R_HUB, R_WHEEL = 14.0, 21.0, 38.0, 120.0
-LABELS = {"click": "click", "right": "right", "drag": "drag", "scroll": "scroll", "double": "double", "pause": "pause"}
+LABELS = {"talk": "talk", "right": "right", "drag": "drag", "scroll": "scroll", "double": "double", "pause": "pause"}
 CYAN, AMBER, GREEN, PURPLE, RED, WHITE, DARK = ((0.13, 0.83, 0.93), (0.98, 0.75, 0.14), (0.20, 0.83, 0.60),
                                                (0.65, 0.55, 0.98), (0.97, 0.44, 0.44), (0.95, 0.96, 0.98),
                                                (0.04, 0.06, 0.10))
@@ -168,7 +168,7 @@ def paint(state, pulse=None, now=None, size=SIZE):
             ripple.stroke()
     below = c - (R_WHEEL + 22 if wheel else 44)
     if state.get("tag"):
-        _pill(state["tag"], below, RED if state["tag"] == "SIMULATED" else WHITE, c)
+        _pill(state["tag"], below, {"SIMULATED": RED, "LISTENING": GREEN, "THINKING": GREEN}.get(state["tag"], WHITE), c)
         below -= 26
     if state.get("hint") and below > 12:
         _pill(state["hint"], below, AMBER, c)

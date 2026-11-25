@@ -152,3 +152,18 @@ def test_forgetting_the_only_sign_brings_the_shared_model_back(tmp_path):
     assert json.loads((tmp_path / "profiles" / "ana.json").read_text())["model"] is None
     assert not any(r["pose"] == "rock" for r in csv.DictReader(open(tmp_path / "data" / "ana_signs.csv")))
     s.close()
+
+
+def test_a_taught_sign_can_start_and_end_talk(tmp_path):
+    base(tmp_path)
+    s, mouse = make(tmp_path)
+    t = teach_rock(s, action_key="6", arg=None)              # 6 = talk: no text to type in
+    assert s.mode.phase == "done", s.mode.message
+    assert s.profile.signs == {"rock": {"action": "talk", "arg": None, "hold_s": 0.6}}
+    s.on_key(ord(" "), t)
+    t = feed(s, "palm", 0.5, t)
+    for _ in range(12):
+        s.tick(blank(), ROCK, "Right", t)
+        t += DT
+    assert s.talker.state == "listening" and [c for c in mouse.calls if c[0] == "hotkey"] == [("hotkey", "control", "option", "d")]
+    s.close()

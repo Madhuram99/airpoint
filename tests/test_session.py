@@ -10,11 +10,13 @@ from airpoint.classifier import RuleClassifier
 from airpoint.effects import Effects
 from airpoint.face import FaceObs
 from airpoint.profile import Profile
-from airpoint.modes.live import shake_line
+from airpoint.modes.live import shake_line, talk_line
 from airpoint.tremor import Reading, TremorSim
 from airpoint.session import Session
 from airpoint.sounds import Sounds
+from airpoint.speech import Talker
 from tests.hands import BY_POSE
+from tests.test_speech import Ears, Mic
 from tests.test_train import _write_user
 
 DT = 1 / 30
@@ -707,3 +709,176 @@ def test_a_calibrated_face_keeps_its_own_centre(tmp_path):
     assert s.face_centring is None
     face_feed(s, 1.0, 0.0, yaw=10.0)
     assert 740 < last_move(mouse)[0] < 755                       # 5 degrees past a centre of 5, in a 10 degree span
+
+
+def hotkeys(mouse):
+    return [c[1:] for c in mouse.calls if c[0] == "hotkey"]
+
+
+def run_until_idle(s, t):
+    """Tick with an open palm until the talker has its answer. -> time."""
+    deadline = time.time() + 5
+    while s.talker.state != "idle" and time.time() < deadline:
+        s.tick(blank(), BY_POSE["palm"], "Right", t)
+        t += DT
+        time.sleep(0.005)
+    assert s.talker.state == "idle"
+    return t
+
+
+def test_l_starts_and_ends_system_dictation_and_needs_the_mouse_switch(tmp_path):
+    s, mouse = make(tmp_path)
+    assert not s.talker.local and s.state()["talk"] == "idle"
+    t = feed(s, "palm", 0.3, 0.0)
+    s.on_key(ord("l"), t)
+    assert s.talker.state == "listening" and hotkeys(mouse) == [("control", "option", "d")]
+    assert s.state()["talk"] == "listening" and s.last_event == "talk: listening" and s.played == []
+    t = feed(s, "palm", 0.3, t)
+    s.on_key(ord("l"), t)
+    assert s.talker.state == "idle" and len(hotkeys(mouse)) == 2 and s.last_event == "talk: stopped"
+    s.on_key(ord("l"), t)
+    s.on_key(ord("m"), t)                            # mouse off while listening: dictation is ended first
+    assert s.talker.state == "idle" and len(hotkeys(mouse)) == 4 and not s.runner.enabled
+    s.on_key(ord("l"), t)                            # and it does not start with the mouse off
+    assert s.talker.state == "idle" and len(hotkeys(mouse)) == 4 and "mouse ON" in s.last_event
+
+
+def test_a_pause_leaving_the_live_view_or_quitting_ends_listening(tmp_path):
+    s, mouse = make(tmp_path)
+    t = feed(s, "palm", 0.3, 0.0)
+    s.on_key(ord("l"), t)
+    s.on_key(ord("p"), t)
+    assert s.talker.state == "idle" and len(hotkeys(mouse)) == 2 and s.runner.locked
+    s.on_key(ord("l"), t)                            # paused: talk does not start
+    assert s.talker.state == "idle" and len(hotkeys(mouse)) == 2 and "paused" in s.last_event
+    s.on_key(ord("p"), t)
+    s.on_key(ord("l"), t)
+    s.on_key(ord("r"), t)                            # into record mode
+    assert s.mode.name == "record" and s.talker.state == "idle" and len(hotkeys(mouse)) == 4
+    s.on_key(ord("l"), t)                            # l belongs to the live view only
+    assert s.talker.state == "idle"
+    s.on_key(ord("r"), t)
+    s.on_key(ord("l"), t)
+    s.close()
+    assert len(hotkeys(mouse)) == 6
+
+
+def test_system_dictation_is_ended_after_twenty_seconds(tmp_path):
+    s, mouse = make(tmp_path)
+    t = feed(s, "palm", 0.3, 0.0)
+    s.on_key(ord("l"), t)
+    t = feed(s, "palm", 19.0, t, dt=0.1)
+    assert s.talker.state == "listening" and len(hotkeys(mouse)) == 1
+    feed(s, "palm", 1.5, t, dt=0.1)
+    assert s.talker.state == "idle" and len(hotkeys(mouse)) == 2
+
+
+def _talking_profile():
+    p = Profile(user="ana")
+    p.roles["right_click"] = []                      # free the V-sign so it can stand in for a taught sign
+    p.signs = {"v_sign": {"action": "talk", "arg": None, "hold_s": 0.6}}
+    return p
+
+
+def test_a_sign_bound_to_talk_starts_listening_and_the_same_sign_ends_it(tmp_path):
+    s, mouse = make(tmp_path, profile=_talking_profile())
+    t = feed(s, "palm", 0.5, 0.0)
+    t = feed(s, "v_sign", 1.0, t)
+    assert s.talker.state == "listening" and len(hotkeys(mouse)) == 1 and s.last_event == "talk: listening"
+    t = feed(s, "v_sign", 1.0, t)                    # still held: one tap, not two
+    assert s.talker.state == "listening"
+    t = feed(s, "palm", 0.4, t)
+    feed(s, "v_sign", 1.0, t)
+    assert s.talker.state == "idle" and len(hotkeys(mouse)) == 2
+
+
+def test_local_engine_types_what_was_said_and_carries_out_spoken_commands(tmp_path):
+    ears = Ears("I will be late.")
+    s, mouse = make(tmp_path, talker=Talker(ears, Mic()))
+    t = feed(s, "palm", 0.3, 0.0)
+    s.on_key(ord("l"), t)
+    assert s.talker.state == "listening" and hotkeys(mouse) == [] and s.played == ["Morse.aiff"]
+    t = feed(s, "palm", 0.5, t)
+    s.on_key(ord("l"), t)
+    assert s.talker.state == "thinking" and s.played == ["Morse.aiff", "Frog.aiff"]
+    t = run_until_idle(s, t)
+    assert ("write", "I will be late. ") in mouse.calls and s.last_event == "type I will be late. "
+
+    ears.text = "Scroll down."
+    s.on_key(ord("l"), t)
+    s.on_key(ord("l"), t + 0.5)
+    t = run_until_idle(s, t + 0.5)
+    assert ("scroll", -5) in mouse.calls and s.last_event == "scroll -5"
+
+    ears.text = "Pause"
+    s.on_key(ord("l"), t)
+    s.on_key(ord("l"), t + 0.5)
+    run_until_idle(s, t + 0.5)
+    assert s.runner.locked
+
+
+def test_what_was_said_is_dropped_when_the_mouse_went_off_meanwhile(tmp_path):
+    s, mouse = make(tmp_path, talker=Talker(Ears("I will be late."), Mic()))
+    t = feed(s, "palm", 0.3, 0.0)
+    s.on_key(ord("l"), t)
+    s.on_key(ord("m"), t + 1.0)                      # off: the recording stops and is still worked out
+    assert s.talker.state == "thinking"
+    run_until_idle(s, t + 1.0)
+    assert not any(c[0] == "write" for c in mouse.calls)
+
+
+def test_in_face_mode_a_speaking_mouth_is_not_a_click(tmp_path):
+    s, mouse = make(tmp_path)
+    s.on_key(ord("f"), 0.0)
+    s.on_key(ord("w"), 0.0)                          # wheel off: the mouth alone
+    t = face_feed(s, 0.5, 0.0)
+    s.on_key(ord("l"), t)
+    t = face_feed(s, 0.3, t, jaw=0.8)
+    t = face_feed(s, 0.3, t)
+    t = face_feed(s, 0.9, t, jaw=0.8, brow=0.8)
+    assert kinds(mouse) == ["hotkey"]                # only the dictation shortcut: no click, no drag
+    s.on_key(ord("l"), t)
+    t = face_feed(s, 0.5, t, jaw=0.8)                # the last word is still being finished
+    t = face_feed(s, 0.8, t)
+    assert kinds(mouse) == ["hotkey", "hotkey"]
+    t = face_feed(s, 0.2, t, jaw=0.8)                # after that the mouth is a sign again
+    face_feed(s, 0.4, t)
+    assert kinds(mouse) == ["hotkey", "hotkey", "click"]
+
+
+def test_the_top_of_the_wheel_starts_and_ends_talk(tmp_path):
+    s, mouse = make(tmp_path)
+    s.on_key(ord("w"), 0.0)
+    t = open_wheel(s, 0, 0, 0.0)
+    t = feed_at(s, 0, -30, 1.0, t)                   # straight up: talk
+    assert s.talker.state == "listening" and kinds(mouse) == ["hotkey"]
+    t = open_wheel(s, 120, 0, t)
+    feed_at(s, 120, -30, 1.0, t)
+    assert s.talker.state == "idle" and kinds(mouse) == ["hotkey", "hotkey"]
+
+
+def test_overlay_and_banner_say_listening_then_what_was_heard(tmp_path):
+    ov = FakeOverlay()
+    s, mouse = make(tmp_path, overlay=ov, talker=Talker(Ears("Scroll down."), Mic()))
+    t = feed(s, "palm", 0.5, 0.0)
+    assert talk_line(s.talker, t) is None
+    s.on_key(ord("l"), t)
+    t = feed(s, "palm", 0.2, t)
+    assert ov.states[-1]["tag"] == "LISTENING" and "LISTENING" in s.mini_label
+    line = talk_line(s.talker, t)
+    assert line.startswith("LISTENING [l]: say a command or a sentence") and line.endswith("20 s")
+    s.on_key(ord("l"), t)
+    assert talk_line(s.talker, t) == "THINKING: working out what you said"
+    s.tick(blank(), BY_POSE["palm"], "Right", t)
+    assert ov.states[-1]["tag"] in ("THINKING", None)            # the answer may already be in
+    t = run_until_idle(s, t + DT)
+    assert talk_line(s.talker, t) == 'heard "Scroll down."' and talk_line(s.talker, t + 5.0) is None
+    quiet = Talker(Ears(""), Mic())
+    quiet.toggle(0.0)
+    quiet.toggle(1.0)
+    while quiet.state != "idle":
+        quiet.poll(1.5)
+    assert talk_line(quiet, 2.0) == "talk: heard nothing"
+    system = Talker()
+    system.toggle(0.0)
+    assert "macOS dictation is typing" in talk_line(system, 8.0) and talk_line(system, 8.0).endswith("12 s")

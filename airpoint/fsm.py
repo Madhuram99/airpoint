@@ -14,7 +14,7 @@ DWELL_REARM_PX = 30.0   # after a dwell click, move this far before the next one
 
 @dataclass(frozen=True)
 class Event:
-    kind: str          # click | right_click | drag_start | drag_end | scroll | hotkey | type | say | open | pause
+    kind: str          # click | right_click | double_click | drag_start | drag_end | scroll | hotkey | type | say | open | pause | talk
     arg: object = None  # scroll: signed ticks; hotkey: tuple of keys; type / say / open: text
 
 

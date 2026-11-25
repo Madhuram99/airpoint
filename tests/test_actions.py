@@ -144,3 +144,12 @@ def test_typed_text_is_reduced_to_what_a_keyboard_can_type():
 def test_the_runner_can_wait_for_keystrokes():
     m, r = make()
     assert r.flush() is True
+
+
+def test_the_mouse_knows_while_it_is_typing():
+    m = PyAutoGuiMouse(SlowKeys())
+    assert not m.typing
+    m.write("hello")
+    assert m.typing and ActionRunner(m, (100, 100)).typing
+    assert m.flush(2.0) and not m.typing
+    assert FakeMouse().typing is False

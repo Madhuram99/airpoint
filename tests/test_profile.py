@@ -81,3 +81,20 @@ def test_command_line_refuses_a_pose_used_twice(tmp_path):
         P.main(["ana", "--role", "right_click=pinch"], root=str(tmp_path))
     assert "twice" in str(e.value)
     assert P.load(str(tmp_path), "ana") is None                 # nothing was written
+
+
+def test_speech_settings_round_trip_and_the_shortcut_is_checked(tmp_path):
+    root = str(tmp_path)
+    p = P.Profile(user="ana")
+    assert p.speech == "system" and p.speech_model == "base.en" and p.dictation_keys == ["control", "option", "d"]
+    P.main(["ana", "--speech", "local", "--speech-model", "tiny.en", "--dictation-keys", "cmd+shift+d"], root=root)
+    p = P.load(root, "ana")
+    assert (p.speech, p.speech_model, p.dictation_keys) == ("local", "tiny.en", ["command", "shift", "d"])
+    with pytest.raises(SystemExit, match="not a key combo"):
+        P.main(["ana", "--dictation-keys", "hyper+d"], root=root)
+    assert P.load(root, "ana").dictation_keys == ["command", "shift", "d"]
+
+
+def test_a_talk_sign_becomes_a_talk_event():
+    _, _, hold, hold_s = P.fsm_parts(P.default_roles(), {"rock": {"action": "talk", "arg": None, "hold_s": 0.6}})
+    assert hold["rock"] == Event("talk") and hold_s["rock"] == 0.6 and "talk" in P.SIGN_ACTIONS

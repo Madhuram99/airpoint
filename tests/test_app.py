@@ -116,3 +116,33 @@ def test_a_missing_face_model_falls_back_to_the_hand_with_the_download_line(monk
     app.main(["--rules", "--no-overlay"])
     out = capsys.readouterr().out
     assert "face mode needs its model" in out and "curl -L -o face_landmarker.task" in out
+
+
+def test_keys_airpoint_types_itself_never_come_back_to_it_as_commands(monkeypatch):
+    """With AirPoint's own window in front, text it types arrives at its own key reader. A dictated
+    "q" must not quit and an "m" must not flip the mouse switch."""
+    sessions, real = [], app.Session
+
+    class TypingMouse(FakeMouse):
+        frames = 0
+
+        @property
+        def typing(self):                       # AirPoint is typing during the second and third frames
+            return TypingMouse.frames in (2, 3)
+
+    class Camera(FakeCamera):
+        def frames(self):
+            for _ in range(20):
+                TypingMouse.frames += 1
+                yield np.zeros((1080, 1920, 3), np.uint8)
+
+    #         frame: 1    2         3         4         5    6    7    8    9    10        11
+    _patch_loop(monkeypatch, [255, ord("q"), ord("m"), ord("m"), 255, 255, 255, 255, 255, ord("d"), ord("q")])
+    monkeypatch.setattr(app, "Camera", Camera)
+    monkeypatch.setattr(app, "PyAutoGuiMouse", TypingMouse)
+    monkeypatch.setattr(app, "Session", lambda *a, **k: sessions.append(real(*a, **k)) or sessions[-1])
+    app.main(["--rules", "--no-overlay"])
+    s = sessions[0]
+    assert TypingMouse.frames == 11             # the q on frame 2 was AirPoint's own; the one on frame 11 quit
+    assert not s.runner.enabled                 # neither m got through: the second was still the tail of the typing
+    assert s.dwell_on                           # five quiet frames later, keys count again

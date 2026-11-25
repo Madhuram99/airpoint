@@ -19,8 +19,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODELS_DIR = os.path.join(ROOT, "models")
 MODEL_PATH, LABELS_PATH = os.path.join(MODELS_DIR, "pose_mlp.joblib"), os.path.join(MODELS_DIR, "labels.json")
 WINDOW, MINI_MARGIN = "AirPoint", 20
+DRAIN_FRAMES = 5     # after AirPoint types, this many frames without a key before keys are commands again
 KEYS = ("q quit | m mouse | d dwell | w wheel | b filter full/smooth/off | k rules/mlp | c calibrate | f face/hand | v mini | z zoom | x x-ray | o cursor glow | "
-        "t simulated tremor ([ ] size, { } speed) | p pause | h hints | s sounds | n new sign | r record | 1-6 pose | "
+        "t simulated tremor ([ ] size, { } speed) | p pause | l talk | h hints | s sounds | n new sign | r record | 1-6 pose | "
         "space start/redo")
 
 
@@ -78,8 +79,10 @@ def main(argv=None):
     camera, tracker, face_tracker = Camera(), HandTracker(), None
     view_h = round(camera.size[1] * hud.CANON_W / camera.size[0])
     print(f"[AirPoint] camera {camera.index} {camera.size[0]}x{camera.size[1]} @ {camera.fps:.0f} fps -> "
-          f"view {hud.CANON_W}x{view_h} | classifier {s.clf.name} | fc_min {s.pointer.fc_min} | {KEYS}")
+          f"view {hud.CANON_W}x{view_h} | classifier {s.clf.name} | fc_min {s.pointer.fc_min} | "
+          f"talk: {'on this laptop' if s.talker.local else 'macOS dictation'} | {KEYS}")
 
+    draining = 0
     try:
         for frame in camera.frames():
             t = time.time()
@@ -101,6 +104,11 @@ def main(argv=None):
                 s.view_dirty = False
             cv2.imshow(WINDOW, shown)
             key = cv2.waitKey(1) & 0xFF
+            if runner.typing:
+                draining = DRAIN_FRAMES
+            if draining:                 # with this window in front, what AirPoint types comes back here: not commands
+                draining = DRAIN_FRAMES if key != 255 else draining - 1
+                key = 255
             if key == ord("q") and not s.typing:
                 break
             if key != 255:

@@ -4,12 +4,14 @@ import numpy as np
 
 from .. import features as F
 from .. import hud
+from ..actions import in_front
 from ..face import FACE_LABELS, NEUTRAL
 from ..pointer import PRECLICK_RATIO
 from ..poses import NONE, UNKNOWN
 
 
 FILTER_NAMES = {"full": "full", "smooth": "smooth only", "off": "OFF"}
+HEARD_S = 4.0     # how long the banner keeps what was heard
 
 
 def shake_line(sim, reading, left):
@@ -25,6 +27,23 @@ def shake_line(sim, reading, left):
     return " | ".join(parts) or None
 
 
+def talk_line(talker, t):
+    """Third banner line while talk is in use: listening, thinking, then what was heard for a moment."""
+    if talker.state == "listening":
+        how = "say a command or a sentence" if talker.local else "macOS dictation is typing what you say"
+        return f"LISTENING [l]: {how} | the same sign or l ends it | {talker.left(t):.0f} s"
+    if talker.state == "thinking":
+        return "THINKING: working out what you said"
+    if talker.t_end is not None and t - talker.t_end < HEARD_S and (talker.heard or talker.problem):
+        return f'heard "{talker.heard}"' if talker.heard else f"talk: {talker.problem}"
+    return None
+
+
+def brief(e):
+    """An event as the banner shows it; a typed sentence is cut short."""
+    return e.kind + ("" if e.arg is None else f" {e.arg}"[:40])
+
+
 PULSES = ("click", "double_click", "right_click", "drag_start", "drag_end")
 
 
@@ -36,7 +55,8 @@ def overlay_state(s, o, smooth, progress, events):
     at = wheel["anchor"] if wheel and s.wheel.frozen else smooth       # a frozen cursor waits at the anchor
     x, y = s.runner.to_screen(at[0] / o.w, at[1] / o.h)
     scrolling = s.fsm.state == "SCROLLING" or (wheel is not None and wheel["mode"] == "scroll")
-    tag = ("PAUSED" if s.runner.locked else "DRAG" if s.runner.button_down else
+    tag = ("PAUSED" if s.runner.locked else "LISTENING" if s.talker.state == "listening" else
+           "THINKING" if s.talker.state == "thinking" else "DRAG" if s.runner.button_down else
            "SCROLL" if scrolling else "SIMULATED" if s.sim.on else None)
     state = {"show": True, "x": round(x, 1), "y": round(y, 1), "ring": round(progress, 3), "tag": tag, "hint": s.hint}
     pulse = next((e.kind for e in events if e.kind in PULSES), None)
@@ -76,6 +96,9 @@ class LiveMode:
             self.probs, self.detail = None, "no face"
             return None, 0.0, False
         label, self.probs, near = s.face_signs.update(o.face.shapes)
+        if s.talker.mouth_busy(o.t):                 # a speaking face is talking, not making signs
+            self.detail = "talking"
+            return NEUTRAL, 1.0, False
         self.detail = f"mouth {near:.2f}"
         return label, 1.0, label == NEUTRAL and near > 0.5
 
@@ -104,11 +127,16 @@ class LiveMode:
             dwell_event, progress = s.dwell.update(smooth, o.t, s.dwell_on and state == "MOVING")
             if dwell_event is not None:
                 events = events + [dwell_event]
+        if any(e.kind == "talk" for e in events):
+            s.toggle_talk(o.t)
+        events = [e for e in events if e.kind != "talk"] + s.heard_events(o.t)
         if smooth is not None:
             hud.draw_dwell_ring(frame, smooth, progress)
         s.runner.apply(events)
         if events:
-            s.last_event = ", ".join(e.kind + ("" if e.arg is None else f" {e.arg}") for e in events)
+            s.last_event = ", ".join(brief(e) for e in events)
+            if s.runner.enabled and any(e.kind == "type" for e in events) and in_front():
+                s.last_event = "nowhere to type: click where the words should go first"
             if s.runner.enabled:
                 for e in events:
                     s.sounds.play(e.kind)
@@ -117,7 +145,7 @@ class LiveMode:
                     s.effects.say(e.arg)               # speech does not need mouse control
                 elif e.kind == "open" and s.runner.enabled:
                     s.effects.open(e.arg)
-                elif e.kind == "pause":
+                elif e.kind == "pause" and not s.runner.locked:
                     s.set_locked(True)
         hud.draw_region(frame, s.runner.active_region, s.runner.enabled)
         s.hint = None
@@ -131,12 +159,16 @@ class LiveMode:
         if s.overlay is not None and s.overlay_on:
             s.overlay.send(overlay_state(s, o, smooth, progress, events))
         shake = shake_line(s.sim, s.pointer.reading, s.pointer.left)
+        talk = talk_line(s.talker, o.t)
         if s.runner.locked:
             line3 = ("PAUSED [p]: hold an open palm still for 2 s to resume", hud.ACCENT_ON)
+        elif talk:
+            line3 = (talk, hud.ACCENT_ON)
         else:
             line3 = (shake, hud.ALERT if s.sim.on else hud.MINT) if shake else None
         s.mini_label = ("! " + s.hint) if s.hint else (
             ("PAUSED | " if s.runner.locked else "")
+            + ("" if s.talker.state == "idle" else s.talker.state.upper() + " | ")
             + f"{state} | {label} {conf:.2f} | mouse {'ON' if s.runner.enabled else 'OFF'}"
             + (" | SIM" if s.sim.on else "")
             + (f" | LOCK {s.pointer.reading.lock_hz:.1f}Hz" if s.pointer.reading.locked else ""))

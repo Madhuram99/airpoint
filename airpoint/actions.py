@@ -53,6 +53,18 @@ class FakeMouse:
     def flush(self, timeout=2.0):
         return True
 
+    typing = False
+
+
+def in_front():
+    """True when AirPoint's own window has the keyboard (macOS). Words typed then have nowhere to go."""
+    try:
+        import os
+        from AppKit import NSWorkspace
+        return NSWorkspace.sharedWorkspace().frontmostApplication().processIdentifier() == os.getpid()
+    except Exception:
+        return False
+
 
 class PyAutoGuiMouse:
     """Mouse calls go straight to the OS. Keystrokes take 10 ms or more each, so they queue for one
@@ -74,6 +86,13 @@ class PyAutoGuiMouse:
                 work()
             except Exception as e:           # one bad keystroke must not end typing for the rest of the session
                 print(f"[AirPoint] keystroke failed: {type(e).__name__}: {e}")
+            finally:
+                self.keys.task_done()
+
+    @property
+    def typing(self):
+        """True while keystrokes are queued or going out."""
+        return self.keys.unfinished_tasks > 0
 
     def size(self):
         return tuple(self.pg.size())
@@ -175,3 +194,7 @@ class ActionRunner:
     def flush(self, timeout=2.0):
         """Wait for keystrokes that are still on their way to the OS."""
         return self.mouse.flush(timeout)
+
+    @property
+    def typing(self):
+        return self.mouse.typing

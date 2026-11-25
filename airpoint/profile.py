@@ -3,6 +3,7 @@
     venv/bin/python -m airpoint.profile ana                      # show
     venv/bin/python -m airpoint.profile ana --role grip=pinch --role right_click=fist --off scroll_down
     venv/bin/python -m airpoint.profile ana --dwell on --region 0.3,0.3,0.7,0.8
+    venv/bin/python -m airpoint.profile ana --speech local --dictation-keys cmd+shift+d
 """
 import argparse
 import json
@@ -42,6 +43,9 @@ class Profile:
     signs: dict = field(default_factory=dict)      # taught signs: name -> {"action", "arg", "hold_s"}
     voice: str = None                              # `say` voice for spoken phrases; None = the system voice
     face: dict = None                              # face-mode calibration: resting pose, head range, thresholds
+    speech: str = "system"                         # talk: "system" = macOS dictation, "local" = on-laptop recognition
+    speech_model: str = "base.en"                  # which local speech model
+    dictation_keys: list = field(default_factory=lambda: ["control", "option", "d"])   # the macOS dictation shortcut
     version: int = VERSION
 
 
@@ -89,7 +93,7 @@ def drop_poses(roles, poses):
     return {name: [p for p in roles.get(name, []) if p not in poses] for name in ROLE_NAMES}
 
 
-SIGN_ACTIONS = ("say", "hotkey", "type", "open", "pause")
+SIGN_ACTIONS = ("say", "hotkey", "type", "open", "pause", "talk")
 SIGN_HOLD_S = 0.6        # longer than the built-in 0.3 s: a taught sign must be meant
 KEY_ALIASES = {"cmd": "command", "ctrl": "control", "opt": "option", "alt": "option", "return": "enter", "esc": "escape"}
 KEY_NAMES = ({"command", "control", "option", "shift", "enter", "escape", "space", "tab", "backspace", "delete",
@@ -148,6 +152,10 @@ def main(argv=None, root=None):
     ap.add_argument("--hints", type=_on_off, metavar="on|off")
     ap.add_argument("--filter", choices=MODES)
     ap.add_argument("--voice", help="voice for spoken phrases, e.g. Rishi, Tara, Lekha (see: say -v '?')")
+    ap.add_argument("--speech", choices=("system", "local"),
+                    help="talk: macOS dictation, or recognition on this laptop (see python -m airpoint.speech)")
+    ap.add_argument("--speech-model", help="local speech model: tiny.en, base.en, small.en")
+    ap.add_argument("--dictation-keys", metavar="KEYS", help="the macOS dictation shortcut, like control+option+d")
     args = ap.parse_args(argv)
 
     prof = load(root, args.user) or Profile(user=args.user)
@@ -169,7 +177,12 @@ def main(argv=None, root=None):
         if len(box) != 4 or not (0 <= box[0] < box[2] <= 1 and 0 <= box[1] < box[3] <= 1):
             raise SystemExit("region needs x0,y0,x1,y1 with 0 <= x0 < x1 <= 1 and 0 <= y0 < y1 <= 1")
         prof.region = box
-    for name in ("dwell", "wheel", "sounds", "hints", "filter", "voice"):
+    if args.dictation_keys:
+        keys = parse_keys(args.dictation_keys)
+        if keys is None:
+            raise SystemExit("dictation keys: not a key combo I know (try control+option+d)")
+        prof.dictation_keys = list(keys)
+    for name in ("dwell", "wheel", "sounds", "hints", "filter", "voice", "speech", "speech_model"):
         if getattr(args, name) is not None:
             setattr(prof, name, getattr(args, name))
     if asdict(prof) != before or not os.path.exists(path(root, args.user)):

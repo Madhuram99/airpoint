@@ -37,7 +37,7 @@ def test_holding_still_opens_the_wheel_and_staying_centred_clicks():
 
 
 def test_each_direction_picks_its_item():
-    expect = {"click": [("click", None)], "right": [("right_click", None)], "double": [("double_click", None)],
+    expect = {"talk": [("talk", None)], "right": [("right_click", None)], "double": [("double_click", None)],
               "pause": [("pause", None)], "drag": [("drag_start", None)], "scroll": []}
     for i, item in enumerate(ITEMS):
         w, t = opened()

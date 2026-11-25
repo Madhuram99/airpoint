@@ -11,12 +11,13 @@ from .actions import ACTIVE_REGION
 from .classifier import PoseClassifier, VoteSmoother
 from .effects import Effects
 from .face import GRIP as FACE_GRIP, HOLD_EVENTS as FACE_HOLD, FacePointer, FaceSigns, default_face
-from .fsm import AirPointFSM, DwellDetector
+from .fsm import AirPointFSM, DwellDetector, Event
 from .hints import Hinter
 from .modes import CalibrateMode, FaceCalibrateMode, LiveMode, RecordMode, TeachMode
 from .pointer import PointerPipeline
 from .profile import Profile, fsm_parts
 from .sounds import Sounds
+from .speech import make_talker
 from .train import train_personal
 from .tremor import TremorSim
 from .wheel import Wheel
@@ -51,7 +52,7 @@ class Session:
     """
 
     def __init__(self, runner, rules, mlp, *, root, user=None, profile=None, dwell_on=None,
-                 train_fn=train_personal, sounds=None, effects=None, overlay=None):
+                 train_fn=train_personal, sounds=None, effects=None, overlay=None, talker=None):
         self.runner, self.rules, self.mlp, self.base_mlp = runner, rules, mlp, mlp
         self.clf = mlp or rules
         self.root, self.user, self.train_fn = root, user, train_fn
@@ -63,6 +64,7 @@ class Session:
         self.sounds = sounds or Sounds(enabled=self.profile.sounds)
         self.effects = effects or Effects(voice=self.profile.voice)
         self.overlay, self.overlay_on = overlay, overlay is not None     # the cursor glow; None = none
+        self.talker = talker or make_talker(self.profile, press=lambda keys: runner.apply([Event("hotkey", keys)]))
         self.hinter, self.hints_on, self.hint = Hinter(), self.profile.hints, None
         self.pointer = PointerPipeline(self.profile.fc_min)
         self.pointer.mode = self.profile.filter
@@ -162,9 +164,39 @@ class Session:
             self.apply_region(self.profile.region)
             self.wheel_on = self.wheel_before_face
 
+    def toggle_talk(self, t):
+        """One tap starts listening, the next ends it. What is heard is typed or carried out through the
+        runner, so talk needs the mouse switch on and does not start during a pause."""
+        if self.talker.state == "idle" and (not self.runner.enabled or self.runner.locked):
+            self.last_event = "talk is off while paused" if self.runner.enabled else "talk needs mouse ON [m]"
+            return
+        was, now = self.talker.state, self.talker.toggle(t)
+        if now == was:
+            self.last_event = f"talk: {self.talker.problem}" if self.talker.problem else self.last_event
+            return
+        self.last_event = "talk: listening" if now == "listening" else "talk: stopped"
+        if self.talker.local:                       # macOS dictation makes its own sounds
+            self.sounds.play("talk_start" if now == "listening" else "talk_stop")
+
+    def stop_talking(self):
+        """Listening never outlives the mouse switch, a pause or the live view."""
+        if self.talker.state == "listening":
+            self.talker.stop(self.prev_t or 0.0)
+            if self.talker.local:
+                self.sounds.play("talk_stop")
+
+    def heard_events(self, t):
+        """Each frame: what a finished recognition asks for. Also ends a listen that ran too long."""
+        was = self.talker.state
+        events = self.talker.poll(t)
+        if was == "listening" and self.talker.state != "listening" and self.talker.local:
+            self.sounds.play("talk_stop")
+        return events
+
     def set_locked(self, locked):
         """The user's pause. Locking lets go of a held button; a still open palm unlocks (live mode)."""
         if locked:
+            self.stop_talking()
             self.wheel.reset()
             self.runner.lock()
         else:
@@ -185,6 +217,7 @@ class Session:
                     sim=dict(on=self.sim.on, hz=self.sim.hz, amp=self.sim.amp),
                     locked=self.runner.locked, gain=round(self.pointer.gain, 3),
                     tremor_locked=r.locked, lock_hz=round(r.lock_hz, 2), classifier=self.clf.name,
+                    talk=self.talker.state,
                     fps=round(self.obs.fps, 1) if self.obs else 0.0)
 
     def _write_live(self, t):
@@ -205,6 +238,7 @@ class Session:
             self.overlay.send({"show": False})
 
     def set_mode(self, mode):
+        self.stop_talking()
         self.runner.apply(self.wheel.reset())       # a wheel drag does not survive leaving the live view
         self.mode.close(self)
         self.mode = mode
@@ -239,7 +273,10 @@ class Session:
             print("[AirPoint] record, teach and the tremor simulator are for the hand: press f first")
             return
         if key == ord("m"):
+            self.stop_talking()
             self.runner.toggle()
+        elif key == ord("l") and self.mode.name == "live":
+            self.toggle_talk(t)
         elif key == ord("d"):
             self.dwell_on = not self.dwell_on
             self.dwell.reset()
@@ -296,7 +333,10 @@ class Session:
                 self.set_mode(LiveMode())
 
     def close(self):
+        self.stop_talking()
+        self.talker.close()
         self.runner.release()
+        self.runner.flush()                         # the keys that end a dictation must leave before we do
         self.mode.close(self)
         if self.recorder is not None:
             self.recorder.close()
