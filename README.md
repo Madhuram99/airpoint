@@ -41,13 +41,13 @@ cursor : middle knuckle → tremor canceller → One-Euro filter → screen
 
 For a hand that can point but cannot make a sign. `d` alone gives dwell click: hold still for a second
 and it clicks. `w` turns the dwell into a wheel around the cursor: stay put and it clicks; move toward
-right click, drag, scroll, double click or pause and hold that direction for half a second. Drag presses
+talk, right click, drag, scroll, double click or pause and hold that direction for half a second. Drag presses
 the button and lets go at the next dwell; scroll follows how far the hand is above or below where it
 stopped. Choice is by direction, so it works the same whatever the comfort box. If calibration finds
 no clicking sign the hand can make, it turns both on.
 
 On macOS a glow follows the real cursor (a second, click-through window): the dwell countdown, a
-ripple on each action, DRAG / SCROLL / PAUSED / SIMULATED tags, the current hint, and the wheel. `o`
+ripple on each action, DRAG / SCROLL / PAUSED / LISTENING / SIMULATED tags, the current hint, and the wheel. `o`
 switches it; `--no-overlay` starts without it. The wheel is also drawn in the camera view.
 
 ### Face mode
@@ -58,7 +58,8 @@ pause. Everything after the tracker is shared with the hand: the same vote, stat
 canceller, dwell, wheel, glow and lab. `c` in face mode calibrates in fifteen seconds: rest, turn the
 head as far as is comfortable, open the mouth, raise the eyebrows. Without calibration, wherever the
 head rests in its first moment is taken as the middle of the screen. Talking opens the mouth, so pause
-(`p` or the wheel) before speaking.
+(`p` or the wheel) before speaking to someone; while AirPoint itself is listening (Talk, below) the
+mouth and eyebrows are ignored.
 
 Face mode uses MediaPipe's FaceLandmarker (`face_landmarker.task`, in the repo beside the hand model).
 On this laptop it runs at 30 fps, about 5 ms per frame.
@@ -67,7 +68,7 @@ On this laptop it runs at 30 fps, about 5 ms per frame.
 
 `n` (with `--user`) adds a sign of your own in about fifteen seconds: type a name, hold the sign for
 eight seconds, then choose what it does: speak a phrase aloud, press a key combo, type text, open an
-app or a link, or pause AirPoint. The personal model is retrained with the new class and swapped in
+app or a link, pause AirPoint, or start and stop talk. The personal model is retrained with the new class and swapped in
 while you wait. Held for 0.6 s the sign fires once and re-arms after a neutral pose.
 
 Speaking works even with mouse control off, so the same sign vocabulary can serve someone who needs
@@ -109,6 +110,36 @@ The dashboard shows only what `python -m airpoint.results` can back: accuracy on
 hands with the method named, the hand-written rules on the same frames, the tremor simulation
 labelled as a simulation, and measured pointing results. Anything not yet measured says so.
 
+### Talk
+
+For someone who cannot type. One tap starts listening and the same tap ends it: a sign taught for it
+(`n`, action 6), the top of the wheel, or `l`. It is tap to talk, not hold to talk, because holding a
+sign for a whole sentence is what these users find hard; listening also ends by itself after twenty
+seconds. Click where the words should go first, and keep the mouse switch on.
+
+There are two engines, chosen per profile:
+
+- **macOS dictation (default).** AirPoint only presses the dictation shortcut; the system listens and
+  types, on the laptop, in English, Hindi and the other languages macOS knows. Set it up once:
+  System Settings › Keyboard › Dictation › on, and Shortcut › Customize › `control+option+d`
+  (or tell AirPoint yours: `python -m airpoint.profile you --dictation-keys cmd+shift+d`).
+- **On this laptop (optional).** AirPoint records the microphone only between the two taps, and
+  recognises it with faster-whisper. This engine also understands spoken commands: click, double
+  click, right click, scroll up, scroll down, enter, new line, tab, escape, delete, undo, copy, paste,
+  select all, pause. Anything else is typed. English only. It needs one install and one model
+  download, neither of which AirPoint does by itself:
+
+  ```bash
+  venv/bin/pip install faster-whisper
+  venv/bin/python -m airpoint.speech --setup        # says the size and asks before downloading (about 148 MB)
+  venv/bin/python -m airpoint.profile you --speech local
+  venv/bin/python -m airpoint.speech --listen 5     # check: what five seconds of your voice are heard as
+  ```
+
+No sound is saved, and none leaves the laptop. Keystrokes go out on their own thread, in order, so a
+long sentence never freezes the camera loop; and keys AirPoint types are never read back as its own
+commands when its window happens to be in front.
+
 ## Run
 
 ```bash
@@ -121,11 +152,13 @@ venv/bin/python run_demo.py --user you           # loads profiles/you.json once 
 #   d = dwell click on/off | v = mini always-on-top view | c = hold still 5 s, 6 poses x 5 s, retrain, hot-swap
 #   t = simulated tremor ([ ] size, { } speed) | b = filter full / smoothing only / off | x = X-ray panel | z = zoom
 #   p = pause (open palm held still 2 s resumes) | h = hints on/off | s = sounds on/off
-#   n = teach a new sign: name it, hold it 8 s, choose speak / keys / type / open / pause
-#   w = point-only wheel (dwell opens click / right / drag / scroll / double / pause) | o = glow at the cursor
+#   n = teach a new sign: name it, hold it 8 s, choose speak / keys / type / open / pause / talk
+#   w = point-only wheel (stay = click; talk / right / drag / scroll / double / pause by direction) | o = glow at the cursor
+#   l = talk: start listening, press again to stop (see Talk)
 #   f = face mode: head moves the cursor, mouth open clicks, eyebrows right-click; c calibrates the face
 venv/bin/python run_demo.py --no-overlay         # without the glow at the cursor (the glow is macOS only)
 venv/bin/python -m airpoint.profile you          # show or edit your profile: roles, comfort box, dwell, sounds
+venv/bin/python -m airpoint.speech               # what talk can use on this laptop
 venv/bin/python run_demo.py --record --user you  # record your hand: space = all poses, 1-6 = one pose
 venv/bin/python -m airpoint.train                # retrain on data/*.csv, leave-one-user-out report
 venv/bin/pytest -q                               # unit tests (no camera needed)
@@ -135,7 +168,8 @@ venv/bin/python -m airpoint.results              # rebuild results.js, the dashb
 open index.html                                  # dashboard
 ```
 
-macOS: allow your terminal under System Settings → Privacy & Security → Camera and Accessibility.
+macOS: allow your terminal under System Settings → Privacy & Security → Camera and Accessibility
+(and Microphone, if you use the on-laptop speech engine).
 
 ## Layout
 
@@ -143,7 +177,7 @@ macOS: allow your terminal under System Settings → Privacy & Security → Came
 airpoint/        package — camera, tracker, features, filters, tremor, pointer, classifier, fsm, actions, hud,
                  recorder, calibration, train, session, modes/ (live, record, calibrate), app,
                  lab/ (server, stats, store), results, sim_pointer, profile, hints, sounds, effects,
-                 modes/teach, wheel, overlay, face, modes/face_calibrate
+                 modes/teach, wheel, overlay, face, modes/face_calibrate, speech
 lab/             practice pages and the pointing test (plain HTML/JS, served by airpoint.lab)
 results/         saved test sessions (trials.jsonl)
 legacy/          the midterm benchmark script, kept as presented

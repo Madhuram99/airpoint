@@ -41,7 +41,8 @@ Relation to the 2026-11-13 spec:
 
 ## 2. Stages
 
-Status (kept current): Stage 1 built 2026-11-25 (`26edce2`). Stages 2 to 6 built 2026-11-25. From Stage 2 on
+Status (kept current): Stage 1 built 2026-11-25 (`26edce2`). Stages 2 to 7 built 2026-11-25
+(Stage 7's on-laptop speech engine is written but not installed: that download is the user's call). From Stage 2 on
 the user approved every stage in advance and tests them all in one session; that session's checklist is
 `docs/camera-checklist.md`.
 
@@ -147,6 +148,8 @@ Design: `2026-11-25-airpoint-stage1-tremor-xray-design.md`.
   suppress it), neck fatigue.
 
 ### Stage 7 — Hold to talk (M)
+As built (see the stage spec): tap to talk instead of hold to talk; macOS dictation is the default
+engine and local Whisper the optional one, since its package and model need a download.
 - A speech service on its own thread records only while the talk sign or wheel item
   is held, transcribes on the laptop with Whisper, then either runs a command from a
   short fixed list (click, double click, right click, scroll, enter, undo, select
@@ -218,7 +221,8 @@ Rules that carry through every stage:
 - Pause is not a fist hold: a held fist is already drag.
 - The overlay is a separate process, so it never fights OpenCV's own window loop.
 - Speech-to-text is local Whisper. Apple's Speech framework is avoided unless the
-  Stage 7 spike shows it works from a terminal-launched script.
+  Stage 7 spike shows it works from a terminal-launched script. (Stage 7 changed this:
+  macOS dictation, driven by its shortcut, is the default; local Whisper is optional.)
 - The AI helper comes after voice and the overlay, because it needs both.
 
 ## 5. Honest positioning (for the viva)

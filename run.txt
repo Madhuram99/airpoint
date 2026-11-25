@@ -10,7 +10,7 @@ venv/bin/python -m airpoint.lab                # tutorial + pointing test at htt
 #    (the midterm benchmark is kept at legacy/midterm_benchmark_suite.py; the dashboard no longer reads it)
 
 # 3. Live demo (q quit | m mouse | d dwell | w wheel | o glow | f face | b filter | k rules/mlp | c calibrate | v mini | z zoom | x x-ray |
-#               t simulated tremor, [ ] size, { } speed | p pause | h hints | s sounds | n new sign | r record | 1-6 pose | space start/redo)
+#               t simulated tremor, [ ] size, { } speed | p pause | l talk | h hints | s sounds | n new sign | r record | 1-6 pose | space start/redo)
 venv/bin/python run_demo.py                    # MLP if models/pose_mlp.joblib exists, else rules
 venv/bin/python run_demo.py --mouse            # same, OS mouse control already ON
 venv/bin/python run_demo.py --rules            # force rules
@@ -21,6 +21,8 @@ venv/bin/python run_demo.py --record --user <name>   # record poses to data/<nam
 #    face demo  : m -> f (look at the screen for a second) -> turn your head: cursor follows; open mouth = click;
 #                 raise eyebrows = right click; hold still = wheel; c = calibrate your face; f = back to the hand
 #    wheel demo : m -> w -> hold the palm still 1 s: a wheel opens at the cursor; stay = click, or move toward an item
+#    talk demo  : once: System Settings > Keyboard > Dictation on, Shortcut > Customize > control+option+d.
+#                 m -> click into Notes with a pinch -> wheel up (talk) or your talk sign -> speak -> the same again to stop
 #    teach demo : n -> type a name -> hold a new sign 8 s -> 1 (speak) -> type a phrase -> Enter; hold the sign: it speaks
 #    tremor demo: m (mouse on) -> t (cursor shakes, tag reads SIMULATED) -> wait 2 s for LOCKED ->
 #                 b twice (smoothing only, then off) to compare on the real cursor -> x to show why
@@ -28,6 +30,11 @@ venv/bin/python run_demo.py --record --user <name>   # record poses to data/<nam
 # 3b. Your profile (made by calibration; edit by hand if a sign is hard for you)
 venv/bin/python -m airpoint.profile <name>                                   # show
 venv/bin/python -m airpoint.profile <name> --role right_click=fist --role grip=pinch --dwell on
+
+# 3c. Talk: what is set up, and the optional on-laptop engine (one install + one 148 MB download, both yours to run)
+venv/bin/python -m airpoint.speech
+#   venv/bin/pip install faster-whisper && venv/bin/python -m airpoint.speech --setup
+#   venv/bin/python -m airpoint.profile <name> --speech local      # then spoken commands work: "scroll down", "select all"
 
 # 4. Train on data/*.csv -> models/
 venv/bin/python -m airpoint.train

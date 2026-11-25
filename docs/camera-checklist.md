@@ -75,7 +75,7 @@ Report: the percentages from 4.1 and 4.3, the false fires from 4.4, whether 4.5 
 - [ ] **5.3 Click-through.** With a real mouse, click a button that sits under the glow: the click must reach it.
 - [ ] **5.4 Above everything.** Put a browser in full screen, switch Spaces, and (if you have one) move to a second display: does the glow stay with the cursor?
 - [ ] **5.5 Wheel basics.** `w`, hold the palm still for a second: the wheel opens at the cursor and in the camera view, and the cursor stops following. Stay put: it clicks after a little under a second.
-- [ ] **5.6 Wheel items.** Open it again and move up-right (right click), down-right (drag: the cursor follows again, the next stop drops), down (scroll: hand above or below the start point scrolls, resting in the middle ends it), down-left (double click), up-left (pause).
+- [ ] **5.6 Wheel items.** Up is talk (Stage 7). Open it again and move up-right (right click), down-right (drag: the cursor follows again, the next stop drops), down (scroll: hand above or below the start point scrolls, resting in the middle ends it), down-left (double click), up-left (pause).
 - [ ] **5.7 Timing.** Is there enough time to start moving before the plain click fires? Did any item fire that you did not mean? Was any direction hard to hit?
 - [ ] **5.8 Whole computer by pointing.** With no signs at all, open a folder, drag a file, scroll a page and right-click, using only the wheel.
 - [ ] **5.9 In the lab.** Take the pointing test with the wheel on: the block should be listed as `airpoint wheel`.
@@ -95,3 +95,35 @@ Report: 5.3 and 5.4 exactly as they behaved, and the answers to 5.7.
 - [ ] **6.9 In the lab.** Take the pointing test in face mode: the block should be listed as `airpoint face`.
 
 Report: steadiness in 6.2, unwanted clicks in 6.6, and whether 6.5 changed the feel.
+
+## Stage 7 — talk
+
+Once, before these: System Settings › Keyboard › Dictation › on; Shortcut › Customize › press
+`control+option+d`. Then `venv/bin/python -m airpoint.speech` should print the same shortcut.
+
+- [ ] **7.1 A key combo with control.** (A fix from this stage: `control` used to be dropped from every combo.) Teach a sign (`n`) with action 2, keys `ctrl+up`. Hold the sign: Mission Control must open.
+- [ ] **7.2 Start and stop by wheel.** Mouse on, `w`. Click into a note in Notes with the wheel. Open the wheel and move up (talk): the macOS microphone appears and the banner and the glow read LISTENING with a countdown. Say a sentence: it is typed into the note. Wheel up again: the microphone goes away.
+- [ ] **7.3 A sign for it.** `n`, name it, hold a sign, action 6 (talk). Use that sign to start, and again to stop.
+- [ ] **7.4 It ends by itself.** Start talk and say nothing for 20 s: the microphone must go away by itself, and AirPoint must read idle. If macOS and AirPoint ever disagree (one listening, one not), note what you did just before; pressing `l` once puts them back in step.
+- [ ] **7.5 Mouse off and pause.** While it is listening press `m`: dictation must end first. With the mouse off, talk must refuse to start and say why. The same for `p`.
+- [ ] **7.6 Its own window.** Click on the AirPoint window so it is in front, press `l`, speak, press `l`: nothing is typed anywhere, AirPoint must not react to any letter, and it must still be running.
+- [ ] **7.7 Face mode.** `f`, start talk from the wheel, speak two sentences: count the clicks while speaking (there should be none). Stop talk: about a second later an open mouth clicks again.
+- [ ] **7.8 Hindi.** Switch the dictation language in the macOS microphone pop-up to Hindi and repeat 7.2.
+
+Only if you want the on-laptop engine (it adds spoken commands). These two lines install a package and
+download a 148 MB model; AirPoint never does either by itself:
+
+```bash
+venv/bin/pip install faster-whisper
+venv/bin/python -m airpoint.speech --setup
+venv/bin/python -m airpoint.speech --listen 5           # speak: prints what was heard and what it would do
+venv/bin/python -m airpoint.profile madhuram --speech local
+```
+
+- [ ] **7.9 Microphone.** The first `--listen` asks for microphone access for your terminal. Allow it. The line must show a peak well above 0.01 while you speak; a peak of 0.000 means access was refused.
+- [ ] **7.10 Commands and text.** In AirPoint (start-up line reads `talk: on this laptop`): start talk, say "scroll down", stop: the page scrolls and the banner shows `heard "Scroll down."`. Say a full sentence: it is typed. Say "select all", then "copy".
+- [ ] **7.11 Silence.** Start and stop talk without speaking: nothing may be typed (the banner says `heard nothing`). Try it once with a fan or music on.
+- [ ] **7.12 Speed.** How long from the second tap to the words appearing? Is `tiny.en` (`--model tiny.en`, then `--speech-model tiny.en`) good enough and faster?
+
+Report: 7.1, 7.4 and 7.6 exactly as they behaved; the click count in 7.7; for the on-laptop engine the
+peak from 7.9, anything typed in 7.11 and the delay in 7.12.
