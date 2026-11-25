@@ -6,12 +6,14 @@ from .. import features as F
 from .. import hud
 from ..actions import in_front
 from ..face import FACE_LABELS, NEUTRAL
+from ..helper import ASK_S, SHOW_S, Reins
 from ..pointer import PRECLICK_RATIO
 from ..poses import NONE, UNKNOWN
 
 
 FILTER_NAMES = {"full": "full", "smooth": "smooth only", "off": "OFF"}
 HEARD_S = 4.0     # how long the banner keeps what was heard
+NOTE_S = 8.0      # how long it keeps how the AI helper's errand ended
 
 
 def shake_line(sim, reading, left):
@@ -37,6 +39,38 @@ def talk_line(talker, t):
     if talker.t_end is not None and t - talker.t_end < HEARD_S and (talker.heard or talker.problem):
         return f'heard "{talker.heard}"' if talker.heard else f"talk: {talker.problem}"
     return None
+
+
+def helper_line(s, t):
+    """Third banner line for the AI helper: what it is about to do, what it asks, how the errand ended."""
+    h = s.helper
+    if not h.active:
+        recent = h.t_note is not None and t - h.t_note < NOTE_S and h.note
+        return (("AI done: " if h.ok else "AI: ") + h.note) if recent else None
+    v = h.view(t)
+    head = f"AI {v['n']}/{v['of']}: {v['text']}"
+    if v["state"] == "asking":
+        how = "open mouth = yes, eyebrows = no" if s.source == "face" else "thumb up = yes, thumb down = no"
+        return f"{head} {how}, or point up / down | {max(ASK_S - (t - h.t_state), 0.0):.0f} s"
+    stop = "eyebrows or a quick move stop it" if s.source == "face" else "a fist or a quick move stops it"
+    if v["state"] == "showing":
+        return f"{head} in {max(SHOW_S - (t - h.t_state), 0.0):.1f} s | {stop}"
+    return f"{head} | {stop}"
+
+
+def helper_overlay(s, view, events):
+    """The glow while the AI helper works: on the step's target, saying what is about to happen there."""
+    xy = None if view is None else (view["xy"] or s.runner.last_xy)
+    if xy is None or view["hide"] or not s.runner.enabled:
+        return {"show": False}                   # also hidden while the picture of the screen is taken
+    asking, showing = view["state"] == "asking", view["state"] == "showing"
+    state = {"show": True, "x": round(xy[0], 1), "y": round(xy[1], 1),
+             "ring": round(s.chooser.progress if asking else view["progress"] if showing else 0.0, 3),
+             "tag": f"AI {view['n']}/{view['of']}" + (": YES OR NO?" if asking else ""), "hint": view["text"][:44] or None}
+    pulse = next((e.kind for e in events if e.kind in PULSES), None)
+    if pulse:
+        state["pulse"] = pulse
+    return state
 
 
 def brief(e):
@@ -102,11 +136,75 @@ class LiveMode:
         self.detail = f"mouth {near:.2f}"
         return label, 1.0, label == NEUTRAL and near > 0.5
 
+    def _helped(self, s, o, frame, label, conf):
+        """The AI helper has the cursor. The hand does not move it or click: it only stops or answers."""
+        h, t = s.helper, o.t
+        smooth = None
+        if o.raw is not None:
+            smooth = s.pointer.update(o.raw, t)
+            hud.draw_cursor(frame, o.raw, smooth)
+        asking = h.state == "asking"
+        sign = s.reins.read(label, smooth, t, asking, s.source)
+        events = []
+        if sign in ("stop", "moved"):
+            s.stop_helper(("you moved" if sign == "moved" else "you made the stop sign") + ": the helper stopped")
+        elif sign in ("yes", "no"):
+            events = h.answer(sign == "yes", t)
+        elif asking:                                  # no sign for yes or no: point up or down instead
+            steady = smooth is not None and Reins.steady(label, s.source)
+            if steady and s.chooser.mode != "open":
+                s.chooser.open_at(smooth, t)
+            for e in s.chooser.update(smooth, t, steady):
+                if e.kind == "answer":
+                    events = h.answer(e.arg == "yes", t)
+            hud.draw_wheel(frame, s.chooser.view)
+        if h.active:
+            events = events + h.tick(t, busy=s.runner.typing)
+        if h.state != "asking":
+            s.chooser.reset()
+        s.runner.apply(events)
+        for e in events:
+            s.sounds.play(e.kind)
+        view = h.view(t) if h.active else None
+        if view is None and sign not in ("stop", "moved"):
+            s.helper_ended()                          # it finished, failed or was refused in this frame
+        s.hint = None
+        if s.overlay is not None and s.overlay_on:
+            s.overlay.send(helper_overlay(s, view, events))
+        hud.draw_region(frame, s.runner.active_region, s.runner.enabled)
+        s.mini_label = f"AI {view['n']}/{view['of']} | {view['text']}" if view else s.last_event
+        line = helper_line(s, t)
+        self._banner(s, o, frame, "AI HELPER", label, conf, (line, hud.ACCENT_ON) if line else None)
+
+    def _banner(self, s, o, frame, head, label, conf, line3):
+        if s.mini:
+            return
+        hud.draw_banner(
+            frame,
+            f"{head} | pose {label} {conf:.2f} | {self.detail} | "
+            f"{'face' if s.source == 'face' else s.clf.name} | {o.fps:.0f} fps",
+            f"last: {s.last_event} | mouse [m] {'ON' if s.runner.enabled else 'OFF'} | "
+            f"dwell [d] {'ON' if s.dwell_on else 'OFF'} | wheel [w] {'ON' if s.wheel_on else 'OFF'} | "
+            f"filter [b] {FILTER_NAMES[s.pointer.mode]}" + (" | AI [a] ON" if s.helper.armed else ""),
+            s.runner.enabled,
+            line3=line3,
+        )
+        if s.hint:
+            hud.draw_hint(frame, s.hint)
+
     def tick(self, s, o, frame):
         seen, conf, preclick = (self._read_face if s.source == "face" else self._read_hand)(s, o)
         label = s.smoother.update(seen, conf)
         self.label = label
-        state, events = s.fsm.update(label, o.t)
+        if s.helper.active:
+            return self._helped(s, o, frame, label, conf)
+        acting = label
+        if s.hands_off:                               # the sign that stopped or answered the helper is still up
+            if label == NONE or (label != UNKNOWN and s.fsm.neutral(label)):
+                s.hands_off = False
+            else:
+                acting = UNKNOWN
+        state, events = s.fsm.update(acting, o.t)
         smooth = None
         if o.raw is not None:
             smooth = s.pointer.update(o.raw, o.t, preclick=preclick)
@@ -147,6 +245,8 @@ class LiveMode:
                     s.effects.open(e.arg)
                 elif e.kind == "pause" and not s.runner.locked:
                     s.set_locked(True)
+                elif e.kind == "ask":
+                    s.ask_helper(e.arg, o.t)
         hud.draw_region(frame, s.runner.active_region, s.runner.enabled)
         s.hint = None
         if s.hints_on:
@@ -159,9 +259,11 @@ class LiveMode:
         if s.overlay is not None and s.overlay_on:
             s.overlay.send(overlay_state(s, o, smooth, progress, events))
         shake = shake_line(s.sim, s.pointer.reading, s.pointer.left)
-        talk = talk_line(s.talker, o.t)
+        talk, note = talk_line(s.talker, o.t), helper_line(s, o.t)
         if s.runner.locked:
             line3 = ("PAUSED [p]: hold an open palm still for 2 s to resume", hud.ACCENT_ON)
+        elif note:
+            line3 = (note, hud.ACCENT_ON)
         elif talk:
             line3 = (talk, hud.ACCENT_ON)
         else:
@@ -172,19 +274,7 @@ class LiveMode:
             + f"{state} | {label} {conf:.2f} | mouse {'ON' if s.runner.enabled else 'OFF'}"
             + (" | SIM" if s.sim.on else "")
             + (f" | LOCK {s.pointer.reading.lock_hz:.1f}Hz" if s.pointer.reading.locked else ""))
-        if not s.mini:
-            hud.draw_banner(
-                frame,
-                f"{state} | pose {label} {conf:.2f} | {self.detail} | "
-                f"{'face' if s.source == 'face' else s.clf.name} | {o.fps:.0f} fps",
-                f"last: {s.last_event} | mouse [m] {'ON' if s.runner.enabled else 'OFF'} | "
-                f"dwell [d] {'ON' if s.dwell_on else 'OFF'} | wheel [w] {'ON' if s.wheel_on else 'OFF'} | "
-                f"filter [b] {FILTER_NAMES[s.pointer.mode]}",
-                s.runner.enabled,
-                line3=line3,
-            )
-            if s.hint:
-                hud.draw_hint(frame, s.hint)
+        self._banner(s, o, frame, state, label, conf, line3)
 
     def on_key(self, s, key, t):
         return False

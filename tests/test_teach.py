@@ -120,7 +120,7 @@ def test_key_combo_signs_are_validated_and_stored_as_lists(tmp_path):
     s.on_key(13, 0.0)
     t = hold(s, ROCK, 0.0, "action")
     s.on_key(ord("2"), t)
-    keys(s, "ctrl+alt+del", t)
+    keys(s, "ctrl+alt+hyper", t)
     s.on_key(13, t)
     assert s.mode.phase == "arg" and "not a key combo" in s.mode.error
     for _ in range(20):
@@ -166,4 +166,13 @@ def test_a_taught_sign_can_start_and_end_talk(tmp_path):
         s.tick(blank(), ROCK, "Right", t)
         t += DT
     assert s.talker.state == "listening" and [c for c in mouse.calls if c[0] == "hotkey"] == [("hotkey", "control", "option", "d")]
+    s.close()
+
+
+def test_a_taught_sign_can_carry_a_request_for_the_ai_helper(tmp_path):
+    base(tmp_path)
+    s, mouse = make(tmp_path)
+    t = teach_rock(s, action_key="7", arg="read my newest mail")
+    assert s.mode.phase == "done", s.mode.message
+    assert s.profile.signs == {"rock": {"action": "ask", "arg": "read my newest mail", "hold_s": 0.6}}
     s.close()

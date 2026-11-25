@@ -168,7 +168,8 @@ def paint(state, pulse=None, now=None, size=SIZE):
             ripple.stroke()
     below = c - (R_WHEEL + 22 if wheel else 44)
     if state.get("tag"):
-        _pill(state["tag"], below, {"SIMULATED": RED, "LISTENING": GREEN, "THINKING": GREEN}.get(state["tag"], WHITE), c)
+        tint = PURPLE if state["tag"].startswith("AI") else {"SIMULATED": RED, "LISTENING": GREEN, "THINKING": GREEN}.get(state["tag"], WHITE)
+        _pill(state["tag"], below, tint, c)
         below -= 26
     if state.get("hint") and below > 12:
         _pill(state["hint"], below, AMBER, c)

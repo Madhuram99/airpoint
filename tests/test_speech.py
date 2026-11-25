@@ -21,6 +21,13 @@ def test_exact_commands_run_and_everything_else_is_typed():
     assert interpret("   ") is None and interpret("...") is None
 
 
+def test_computer_at_the_start_makes_it_a_request_for_the_ai_helper():
+    assert interpret("Computer, open the calculator.") == Event("ask", "open the calculator.")
+    assert interpret("hey computer reply to Asha that I will come at five") == Event("ask", "reply to Asha that I will come at five")
+    assert interpret("Computer.") == Event("type", "Computer. ")                  # no request after it: just a word
+    assert interpret("My computer is slow.") == Event("type", "My computer is slow. ")
+
+
 def voice(seconds=1.0, level=0.2):
     """Something loud enough to be speech: a 200 Hz tone."""
     return (level * np.sin(2 * np.pi * 200 * np.arange(int(seconds * RATE)) / RATE)).astype(np.float32)

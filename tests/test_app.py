@@ -146,3 +146,20 @@ def test_keys_airpoint_types_itself_never_come_back_to_it_as_commands(monkeypatc
     assert TypingMouse.frames == 11             # the q on frame 2 was AirPoint's own; the one on frame 11 quit
     assert not s.runner.enabled                 # neither m got through: the second was still the tail of the typing
     assert s.dwell_on                           # five quiet frames later, keys count again
+
+
+def test_helper_flag_switches_it_on_only_when_it_can_work(monkeypatch, capsys):
+    sessions, real = [], app.Session
+    _patch_loop(monkeypatch, [255])
+    monkeypatch.setattr(app, "Session", lambda *a, **k: sessions.append(real(*a, **k)) or sessions[-1])
+    monkeypatch.setenv("OPENAI_API_KEY", "")
+    app.main(["--rules", "--no-overlay", "--helper"])
+    assert not sessions[0].helper.armed and "AI helper: no API key" in capsys.readouterr().out
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test0001")
+    monkeypatch.setattr("airpoint.helper.screen.allowed", lambda: True)
+    app.main(["--rules", "--no-overlay", "--helper"])
+    out = capsys.readouterr().out
+    assert sessions[1].helper.armed and "AI helper is ON: it sends your request and a picture of your screen" in out
+    assert "sk-test" not in out
+    app.main(["--rules", "--no-overlay"])
+    assert not sessions[2].helper.armed

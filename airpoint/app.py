@@ -10,6 +10,7 @@ from . import profile as profiles
 from .camera import Camera
 from .classifier import PoseClassifier, RuleClassifier
 from .face import FaceTracker
+from .helper import CONSENT
 from .modes import RecordMode
 from .overlay import Overlay
 from .session import Session
@@ -21,7 +22,7 @@ MODEL_PATH, LABELS_PATH = os.path.join(MODELS_DIR, "pose_mlp.joblib"), os.path.j
 WINDOW, MINI_MARGIN = "AirPoint", 20
 DRAIN_FRAMES = 5     # after AirPoint types, this many frames without a key before keys are commands again
 KEYS = ("q quit | m mouse | d dwell | w wheel | b filter full/smooth/off | k rules/mlp | c calibrate | f face/hand | v mini | z zoom | x x-ray | o cursor glow | "
-        "t simulated tremor ([ ] size, { } speed) | p pause | l talk | h hints | s sounds | n new sign | r record | 1-6 pose | "
+        "t simulated tremor ([ ] size, { } speed) | p pause | l talk | a AI helper | h hints | s sounds | n new sign | r record | 1-6 pose | "
         "space start/redo")
 
 
@@ -62,6 +63,8 @@ def main(argv=None):
     ap.add_argument("--mouse", action="store_true", help="start with OS mouse control ON")
     ap.add_argument("--dwell", action="store_true", help="start with dwell click ON")
     ap.add_argument("--no-overlay", action="store_true", help="no glow at the cursor (the overlay is macOS only)")
+    ap.add_argument("--helper", action="store_true",
+                    help=f"start with the AI helper switched on; it {CONSENT}")
     args = ap.parse_args(argv)
     if args.record and not args.user:
         ap.error("--record needs --user")
@@ -76,6 +79,10 @@ def main(argv=None):
                 dwell_on=True if args.dwell else None, overlay=None if args.no_overlay else Overlay())
     if args.record:
         s.set_mode(RecordMode(s))
+    if args.helper:
+        problem = s.helper.problem()
+        s.helper.armed = problem is None
+        print(f"[AirPoint] AI helper: {problem}" if problem else f"[AirPoint] AI helper is ON: it {CONSENT}")
     camera, tracker, face_tracker = Camera(), HandTracker(), None
     view_h = round(camera.size[1] * hud.CANON_W / camera.size[0])
     print(f"[AirPoint] camera {camera.index} {camera.size[0]}x{camera.size[1]} @ {camera.fps:.0f} fps -> "

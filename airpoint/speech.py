@@ -38,10 +38,14 @@ COMMANDS = {
 
 def interpret(text):
     """Recognised speech -> one Event, or None for silence. A phrase that is exactly a command runs it
-    ("Click." and "scroll DOWN" count); anything else is typed as it was heard."""
+    ("Click." and "scroll DOWN" count); "Computer, ..." is a request for the AI helper; anything else
+    is typed as it was heard."""
     spoken = re.sub(r"\s+", " ", re.sub(r"[^a-z ]", "", text.lower())).strip()
     if not spoken:
         return None
+    errand = re.match(r"\s*(?:hey[\s,]+)?computer[\s,.:;!]+(\S.*)", text, flags=re.I | re.S)
+    if errand:
+        return Event("ask", errand.group(1).strip())
     return COMMANDS.get(spoken) or Event("type", text.strip() + " ")
 
 

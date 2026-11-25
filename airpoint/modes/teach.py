@@ -8,7 +8,7 @@ from ..recorder import Recorder, RecordSession, capture
 TEACH_CAPTURE_S, MIN_FRAMES = 8.0, 60
 ACTIONS = (("say", "speak", "phrase to speak"), ("hotkey", "keys", "keys, like cmd+c"),
            ("type", "type", "text to type"), ("open", "open", "app name or link"), ("pause", "pause", None),
-           ("talk", "talk", None))
+           ("talk", "talk", None), ("ask", "ask AI", "what should the AI helper do"))
 ENTER, ESC, BACKSPACE = (13, 10), 27, (8, 127)
 WEAK_RECALL, MANY_FALSE_READS = 0.90, 0.02
 

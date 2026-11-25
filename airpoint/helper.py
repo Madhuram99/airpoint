@@ -5,14 +5,17 @@ before anything runs, shown to the user first, and stoppable; a step that cannot
 a yes. `Helper` is a state machine with the clock as a parameter; only the picture and the model call
 run on a worker thread. This is the one feature that sends anything off the laptop.
 """
+import math
 import os
 import re
 import threading
 import time
+from collections import deque
 from dataclasses import dataclass
 
-from . import llm
+from . import llm, screen
 from .fsm import Event
+from .poses import NONE, UNKNOWN
 from .profile import parse_keys
 
 MAX_STEPS = 12
@@ -21,6 +24,13 @@ ASK_S = 30.0            # a risky step waits this long for a yes; no answer is a
 SETTLE_S, WAIT_S = 1.2, 1.5     # after a step (or a "wait"), before the next picture
 GRAB_DELAY_S = 0.25     # the glow at the cursor hides, then the picture is taken
 THINK_TIMEOUT_S = 90.0
+STOP_HOLD_S, ANSWER_HOLD_S = 0.3, 0.6           # how long a stop sign, or a yes / no sign, must be held
+TAKEOVER_PX, TAKEOVER_S = 100.0, 1.0            # the hand moving this far this fast takes the cursor back
+STOP = {"hand": ("fist",), "face": ("brows_up",)}
+YES = {"hand": ("thumb_up",), "face": ("mouth_open",)}
+NO = {"hand": ("thumb_down", "fist"), "face": ("brows_up",)}
+ASK_ITEMS = ("yes", "", "", "no", "", "")       # the two-way wheel: point up for yes, down for no
+CONSENT = "sends your request and a picture of your screen to OpenAI at every step"
 MAX_TYPED, MAX_KEYS, MAX_SCROLL = 400, 4, 10
 POINTING = ("click", "double_click", "right_click", "scroll")
 ACTIONS = POINTING + ("type", "keys", "wait", "done", "cannot")
@@ -174,6 +184,53 @@ def thinker(model=None, ask=llm.ask):
     return think
 
 
+def ready_check():
+    """-> why the helper cannot be switched on here, or None."""
+    if not llm.keys():
+        return "no API key: set OPENAI_API_KEY in the environment before starting AirPoint"
+    if screen.allowed() is False:
+        return "Screen Recording is not allowed for this terminal (System Settings > Privacy & Security)"
+    return None
+
+
+class Reins:
+    """Reads the user while the helper has the cursor: a held sign or a quick move. Pure.
+
+    read(label, xy, t, asking, source) -> "stop" | "moved" | "yes" | "no" | None. While a risky step is
+    being asked about, movement is not a takeover: pointing up or down is how a hand without signs answers."""
+
+    def __init__(self):
+        self.pose, self.since, self.trail = None, 0.0, deque()
+
+    def reset(self):
+        self.pose, self.trail = None, deque()
+
+    def read(self, label, xy, t, asking, source="hand"):
+        if label != self.pose:
+            self.pose, self.since = label, t
+        held = t - self.since
+        if asking:
+            self.trail.clear()
+            if held >= ANSWER_HOLD_S and label in YES[source]:
+                return "yes"
+            return "no" if held >= ANSWER_HOLD_S and label in NO[source] else None
+        if held >= STOP_HOLD_S and label in STOP[source]:
+            return "stop"
+        if xy is None:
+            self.trail.clear()                   # a hand that left and came back elsewhere has not "moved"
+            return None
+        self.trail.append((t, xy))
+        while t - self.trail[0][0] > TAKEOVER_S:
+            self.trail.popleft()
+        x0, y0 = self.trail[0][1]
+        return "moved" if math.hypot(xy[0] - x0, xy[1] - y0) > TAKEOVER_PX else None
+
+    @staticmethod
+    def steady(label, source="hand"):
+        """True when the pose is a plain pointing one: the yes/no wheel follows the hand only then."""
+        return label not in (NONE, UNKNOWN) and label not in YES[source] and label not in NO[source]
+
+
 class Helper:
     """state: idle | thinking | showing | asking | settling.
 
@@ -181,8 +238,9 @@ class Helper:
     settles a risky step; stop(why, t) ends it from any state. `think` and `grab` are injected and
     run on a worker thread; an answer that arrives after a stop is dropped."""
 
-    def __init__(self, think, grab, screen_size, max_steps=MAX_STEPS, sleep=time.sleep):
+    def __init__(self, think, grab, screen_size, max_steps=MAX_STEPS, sleep=time.sleep, check=None):
         self.think, self.grab, self.size, self.max_steps, self.sleep = think, grab, tuple(screen_size), max_steps, sleep
+        self.check = check                       # -> why it cannot be switched on, or None
         self.armed = False                       # switched on for this session, by the user
         self.state, self.t_state = "idle", 0.0
         self.task, self.done, self.step, self.n, self.app = "", [], None, 0, ""
@@ -192,6 +250,9 @@ class Helper:
     @property
     def active(self):
         return self.state != "idle"
+
+    def problem(self):
+        return self.check() if self.check else None
 
     def start(self, task, t):
         task = " ".join((task or "").split())

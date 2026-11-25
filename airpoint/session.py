@@ -11,10 +11,13 @@ from .actions import ACTIVE_REGION
 from .classifier import PoseClassifier, VoteSmoother
 from .effects import Effects
 from .face import GRIP as FACE_GRIP, HOLD_EVENTS as FACE_HOLD, FacePointer, FaceSigns, default_face
+from . import screen
 from .fsm import AirPointFSM, DwellDetector, Event
+from .helper import ASK_ITEMS, ASK_S, Helper, Reins, ready_check, thinker
 from .hints import Hinter
-from .modes import CalibrateMode, FaceCalibrateMode, LiveMode, RecordMode, TeachMode
+from .modes import AskMode, CalibrateMode, FaceCalibrateMode, LiveMode, RecordMode, TeachMode
 from .pointer import PointerPipeline
+from .poses import NONE
 from .profile import Profile, fsm_parts
 from .sounds import Sounds
 from .speech import make_talker
@@ -52,7 +55,7 @@ class Session:
     """
 
     def __init__(self, runner, rules, mlp, *, root, user=None, profile=None, dwell_on=None,
-                 train_fn=train_personal, sounds=None, effects=None, overlay=None, talker=None):
+                 train_fn=train_personal, sounds=None, effects=None, overlay=None, talker=None, helper=None):
         self.runner, self.rules, self.mlp, self.base_mlp = runner, rules, mlp, mlp
         self.clf = mlp or rules
         self.root, self.user, self.train_fn = root, user, train_fn
@@ -65,6 +68,11 @@ class Session:
         self.effects = effects or Effects(voice=self.profile.voice)
         self.overlay, self.overlay_on = overlay, overlay is not None     # the cursor glow; None = none
         self.talker = talker or make_talker(self.profile, press=lambda keys: runner.apply([Event("hotkey", keys)]))
+        size = (runner.screen_w, runner.screen_h)
+        self.helper = helper or Helper(thinker(), lambda: screen.shot(size, hide=screen.own_windows({os.getpid()})),
+                                       size, check=ready_check)
+        self.reins, self.chooser = Reins(), Wheel(items=ASK_ITEMS, centre=None, timeout=ASK_S + 5.0)
+        self.hands_off = False          # after the helper: signs do nothing until a plain pointing pose is seen
         self.hinter, self.hints_on, self.hint = Hinter(), self.profile.hints, None
         self.pointer = PointerPipeline(self.profile.fc_min)
         self.pointer.mode = self.profile.filter
@@ -149,6 +157,7 @@ class Session:
         """Hand or face drives the pointer. Everything after the tracker stays the same."""
         if source == self.source:
             return
+        self.stop_helper("switched input: the helper stopped")
         self.runner.apply(self.wheel.reset())
         self.runner.release()
         self.source, self.sim.on = source, False
@@ -193,9 +202,48 @@ class Session:
             self.sounds.play("talk_stop")
         return events
 
+    def ask_helper(self, task, t):
+        """Hand an errand to the AI helper. It must have been switched on, and it acts through the runner."""
+        if not self.helper.armed:
+            self.last_event = "AI helper is off: a switches it on"
+        elif not self.runner.enabled or self.runner.locked:
+            self.last_event = "AI helper is off while paused" if self.runner.enabled else "AI helper needs mouse ON [m]"
+        elif self.helper.active:
+            self.last_event = "AI helper is busy"
+        else:
+            self.stop_talking()
+            self.runner.apply(self.wheel.reset())
+            self.runner.release()
+            self.reins.reset()
+            self.chooser.reset()
+            if self.helper.start(task, t):
+                self.last_event = f"asked the AI: {task}"[:60]
+                return True
+        return False
+
+    def stop_helper(self, why):
+        if self.helper.active:
+            self.helper.stop(why, self.prev_t or 0.0)
+            self.helper_ended()
+
+    def helper_ended(self):
+        """The errand is over, however it ended: say so, and give the cursor back from a clean state."""
+        h = self.helper
+        self.last_event = (("AI done: " if h.ok else "AI: ") + h.note)[:80]
+        self.sounds.play("helper_done" if h.ok else "helper_stop")
+        if h.ok:
+            self.effects.say(h.note[:200])
+        self.chooser.reset()
+        self.dwell.reset()
+        self.wheel.reset()
+        self.runner.release()
+        self.fsm.update(NONE, self.prev_t or 0.0)       # back to rest: nothing half-pressed carries over
+        self.hands_off = True                           # the fist that stopped it must not become a click
+
     def set_locked(self, locked):
         """The user's pause. Locking lets go of a held button; a still open palm unlocks (live mode)."""
         if locked:
+            self.stop_helper("paused: the helper stopped")
             self.stop_talking()
             self.wheel.reset()
             self.runner.lock()
@@ -217,7 +265,7 @@ class Session:
                     sim=dict(on=self.sim.on, hz=self.sim.hz, amp=self.sim.amp),
                     locked=self.runner.locked, gain=round(self.pointer.gain, 3),
                     tremor_locked=r.locked, lock_hz=round(r.lock_hz, 2), classifier=self.clf.name,
-                    talk=self.talker.state,
+                    talk=self.talker.state, helper=self.helper.state,
                     fps=round(self.obs.fps, 1) if self.obs else 0.0)
 
     def _write_live(self, t):
@@ -238,6 +286,7 @@ class Session:
             self.overlay.send({"show": False})
 
     def set_mode(self, mode):
+        self.stop_helper("left the live view: the helper stopped")
         self.stop_talking()
         self.runner.apply(self.wheel.reset())       # a wheel drag does not survive leaving the live view
         self.mode.close(self)
@@ -265,9 +314,20 @@ class Session:
         self.smoother.reset()
 
     def on_key(self, key, t):
+        if self.helper.active:                      # the helper has the cursor: a key answers it or stops it
+            if self.helper.state == "asking" and key in (ord("y"), 13, 10, ord("n")):
+                self.runner.apply(self.helper.answer(key != ord("n"), t))
+                if not self.helper.active:
+                    self.helper_ended()
+            else:
+                self.stop_helper("a key was pressed: the helper stopped")
+            return
         if self.mode.on_key(self, key, t):
             if getattr(self.mode, "exit", False):
+                task = getattr(self.mode, "task", None)
                 self.set_mode(LiveMode())
+                if task:
+                    self.ask_helper(task, t)
             return
         if self.source == "face" and key in (ord("r"), ord("n"), ord("t")):
             print("[AirPoint] record, teach and the tremor simulator are for the hand: press f first")
@@ -277,6 +337,14 @@ class Session:
             self.runner.toggle()
         elif key == ord("l") and self.mode.name == "live":
             self.toggle_talk(t)
+        elif key == ord("a") and self.mode.name == "live":
+            problem = None if self.helper.armed else self.helper.problem()
+            if problem:
+                self.last_event = "AI helper: " + problem
+                print(f"[AirPoint] AI helper: {problem}")
+            else:
+                self.runner.release()
+                self.set_mode(AskMode(self))
         elif key == ord("d"):
             self.dwell_on = not self.dwell_on
             self.dwell.reset()
@@ -333,6 +401,7 @@ class Session:
                 self.set_mode(LiveMode())
 
     def close(self):
+        self.stop_helper("AirPoint is closing")
         self.stop_talking()
         self.talker.close()
         self.runner.release()

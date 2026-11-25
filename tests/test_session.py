@@ -9,13 +9,15 @@ from airpoint.actions import ActionRunner, FakeMouse
 from airpoint.classifier import RuleClassifier
 from airpoint.effects import Effects
 from airpoint.face import FaceObs
+from airpoint.helper import Helper
 from airpoint.profile import Profile
-from airpoint.modes.live import shake_line, talk_line
+from airpoint.modes.live import helper_line, shake_line, talk_line
 from airpoint.tremor import Reading, TremorSim
 from airpoint.session import Session
 from airpoint.sounds import Sounds
 from airpoint.speech import Talker
 from tests.hands import BY_POSE
+from tests.test_helper import Script, Shot, step
 from tests.test_speech import Ears, Mic
 from tests.test_train import _write_user
 
@@ -30,6 +32,7 @@ def make(tmp_path, user="ana", mouse_on=True, **kw):
     played = []                                     # sound files the session asked for; nothing is played
     done = []                                       # commands the session asked to run; none is executed
     kw.setdefault("effects", Effects(run=lambda cmd: done.append(cmd)))
+    kw.setdefault("helper", Helper(Script(), Shot, mouse.size(), sleep=lambda s: None))   # never the real screen or model
     s = Session(runner, RuleClassifier(), None, root=str(tmp_path), user=user,
                 sounds=Sounds(player=lambda path: played.append(path.rsplit("/", 1)[1])), **kw)
     s.played, s.done = played, done
@@ -882,3 +885,291 @@ def test_overlay_and_banner_say_listening_then_what_was_heard(tmp_path):
     system = Talker()
     system.toggle(0.0)
     assert "macOS dictation is typing" in talk_line(system, 8.0) and talk_line(system, 8.0).endswith("12 s")
+
+
+# ---- the AI helper in the live loop
+
+def helped(tmp_path, *steps, armed=True, **kw):
+    """A session whose helper answers from a script. -> (session, mouse, script)."""
+    script = Script(*steps)
+    h = Helper(script, Shot, (1000, 500), sleep=lambda s: None)
+    h.armed = armed
+    s, mouse = make(tmp_path, helper=h, **kw)
+    return s, mouse, script
+
+
+def until(s, t, pose="palm", leave="thinking"):
+    """Tick until the helper has left a state. -> time."""
+    deadline = time.time() + 5
+    while s.helper.state == leave and time.time() < deadline:
+        s.tick(blank(), BY_POSE[pose], "Right", t)
+        t += DT
+        time.sleep(0.003)
+    assert s.helper.state != leave
+    return t
+
+
+def type_keys(s, text, t=0.0):
+    for ch in text:
+        s.on_key(ord(ch), t)
+
+
+def test_a_switches_the_helper_on_under_a_consent_line_and_an_errand_runs_shown_step_by_step(tmp_path):
+    s, mouse, script = helped(tmp_path, step(x=300, y=400, target="Note field"), step("type", text="milk"),
+                              step("done", text="I wrote milk in your note."), armed=False)
+    t = feed(s, "palm", 0.3, 0.0)
+    s.on_key(ord("a"), t)
+    assert s.mode.name == "ask" and s.typing and s.mode.first and not s.helper.armed
+    s.tick(blank(), BY_POSE["palm"], "Right", t)                     # the prompt draws
+    type_keys(s, "write milk in my notex", t)
+    s.on_key(127, t)
+    s.on_key(13, t)
+    assert s.mode.name == "live" and s.helper.armed and s.helper.state == "thinking"
+    assert s.last_event == "asked the AI: write milk in my note" and s.state()["helper"] == "thinking"
+    before = len(mouse.calls)
+    t = until(s, t)
+    assert mouse.calls[before:] == [("move", 300, 200)]              # the cursor goes to the target and waits there
+    assert s.helper.state == "showing" and 'AI 1/12: click "Note field" in 1.' in helper_line(s, t)
+    t = feed_at(s, 40, 0, 0.5, t)                                    # the hand drifts: it does not move the cursor
+    t = feed(s, "pinch", 0.3, t)                                     # and a pinch is not a click
+    assert mouse.calls[before:] == [("move", 300, 200)]
+    t = feed(s, "palm", 1.0, t)
+    assert mouse.calls[before:] == [("move", 300, 200), ("move", 300, 200), ("click",)] and s.played == ["Tink.aiff"]
+    t = until(s, feed(s, "palm", 1.3, t))
+    t = feed(s, "palm", 1.6, t)
+    assert mouse.calls[-1] == ("write", "milk")
+    t = until(s, feed(s, "palm", 1.3, t))
+    assert not s.helper.active and s.last_event == "AI done: I wrote milk in your note."
+    assert s.done == [["say", "I wrote milk in your note."]] and s.played[-1] == "Hero.aiff"
+    assert helper_line(s, t) == "AI done: I wrote milk in your note." and helper_line(s, t + 9.0) is None
+    n = len(mouse.calls)
+    feed_at(s, 60, 0, 0.3, t)                                        # the hand has the cursor again
+    assert len(mouse.calls) > n and mouse.calls[-1][0] == "move"
+    assert script.calls[1][1] == ['click "Note field"']
+
+
+def test_enter_on_an_empty_prompt_only_switches_it_on_and_esc_does_nothing(tmp_path):
+    s, _, script = helped(tmp_path, armed=False)
+    s.on_key(ord("a"), 0.0)
+    s.on_key(27, 0.0)
+    assert s.mode.name == "live" and not s.helper.armed
+    s.on_key(ord("a"), 0.0)
+    s.on_key(13, 0.0)
+    assert s.mode.name == "live" and s.helper.armed and not s.helper.active and script.calls == []
+    s.on_key(ord("a"), 0.0)
+    assert s.mode.name == "ask" and not s.mode.first                 # now it is just the request prompt
+
+
+def test_the_helper_will_not_switch_on_without_what_it_needs(tmp_path, capsys):
+    h = Helper(Script(), Shot, (1000, 500), check=lambda: "no API key: set OPENAI_API_KEY")
+    s, _ = make(tmp_path, helper=h)
+    s.on_key(ord("a"), 0.0)
+    assert s.mode.name == "live" and not h.armed and s.last_event == "AI helper: no API key: set OPENAI_API_KEY"
+    assert "AI helper: no API key" in capsys.readouterr().out
+
+
+def _asking_profile():
+    p = Profile(user="ana")
+    p.roles["right_click"] = []
+    p.signs = {"v_sign": {"action": "ask", "arg": "read my newest mail", "hold_s": 0.6}}
+    return p
+
+
+def test_a_sign_can_carry_an_errand_but_only_once_the_helper_is_on_and_the_mouse_too(tmp_path):
+    s, mouse, script = helped(tmp_path, step("done", text="No new mail."), armed=False, profile=_asking_profile())
+    t = feed(s, "palm", 0.5, 0.0)
+    t = feed(s, "v_sign", 1.0, t)
+    assert not s.helper.active and s.last_event == "AI helper is off: a switches it on"
+    s.helper.armed = True
+    s.on_key(ord("m"), t)
+    t = feed(s, "palm", 0.4, t)
+    t = feed(s, "v_sign", 1.0, t)
+    assert not s.helper.active and "mouse ON" in s.last_event
+    s.on_key(ord("m"), t)
+    t = feed(s, "palm", 0.4, t)
+    t = feed(s, "v_sign", 1.0, t)
+    assert s.helper.task == "read my newest mail"
+    until(s, t, pose="v_sign")
+    assert s.last_event == "AI done: No new mail." and script.calls[0][0] == "read my newest mail"
+
+
+def test_a_spoken_request_starting_with_computer_goes_to_the_helper(tmp_path):
+    script = Script(step("done", text="It is open."))
+    h = Helper(script, Shot, (1000, 500), sleep=lambda s: None)
+    h.armed = True
+    s, mouse = make(tmp_path, helper=h, talker=Talker(Ears("Computer, open the calculator."), Mic()))
+    t = feed(s, "palm", 0.3, 0.0)
+    s.on_key(ord("l"), t)
+    s.on_key(ord("l"), t + 0.5)
+    t = run_until_idle(s, t + 0.5)
+    assert s.helper.task == "open the calculator." and not any(c[0] == "write" for c in mouse.calls)
+    until(s, t)
+    assert script.calls[0][0] == "open the calculator."
+
+
+def test_a_fist_a_quick_move_or_a_key_stops_the_helper_and_slow_drift_does_not(tmp_path):
+    s, mouse, _ = helped(tmp_path, step(), step(), step(), step())
+    t = feed(s, "palm", 0.3, 0.0)
+    s.ask_helper("do something", t)
+    t = until(s, t)
+    t = feed(s, "fist", 0.5, t)
+    assert not s.helper.active and s.last_event == "AI: you made the stop sign: the helper stopped"
+    assert s.played[-1] == "Basso.aiff"
+    t = feed(s, "fist", 0.2, t)                                      # the fist is still up, then opens:
+    t = feed(s, "palm", 0.5, t)                                      # it stopped the helper, it is not a click
+    assert kinds(mouse) == [] and not s.hands_off
+    t = feed(s, "pinch", 0.2, t)                                     # after an open palm, signs count again
+    t = feed(s, "palm", 0.3, t)
+    assert kinds(mouse) == ["click"]
+
+    t = feed(s, "palm", 0.5, t)
+    s.ask_helper("do something", t)
+    t = until(s, t)
+    for i in range(20):                                              # 60 px in two thirds of a second: a slow drift
+        t = feed_at(s, 3 * i, 0, DT, t)
+    assert s.helper.active
+    for i in range(6):                                               # then 150 px in a fifth of a second
+        t = feed_at(s, 60 + 30 * i, 0, DT, t)
+    assert not s.helper.active and s.last_event == "AI: you moved: the helper stopped"
+
+    t = feed(s, "palm", 1.2, t)
+    s.ask_helper("do something", t)
+    t = until(s, t)
+    s.on_key(ord("x"), t)
+    assert not s.helper.active and "a key was pressed" in s.last_event and s.mode.name == "live"
+
+
+def test_a_hand_that_leaves_and_comes_back_elsewhere_has_not_taken_over(tmp_path):
+    s, _, _ = helped(tmp_path, step(), step())
+    t = feed(s, "palm", 0.3, 0.0)
+    s.ask_helper("do something", t)
+    t = until(s, t)
+    t = feed(s, None, 0.3, t)
+    feed_at(s, 200, 60, 0.3, t)
+    assert s.helper.active
+
+
+def test_pause_mouse_off_leaving_the_view_and_quitting_all_stop_it(tmp_path):
+    for stopper, why in ((ord("p"), "paused"), (ord("m"), "a key was pressed")):
+        s, _, _ = helped(tmp_path, step(), step())
+        t = feed(s, "palm", 0.3, 0.0)
+        s.ask_helper("do something", t)
+        s.on_key(stopper, t)
+        assert not s.helper.active
+    s, _, _ = helped(tmp_path, step(), step())
+    s.ask_helper("do something", feed(s, "palm", 0.3, 0.0))
+    s.set_locked(True)
+    assert not s.helper.active and "paused" in s.last_event
+    s, _, _ = helped(tmp_path, step(), step())
+    s.ask_helper("do something", feed(s, "palm", 0.3, 0.0))
+    s.close()
+    assert not s.helper.active
+
+
+def risky(tmp_path, **kw):
+    s, mouse, script = helped(tmp_path, step(x=700, y=600, target="Send button"), step("done", text="Sent."), **kw)
+    t = feed(s, "palm", 0.3, 0.0)
+    s.ask_helper("send it", t)
+    t = until(s, t)
+    assert s.helper.state == "asking" and ("click",) not in mouse.calls
+    return s, mouse, t
+
+
+def test_a_risky_step_waits_and_a_thumb_up_says_yes(tmp_path):
+    s, mouse, t = risky(tmp_path)
+    line = helper_line(s, t)
+    assert line.startswith('AI 1/12: click "Send button"? thumb up = yes, thumb down = no, or point up / down | ')
+    t = feed(s, "palm", 3.0, t)                                      # nothing runs on its own
+    assert s.helper.state == "asking" and ("click",) not in mouse.calls
+    t = feed(s, "thumb_up", 0.9, t)
+    assert mouse.calls[-2:] == [("move", 700, 300), ("click",)] and s.helper.state != "asking"
+    until(s, feed(s, "palm", 1.3, t))
+    assert s.last_event == "AI done: Sent."
+
+
+def test_thumb_down_n_or_silence_say_no_and_y_says_yes(tmp_path):
+    s, mouse, t = risky(tmp_path)
+    t = feed(s, "thumb_down", 1.5, t)                                # held on after the answer: it must not scroll
+    assert not s.helper.active and "you said no" in s.last_event and kinds(mouse) == []
+    t = feed(s, "palm", 0.4, t)
+    feed(s, "thumb_down", 0.5, t)
+    assert kinds(mouse)[-1] == "scroll"                              # a fresh thumb down scrolls as always
+    s, mouse, t = risky(tmp_path)
+    s.on_key(ord("n"), t)
+    assert not s.helper.active and "you said no" in s.last_event and ("click",) not in mouse.calls
+    s, mouse, t = risky(tmp_path)
+    s.on_key(ord("y"), t)
+    assert ("click",) in mouse.calls and s.helper.state == "settling"
+    s, mouse, t = risky(tmp_path)
+    feed(s, "palm", 31.0, t, dt=0.1)
+    assert not s.helper.active and "no answer" in s.last_event and ("click",) not in mouse.calls
+
+
+def test_a_hand_that_only_points_answers_by_pointing_up_or_down(tmp_path):
+    s, mouse, t = risky(tmp_path)
+    t = feed(s, "palm", 0.3, t)
+    assert s.chooser.mode == "open" and s.chooser.view["items"] == ["yes", "", "", "no", "", ""]
+    t = feed_at(s, 0, -30, 1.0, t)                                   # up
+    assert ("click",) in mouse.calls and s.chooser.mode == "idle" and s.helper.state != "asking"
+    s, mouse, t = risky(tmp_path)
+    t = feed(s, "palm", 0.3, t)
+    feed_at(s, 0, 30, 1.0, t)                                        # down
+    assert not s.helper.active and "you said no" in s.last_event and ("click",) not in mouse.calls
+    s, mouse, t = risky(tmp_path)
+    t = feed(s, "palm", 0.3, t)
+    feed_at(s, 30, 0, 2.0, t)                                        # sideways is not an answer
+    assert s.helper.state == "asking" and ("click",) not in mouse.calls
+
+
+def test_in_face_mode_the_mouth_says_yes_and_the_eyebrows_stop_or_say_no(tmp_path):
+    s, mouse, _ = helped(tmp_path, step(x=700, y=600, target="Send button"), step(), step())
+    s.on_key(ord("f"), 0.0)
+    t = face_feed(s, 0.5, 0.0)
+    s.ask_helper("send it", t)
+    while s.helper.state == "thinking":
+        t = face_feed(s, DT, t)
+        time.sleep(0.003)
+    assert s.helper.state == "asking" and "open mouth = yes, eyebrows = no" in helper_line(s, t)
+    t = face_feed(s, 0.9, t, jaw=0.8)
+    assert ("click",) in mouse.calls and s.helper.state == "settling"
+    t = face_feed(s, 1.3, t)
+    while s.helper.state == "thinking":
+        t = face_feed(s, DT, t)
+        time.sleep(0.003)
+    assert s.helper.state == "showing"
+    t = face_feed(s, 0.6, t, brow=0.8)
+    assert not s.helper.active and "stop sign" in s.last_event
+    face_feed(s, 1.0, t, brow=0.8)                                   # eyebrows still up: not a right click
+    assert "right_click" not in kinds(mouse)
+
+
+def test_the_glow_follows_the_helper_and_hides_while_the_picture_is_taken(tmp_path):
+    import threading
+    taking, taken = threading.Event(), threading.Event()
+
+    def grab():
+        taking.set()
+        taken.wait(5)
+        return Shot()
+
+    ov = FakeOverlay()
+    h = Helper(Script(step(x=300, y=400, target="Note field"), step(x=700, y=600, target="Send button")), grab, (1000, 500),
+               sleep=lambda s: None)
+    h.armed = True
+    s, mouse = make(tmp_path, helper=h, overlay=ov)
+    t = feed(s, "palm", 0.5, 0.0)
+    s.ask_helper("write and send", t)
+    assert taking.wait(5)
+    t = feed(s, "palm", 0.1, t)
+    assert ov.states[-1] == {"show": False}                          # nothing of ours is in the picture
+    taken.set()
+    t = until(s, t)
+    t = feed(s, "palm", 0.75, t)
+    last = ov.states[-1]
+    assert (last["x"], last["y"], last["tag"], last["hint"]) == (300.0, 200.0, "AI 1/12", 'click "Note field"')
+    assert 0.4 < last["ring"] < 0.6 and "AI 1/12 | click" in s.mini_label
+    t = feed(s, "palm", 1.0, t)
+    assert [st["pulse"] for st in ov.states if "pulse" in st] == ["click"]
+    t = until(s, feed(s, "palm", 1.3, t))
+    feed(s, "palm", 0.2, t)
+    assert ov.states[-1]["tag"] == "AI 2/12: YES OR NO?" and ov.states[-1]["hint"] == 'click "Send button"?'

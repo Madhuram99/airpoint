@@ -5,7 +5,8 @@ import subprocess
 
 FOLDER = "/System/Library/Sounds"
 FILES = {"click": "Tink", "double_click": "Tink", "right_click": "Pop", "drag_start": "Bottle", "drag_end": "Purr",
-         "lock": "Submarine", "unlock": "Glass", "talk_start": "Morse", "talk_stop": "Frog"}
+         "lock": "Submarine", "unlock": "Glass", "talk_start": "Morse", "talk_stop": "Frog",
+         "helper_done": "Hero", "helper_stop": "Basso"}
 
 
 def _afplay():

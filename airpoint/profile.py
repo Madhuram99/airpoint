@@ -93,7 +93,7 @@ def drop_poses(roles, poses):
     return {name: [p for p in roles.get(name, []) if p not in poses] for name in ROLE_NAMES}
 
 
-SIGN_ACTIONS = ("say", "hotkey", "type", "open", "pause", "talk")
+SIGN_ACTIONS = ("say", "hotkey", "type", "open", "pause", "talk", "ask")
 SIGN_HOLD_S = 0.6        # longer than the built-in 0.3 s: a taught sign must be meant
 KEY_ALIASES = {"cmd": "command", "ctrl": "control", "opt": "option", "alt": "option", "return": "enter", "esc": "escape",
                "meta": "command", "spacebar": "space", "del": "delete", "arrowup": "up", "arrowdown": "down",
