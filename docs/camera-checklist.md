@@ -114,18 +114,18 @@ Once, before these: System Settings › Keyboard › Dictation › on; Shortcut 
 - [ ] **7.7 Face mode.** `f`, start talk from the wheel, speak two sentences: count the clicks while speaking (there should be none). Stop talk: about a second later an open mouth clicks again.
 - [ ] **7.8 Hindi.** Switch the dictation language in the macOS microphone pop-up to Hindi and repeat 7.2.
 
-Only if you want the on-laptop engine (it adds spoken commands). These two lines install a package and
-download a 148 MB model; AirPoint never does either by itself:
+The on-laptop engine (it adds spoken commands) is installed on this laptop and was measured on
+synthesized speech; your voice through the microphone is what is left. On another machine it needs
+`venv/bin/pip install faster-whisper` and `venv/bin/python -m airpoint.speech --setup` first.
 
 ```bash
-venv/bin/pip install faster-whisper
-venv/bin/python -m airpoint.speech --setup
+venv/bin/python -m airpoint.speech                      # must print: local engine : ready
 venv/bin/python -m airpoint.speech --listen 5           # speak: prints what was heard and what it would do
 venv/bin/python -m airpoint.profile madhuram --speech local
 ```
 
 - [ ] **7.9 Microphone.** The first `--listen` asks for microphone access for your terminal. Allow it. The line must show a peak well above 0.01 while you speak; a peak of 0.000 means access was refused.
-- [ ] **7.10 Commands and text.** In AirPoint (start-up line reads `talk: on this laptop`): start talk, say "scroll down", stop: the page scrolls and the banner shows `heard "Scroll down."`. Say a full sentence: it is typed. Say "select all", then "copy".
+- [ ] **7.10 Commands and text.** In AirPoint (start-up line reads `talk: on this laptop`): start talk, say "scroll down", stop: the page scrolls and the banner shows `heard "Scroll down."`. Say a full sentence: it is typed. Say "select all", then "copy", then "paste". Say "tab key" (the bare word "tab" was heard as "time" from synthesized voices). Which commands does it mishear from you?
 - [ ] **7.11 Silence.** Start and stop talk without speaking: nothing may be typed (the banner says `heard nothing`). Try it once with a fan or music on.
 - [ ] **7.12 Speed.** How long from the second tap to the words appearing? Is `tiny.en` (`--model tiny.en`, then `--speech-model tiny.en`) good enough and faster?
 

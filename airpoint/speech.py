@@ -23,17 +23,22 @@ from .fsm import Event
 RATE, MAX_LISTEN_S, MIN_S = 16000, 20.0, 0.25
 QUIET_PEAK = 0.01              # a recording that never gets louder than this (-40 dB) holds no speech
 MOUTH_REST_S = 1.0             # after listening ends, the face still ignores the mouth for this long
+MAX_WORDS_PER_S, WORDS_SLACK = 5.0, 3      # nobody speaks faster: more words than this is the recognizer looping
 DICTATION_KEYS = ("control", "option", "d")
 MODEL_MB = {"tiny.en": 78, "base.en": 148, "small.en": 487}      # download sizes on huggingface.co/Systran
 COMMANDS = {
     "click": Event("click"), "double click": Event("double_click"), "right click": Event("right_click"),
     "scroll up": Event("scroll", 5), "scroll down": Event("scroll", -5),
     "enter": Event("hotkey", ("enter",)), "new line": Event("hotkey", ("enter",)),
-    "tab": Event("hotkey", ("tab",)), "escape": Event("hotkey", ("escape",)),
+    "tab": Event("hotkey", ("tab",)), "tab key": Event("hotkey", ("tab",)), "next field": Event("hotkey", ("tab",)),
+    "escape": Event("hotkey", ("escape",)),
     "delete": Event("hotkey", ("backspace",)), "undo": Event("hotkey", ("command", "z")),
     "copy": Event("hotkey", ("command", "c")), "paste": Event("hotkey", ("command", "v")),
     "select all": Event("hotkey", ("command", "a")), "pause": Event("pause"),
 }
+
+
+HOTWORDS = ", ".join(COMMANDS)      # told to the recognizer: one-word commands are otherwise misheard ("paste" as "peace")
 
 
 def interpret(text):
@@ -105,8 +110,12 @@ class WhisperRecognizer:
             pass
 
     def transcribe(self, audio):
+        # A short clip can send the model into a loop ("pause, pause, pause ..." for eight seconds). The token
+        # cap bounds that; the Talker refuses whatever still comes out too long for the time spoken. A
+        # repetition penalty was tried and dropped: it cut real sentences short ("the copy of").
         segments, _ = self.load().transcribe(audio, language="en", beam_size=1, vad_filter=True,
-                                             condition_on_previous_text=False)
+                                             condition_on_previous_text=False, hotwords=HOTWORDS,
+                                             max_new_tokens=int(10 * len(audio) / RATE) + 16)
         return " ".join(s.text.strip() for s in segments).strip()
 
 
@@ -180,6 +189,8 @@ class Talker:
                 text = self.recognizer.transcribe(audio)
             except Exception as e:                   # a failed recognition must not take the app down
                 problem = f"could not recognise ({type(e).__name__}: {e})"
+            if len(text.split()) > MAX_WORDS_PER_S * len(audio) / RATE + WORDS_SLACK:
+                text, problem = "", "could not make that out: say it again"      # never type a recognizer's loop
         event = interpret(text)
         self.ready.append((text, problem or ("" if event else "heard nothing"), [event] if event else []))
 

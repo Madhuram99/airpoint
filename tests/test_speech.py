@@ -205,3 +205,52 @@ def test_command_line_status_and_setup_never_download_unasked(capsys, monkeypatc
     with pytest.raises(SystemExit, match="nothing downloaded"):
         speech.main(["--setup"], ask=lambda prompt: "n")
     assert "about 148 MB" in capsys.readouterr().out
+
+
+def test_tab_has_names_that_survive_being_spoken():
+    assert interpret("Tab key.") == interpret("next field") == interpret("tab") == Event("hotkey", ("tab",))
+    assert set(speech.HOTWORDS.split(", ")) == set(speech.COMMANDS)
+
+
+def _say(text, path):
+    """Synthesized speech as a 16 kHz WAV, or None where there is no `say`."""
+    import shutil
+    import subprocess
+    if shutil.which("say") is None:
+        return None
+    done = subprocess.run(["say", "-o", str(path), "--data-format=LEI16@16000", text], capture_output=True)
+    return read_wav(str(path)) if done.returncode == 0 else None
+
+
+def test_the_real_recognizer_hears_a_command_a_sentence_and_nothing_in_noise(tmp_path):
+    """Runs only where the on-laptop engine and its model are installed. No microphone: speech is synthesized."""
+    if WhisperRecognizer.missing("base.en"):
+        pytest.skip(WhisperRecognizer.missing("base.en"))
+    command, sentence = _say("scroll down", tmp_path / "a.wav"), _say("I will be late for the meeting.", tmp_path / "b.wav")
+    if command is None or sentence is None:
+        pytest.skip("no speech synthesizer here")
+    ears = WhisperRecognizer("base.en")
+    assert interpret(ears.transcribe(command)) == Event("scroll", -5)
+    typed = interpret(ears.transcribe(sentence))
+    assert typed.kind == "type" and "late for the meeting" in typed.arg.lower()
+    hiss = (0.08 * np.random.default_rng(0).standard_normal(2 * RATE)).astype(np.float32)
+    k = Talker(ears, Mic(hiss))
+    k.toggle(0.0)
+    k.toggle(2.0)
+    assert wait(k, 3.0) == [] and k.heard == "" and k.problem == "heard nothing"
+
+
+def test_more_words_than_anyone_can_say_in_the_time_are_never_typed():
+    loop = ", ".join(["pause"] * 100)
+    k = Talker(Ears(loop), Mic(voice(0.5)))                       # half a second of sound, a hundred words back
+    k.toggle(0.0)
+    k.toggle(0.5)
+    assert wait(k) == [] and k.heard == "" and "could not make that out" in k.problem
+    k = Talker(Ears("I will be late for the meeting at five."), Mic(voice(2.0)))     # nine words in two seconds is speech
+    k.toggle(0.0)
+    k.toggle(2.0)
+    assert wait(k) == [Event("type", "I will be late for the meeting at five. ")]
+    k = Talker(Ears("Scroll down."), Mic(voice(0.4)))             # a short command still fits
+    k.toggle(0.0)
+    k.toggle(0.4)
+    assert wait(k) == [Event("scroll", -5)]

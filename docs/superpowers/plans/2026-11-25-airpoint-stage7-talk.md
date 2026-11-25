@@ -10,5 +10,6 @@ Code lives in the commits, suite green each time. Baseline `209 passed`, end `24
   face mode ignores the mouth while listening, LISTENING / THINKING in banner, mini label and glow,
   own-keystroke guard in the app loop (`8a1f780`).
 - [x] **4. Docs, checklist, push.**
-- [ ] **5. On-laptop engine on this machine** — waits for the user's yes to
-  `pip install faster-whisper` and the 148 MB model; then checklist items 7.9 to 7.12.
+- [x] **5. On-laptop engine on this machine** — installed on the user's yes; measured on synthesized
+  speech (spec section 6); hotwords, a token cap and a refusal of impossible transcripts added.
+  The microphone itself is checklist items 7.9 to 7.12.

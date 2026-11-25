@@ -126,8 +126,14 @@ There are two engines, chosen per profile:
 - **On this laptop (optional).** AirPoint records the microphone only between the two taps, and
   recognises it with faster-whisper. This engine also understands spoken commands: click, double
   click, right click, scroll up, scroll down, enter, new line, tab, escape, delete, undo, copy, paste,
-  select all, pause. Anything else is typed. English only. It needs one install and one model
-  download, neither of which AirPoint does by itself:
+  select all, pause. Anything else is typed, and "Computer, ..." is a request for the AI helper.
+  English only. Measured with synthesized speech, not people: five system voices (American, British,
+  three Indian English) saying every command and eight sentences, twice: 163 of 170 commands and
+  78 of 80 sentences came out as intended, in 0.22 s each; hiss, a tone and silence typed nothing.
+  The misses were the bare word "tab" (heard as "time"; "tab key" and "next field" are the sturdy
+  names) and one swallowed "pause". A transcript with more words than anyone can say in the time
+  recorded is refused, never typed. It needs one install and one model download, neither of which
+  AirPoint does by itself:
 
   ```bash
   venv/bin/pip install faster-whisper

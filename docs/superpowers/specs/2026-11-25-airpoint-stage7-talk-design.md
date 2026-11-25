@@ -1,8 +1,8 @@
 # AirPoint Stage 7 — Talk
 
 Date: 2026-11-25
-Status: approved in advance (user, 2026-11-25); built the same day. The on-laptop speech engine is
-written but NOT installed: its package and model are a download, which waits for the user's yes.
+Status: approved in advance (user, 2026-11-25); built the same day. The on-laptop speech engine was
+installed and measured later that day, on the user's yes (section 6).
 Roadmap: `2026-11-25-airpoint-v2-roadmap.md`, Stage 7
 
 ## 1. Goal
@@ -79,8 +79,39 @@ faster-whisper's interface (`download_model`, `WhisperModel`, `transcribe`) read
 model sizes read from the model pages; every screen rendered off-screen and looked at.
 
 Not checked: no keystroke has been sent to the real system in this stage, so that macOS dictation
-starts on the shortcut, and that typing lands in another app, are for the test session. The local
-engine has never run on this machine: no install, no model. The -40 dB silence gate is a standard
-figure, not measured in this room. How macOS dictation behaves when it stops on its own (and so
+starts on the shortcut, and that typing lands in another app, are for the test session. The
+microphone has not been recorded from: the local engine was measured on synthesized speech
+(section 6). The -40 dB silence gate is a standard figure, not measured in this room. How macOS dictation behaves when it stops on its own (and so
 falls out of step with AirPoint's idea of it) is unknown; the twenty-second limit is there to end it
 first, and `l` puts the two back in step.
+
+## 6. The on-laptop engine, installed and measured (2026-11-25)
+
+On the user's yes: `pip install faster-whisper` (1.2.1, with ctranslate2 4.9.1 and onnxruntime 1.32.0;
+twenty new packages, none of the existing ones changed) and the `base.en` model (145 MB) through
+`python -m airpoint.speech --setup`. The model loads in 0.3 s.
+
+Measured with macOS's own speech synthesizer, not with people and not through the microphone: five
+voices (Samantha, Daniel, Rishi, Tara, Aman), all seventeen command phrases and eight sentences,
+two passes.
+
+| Setting | Commands as intended | Sentences as intended |
+|---|---|---|
+| plain decoding | 64 of 75 (first run, fifteen phrases) | 24 of 25 |
+| + the command words given as hotwords | 71 of 75 | 24 of 25 |
+| + a token cap by clip length (as shipped) | 163 of 170 | 78 of 80 |
+| + a repetition penalty of 1.3 (dropped) | 164 of 170 | 50 of 80: sentences cut short |
+
+Median 0.22 s per phrase, slowest 1.3 s. Hiss, a tone and silence produced no event.
+
+Two things this found, both fixed:
+- One-word commands are misheard without help ("paste" as "peace", "pause" as "cause"). The command
+  list is now passed to the recognizer as hotwords. An initial prompt did as well on accuracy but
+  once came back as the transcript, so it was not used.
+- A half-second clip once sent the model into a loop: "pause, pause, pause..." a hundred times,
+  taking eight seconds, and that text would have been typed. Decoding is now capped at ten tokens a
+  second of audio plus sixteen, and the talker refuses any transcript with more words than five a
+  second plus three: it types nothing and says "could not make that out".
+
+Left as it is: the bare word "tab" is heard as "time" in three of five voices, so "tab key" and
+"next field" were added and are the names to use.
