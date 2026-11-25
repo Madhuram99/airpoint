@@ -140,6 +140,46 @@ No sound is saved, and none leaves the laptop. Keystrokes go out on their own th
 long sentence never freezes the camera loop; and keys AirPoint types are never read back as its own
 commands when its window happens to be in front.
 
+### AI helper
+
+For a whole errand in one go: "reply to Asha that I will come at five". An AI model (OpenAI's
+`gpt-6.1-sol`) looks at a picture of the screen and proposes one step at a time; AirPoint checks the
+step, shows it at the cursor, and only then carries it out through the same runner as every sign.
+
+- **Off until you switch it on.** `a` opens the request prompt; the first time it shows what will be
+  sent and Enter switches the helper on for this session (`--helper` starts with it on). It is the
+  only part of AirPoint that sends anything off the laptop: per step, your request, the steps done so
+  far, the name of the app in front and a picture of the main display with AirPoint's own windows
+  blacked out. Nothing is sent while it is off, and nothing is stored.
+- **You see every step first.** The cursor moves to the target and the glow says `AI 2/12: click
+  "Search"` with a 1.5 s countdown.
+- **You can always stop it:** a fist (eyebrows in face mode), a quick move of the hand (more than
+  100 px inside a second), any key, the mouse switch or pause. The sign that stops it is never read
+  as a click afterwards: signs count again after an open palm.
+- **Anything that cannot be undone waits for a yes.** A step that sends, pays, deletes, installs or
+  signs out, a deleting or quitting key combo, and anything inside a terminal: thumb up (open mouth
+  in face mode) or `y` says yes; thumb down, a fist or `n` says no; a hand that only points answers
+  by pointing up or down. No answer in 30 s is a no. The rule is AirPoint's own word list as well as
+  the model's judgement, so the model cannot wave a delete through.
+- **Bounded.** At most 12 steps per errand; every step is checked (place inside the screen, known
+  keys, at most 400 typed characters) and a step that fails a check ends the errand.
+
+Ways to ask: type it after `a`; teach a sign that carries a request (`n`, action 7: one sign, one
+errand); or, with the on-laptop speech engine, say "Computer, ...".
+
+It needs `OPENAI_API_KEY` in the environment of the terminal that starts AirPoint (never in a file in
+this repo; several keys may be separated by `;`), Screen Recording allowed for that terminal, and the
+mouse switch on. `AIRPOINT_AI_MODEL` picks another model.
+
+Measured on drawn screens only (`python -m airpoint.helper_eval`, numbers in `results/helper_eval.json`,
+2026-11-25): the model put the cursor on 30 of 30 named buttons, at most 1.6 px from the middle,
+the smallest 52x27 px, at about 3.6 s per step. In a simulated mail app, with the real loop in
+between, it passed 5 of 5 errands: read a bill and answer, reply and send (the send was held for a
+yes), delete (held, refused, the message survived), search, and a message whose text told the model
+to delete everything (it read the message out and deleted nothing). That is one model on tidy
+pictures; real apps are for the test session, and screen text steering a model remains a known
+weakness of this kind of helper.
+
 ## Run
 
 ```bash
@@ -155,10 +195,12 @@ venv/bin/python run_demo.py --user you           # loads profiles/you.json once 
 #   n = teach a new sign: name it, hold it 8 s, choose speak / keys / type / open / pause / talk
 #   w = point-only wheel (stay = click; talk / right / drag / scroll / double / pause by direction) | o = glow at the cursor
 #   l = talk: start listening, press again to stop (see Talk)
+#   a = AI helper: switch it on, then type an errand (see AI helper)
 #   f = face mode: head moves the cursor, mouth open clicks, eyebrows right-click; c calibrates the face
 venv/bin/python run_demo.py --no-overlay         # without the glow at the cursor (the glow is macOS only)
 venv/bin/python -m airpoint.profile you          # show or edit your profile: roles, comfort box, dwell, sounds
 venv/bin/python -m airpoint.speech               # what talk can use on this laptop
+venv/bin/python -m airpoint.helper_eval          # measure the AI helper's model on drawn screens (needs the key)
 venv/bin/python run_demo.py --record --user you  # record your hand: space = all poses, 1-6 = one pose
 venv/bin/python -m airpoint.train                # retrain on data/*.csv, leave-one-user-out report
 venv/bin/pytest -q                               # unit tests (no camera needed)
@@ -177,7 +219,8 @@ macOS: allow your terminal under System Settings → Privacy & Security → Came
 airpoint/        package — camera, tracker, features, filters, tremor, pointer, classifier, fsm, actions, hud,
                  recorder, calibration, train, session, modes/ (live, record, calibrate), app,
                  lab/ (server, stats, store), results, sim_pointer, profile, hints, sounds, effects,
-                 modes/teach, wheel, overlay, face, modes/face_calibrate, speech
+                 modes/teach, wheel, overlay, face, modes/face_calibrate, speech,
+                 llm, screen, helper, modes/ask, helper_eval
 lab/             practice pages and the pointing test (plain HTML/JS, served by airpoint.lab)
 results/         saved test sessions (trials.jsonl)
 legacy/          the midterm benchmark script, kept as presented

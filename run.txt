@@ -10,7 +10,8 @@ venv/bin/python -m airpoint.lab                # tutorial + pointing test at htt
 #    (the midterm benchmark is kept at legacy/midterm_benchmark_suite.py; the dashboard no longer reads it)
 
 # 3. Live demo (q quit | m mouse | d dwell | w wheel | o glow | f face | b filter | k rules/mlp | c calibrate | v mini | z zoom | x x-ray |
-#               t simulated tremor, [ ] size, { } speed | p pause | l talk | h hints | s sounds | n new sign | r record | 1-6 pose | space start/redo)
+#               t simulated tremor, [ ] size, { } speed | p pause | l talk | a AI helper | h hints | s sounds | n new sign | r record |
+#               1-6 pose | space start/redo)
 venv/bin/python run_demo.py                    # MLP if models/pose_mlp.joblib exists, else rules
 venv/bin/python run_demo.py --mouse            # same, OS mouse control already ON
 venv/bin/python run_demo.py --rules            # force rules
@@ -30,6 +31,12 @@ venv/bin/python run_demo.py --record --user <name>   # record poses to data/<nam
 # 3b. Your profile (made by calibration; edit by hand if a sign is hard for you)
 venv/bin/python -m airpoint.profile <name>                                   # show
 venv/bin/python -m airpoint.profile <name> --role right_click=fist --role grip=pinch --dwell on
+
+# 3d. AI helper (sends your request and a picture of your screen to OpenAI at every step; off until you press a)
+#   export OPENAI_API_KEY=...                   # in this terminal only; never in a file in this repo
+#   venv/bin/python run_demo.py --user <name> --mouse      # then: a -> Enter (switch on) -> a -> type an errand -> Enter
+#   stop it: fist, a quick move, any key | risky step: thumb up = yes, thumb down = no, or point up / down
+venv/bin/python -m airpoint.helper_eval        # its model measured on drawn screens -> results/helper_eval.json
 
 # 3c. Talk: what is set up, and the optional on-laptop engine (one install + one 148 MB download, both yours to run)
 venv/bin/python -m airpoint.speech

@@ -41,8 +41,9 @@ Relation to the 2026-11-13 spec:
 
 ## 2. Stages
 
-Status (kept current): Stage 1 built 2026-11-25 (`26edce2`). Stages 2 to 7 built 2026-11-25
-(Stage 7's on-laptop speech engine is written but not installed: that download is the user's call). From Stage 2 on
+Status (kept current): Stage 1 built 2026-11-25 (`26edce2`). Stages 2 to 8 built 2026-11-25
+(Stage 7's on-laptop speech engine is written but not installed: that download is the user's call;
+Stage 8's model was measured on drawn screens only). From Stage 2 on
 the user approved every stage in advance and tests them all in one session; that session's checklist is
 `docs/camera-checklist.md`.
 

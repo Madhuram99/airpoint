@@ -127,3 +127,27 @@ venv/bin/python -m airpoint.profile madhuram --speech local
 
 Report: 7.1, 7.4 and 7.6 exactly as they behaved; the click count in 7.7; for the on-laptop engine the
 peak from 7.9, anything typed in 7.11 and the delay in 7.12.
+
+## Stage 8 — AI helper
+
+This stage sends things off the laptop when you use it: your request and a picture of your main
+display at every step, to OpenAI. Close anything you would not want in that picture first.
+
+Before: in the terminal that will start AirPoint, `export OPENAI_API_KEY=...` (your key; never put it
+in a file here). Then `venv/bin/python run_demo.py --user madhuram --mouse`.
+
+- [ ] **8.1 Switching on.** `a`: the prompt reads SWITCH ON THE AI HELPER with the red line saying what is sent. Esc: nothing is on. `a`, Enter: the banner now ends with `AI [a] ON`.
+- [ ] **8.2 A harmless errand.** Open TextEdit with an empty document and click into it. `a`, type `write hello from AirPoint in this document`, Enter. Watch: THINKING, then the cursor goes to the target, the glow says `AI 1/12: ...` with a countdown, then it acts. At the end a line is spoken. Note the seconds per step.
+- [ ] **8.3 A question.** With any page or document in front: `a`, `what is the title of this window?`. The answer is spoken and shown.
+- [ ] **8.4 Your own window is hidden.** With the AirPoint camera window visible: `a`, `is there a black rectangle on the screen, and where?`. It should describe one where the AirPoint window is: that is what the model gets instead of your camera picture.
+- [ ] **8.5 Stop by fist.** Start a longer errand (`open Calculator and work out 15 times 12`). Make a fist: it stops with the low sound. Keep the fist a moment, then open your hand: nothing may be clicked. A pinch after the open palm clicks as usual.
+- [ ] **8.6 Stop by moving.** Start it again and swipe your hand quickly sideways: it stops. Start it once more and rest your hand normally for the whole errand: it must not stop by itself. If it did, say what your hand was doing.
+- [ ] **8.7 A step that waits.** In TextEdit with a few words typed: `a`, `close this document without saving`. Before the click that discards it, the helper must stop and ask: the glow says YES OR NO? Thumb down: nothing is lost. Repeat and say yes with a thumb up.
+- [ ] **8.8 Yes and no by pointing.** Repeat 8.7 with an open palm only: a two-way wheel appears in the camera view; point up for yes or down for no and hold.
+- [ ] **8.9 Wrong clicks.** Over three or four errands in real apps (Finder, Safari, Notes): did it ever click the wrong thing, or miss a small target? Which app?
+- [ ] **8.10 One sign, one errand.** `n`, teach a sign with action 7 and a request you would use daily. Hold the sign: the errand starts.
+- [ ] **8.11 Face mode.** `f`, then an errand from `a`: eyebrows stop it; on a step that waits, an open mouth says yes.
+- [ ] **8.12 Spoken.** Only with the on-laptop speech engine (Stage 7): start talk, say "Computer, open the calculator", stop talk.
+
+Report: seconds per step in 8.2, what it said in 8.4, any false stop in 8.6, whether 8.7 asked before
+the discarding click, and every wrong click in 8.9.
