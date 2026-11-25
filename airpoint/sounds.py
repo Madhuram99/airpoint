@@ -1,7 +1,8 @@
 """A short system sound when an action really reaches the operating system. macOS only; silent elsewhere."""
 import os
 import shutil
-import subprocess
+
+from .proc import spawn
 
 FOLDER = "/System/Library/Sounds"
 FILES = {"click": "Tink", "double_click": "Tink", "right_click": "Pop", "drag_start": "Bottle", "drag_end": "Purr",
@@ -19,8 +20,7 @@ def _afplay():
     def play(path):
         running[:] = [p for p in running if p.poll() is None]      # reap finished players
         if len(running) < 4:                                        # never pile up during fast scrolling
-            running.append(subprocess.Popen([exe, "-v", "0.5", path], stdout=subprocess.DEVNULL,
-                                            stderr=subprocess.DEVNULL))
+            running.append(spawn([exe, "-v", "0.5", path]))
     return play
 
 

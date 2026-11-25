@@ -1,9 +1,5 @@
 """What a sign can do besides drive the mouse: speak a phrase, open an app or a link. macOS commands."""
-import subprocess
-
-
-def _quiet(cmd):
-    return subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+from .proc import spawn as _quiet
 
 
 class Effects:

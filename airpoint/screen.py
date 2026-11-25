@@ -6,6 +6,8 @@ from dataclasses import dataclass
 
 import cv2
 
+from . import proc
+
 MIN_WINDOW_PX = 40      # smaller windows of ours (tooltips, status items) are not worth a black box
 
 
@@ -47,13 +49,12 @@ def own_windows(pids):
         return []
 
 
-def capture(run=subprocess.run):
+def capture(run=proc.run):
     """The main display as a BGR image, in pixels. The file it passes through is deleted at once."""
     fd, path = tempfile.mkstemp(suffix=".png")
     os.close(fd)
     try:
-        run(["screencapture", "-x", "-m", "-t", "png", path], check=True, timeout=10,
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        run(["screencapture", "-x", "-m", "-t", "png", path], check=True, timeout=10)
         img = cv2.imread(path)
     except (OSError, subprocess.SubprocessError) as e:
         raise OSError(f"no picture of the screen ({type(e).__name__})") from None
