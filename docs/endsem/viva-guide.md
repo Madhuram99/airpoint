@@ -44,7 +44,7 @@ hand far away give the same 63 numbers.
 the hand is still, so the cursor does not jitter; light smoothing when it moves, so it does not lag.
 Casiez, Roussel and Vogel, CHI 2012.
 
-**Then why another filter for tremor?** A tremor is not jitter: it is a regular oscillation, four to
+**Then why another filter for tremor?** A tremor is not jitter: it is a regular oscillation, three to
 twelve times a second, and it is fast enough that the 1-Euro filter treats it as intended movement
 and lets it through. We measured this before building anything: lowering the cutoff barely helped.
 So a meter estimates the tremor's frequency from three seconds of pointer history, and a notch

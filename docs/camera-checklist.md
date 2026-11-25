@@ -4,6 +4,10 @@ Everything here needs a person at the camera. Stages 1 to 9 were built without o
 list for the single session at the end. Work top to bottom; later items depend on earlier ones.
 For each item note: works / does not work / odd, and anything you had to do differently.
 
+Roughly: stages 1 to 6 an hour and a quarter, stage 7 fifteen minutes, stage 8 twenty, stage 9
+fifteen. Stages 7 (on-laptop speech), 8 and 9.9 each start with a decision that is yours: an install,
+sending screen pictures to OpenAI, and publishing the page.
+
 Start AirPoint in one terminal and the lab in another:
 
 ```bash
@@ -170,3 +174,12 @@ cd ~/Projects/airpoint && venv/bin/python -m http.server 8801      # leave runni
 - [ ] **9.10 A phone.** After 9.9: scan the code with a phone, prop the phone up, and try 9.1 to 9.3. Note the frames a second.
 
 Report: frames a second in 9.1 and 9.10, wrong signs in 9.2, anything that failed in 9.6 and 9.7.
+
+## Stage 10 — wrap up (only you can do these)
+
+- [ ] **10.1 Measurement day.** `docs/endsem/measurement-day.md`: record the team's hands, retrain, run the pointing test per person and mode. This fills the two numbers the dashboard and the report still mark as not measured.
+- [ ] **10.2 Rebuild the numbers.** `venv/bin/python -m airpoint.results`, then open `index.html` and read every card under Results once.
+- [ ] **10.3 Rehearse.** `docs/endsem/demo-script.md` twice with a timer, in the room's light if you can.
+- [ ] **10.4 Backup video.** Record the three-minute demo once it runs clean (QuickTime › New Screen Recording, with the camera view visible).
+- [ ] **10.5 Report and slides.** `docs/endsem/report-draft.md` and `slides-outline.md` are drafts in plain text: put them into the department's format, check every reference against its source, and fill the places marked to measure and the performa block.
+- [ ] **10.6 Viva.** Read `docs/endsem/viva-guide.md` with the team; each person should be able to answer the table "what is measured, and what is not".

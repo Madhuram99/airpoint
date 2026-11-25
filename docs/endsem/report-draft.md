@@ -48,7 +48,7 @@ in a 640-pixel-wide canonical view, so thresholds do not depend on the camera's 
 
 Each frame's 21 landmarks are shifted so the wrist is the origin and divided by the palm length,
 giving 63 numbers that do not change with hand size or distance. A multilayer perceptron
-(63→128→64→6, ReLU) is trained on recorded frames with rotated, scaled and mirrored copies. A
+(63→128→64→6, ReLU) is trained on recorded frames with tilted, slightly noisy and mirrored copies. A
 majority vote over five frames, with a confidence floor of 0.75, keeps single misread frames from
 acting.
 

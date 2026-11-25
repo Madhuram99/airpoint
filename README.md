@@ -261,6 +261,8 @@ models/          trained pose classifier + labels
 profiles/        per-user calibration: filter cutoff + personal model (gitignored)
 tests/           pytest suite
 docs/superpowers specs and implementation plans
+docs/endsem      demo script, viva guide, report draft, slide outline, measurement-day protocol
+docs/camera-checklist.md   everything that still needs a person at the camera, stage by stage
 ```
 
 ## References
