@@ -115,3 +115,25 @@ def test_view_describes_what_to_draw():
     v = w.view
     assert v["mode"] == "open" and v["anchor"] == A and v["pick"] == 4 and v["items"] == list(ITEMS)
     assert 0.0 < v["progress"] < 1.0 and abs(v["dot"][0] ** 2 + v["dot"][1] ** 2 - (30.0 / 70.0) ** 2) < 1e-6
+
+
+def test_a_yes_no_wheel_answers_and_its_empty_slots_and_centre_do_nothing():
+    w = Wheel(items=("yes", "", "", "no", "", ""), centre=None, timeout=35.0)
+    w.open_at(A, 0.0)
+    assert w.mode == "open" and w.frozen and w.view["items"] == ["yes", "", "", "no", "", ""]
+    events, t = run(w, [(A, 3.0, True)], 1)                      # staying put: no click, no countdown
+    assert events == [] and w.progress == 0.0 and w.mode == "open"
+    events, t = run(w, [(at(1), 2.0, True)], t)                  # an empty slot: nothing
+    assert events == [] and w.pick == 1 and w.progress == 0.0
+    events, t = run(w, [(at(0), 0.4, True)], t)
+    assert events == [] and 0.5 < w.progress < 1.0
+    events, t = run(w, [(at(0), 0.3, True)], t)
+    assert events == [("answer", "yes")] and w.mode == "idle"
+    w.open_at(A, t / 10)
+    events, t = run(w, [(at(3), 0.7, True)], t)
+    assert events == [("answer", "no")]
+    w.open_at(A, t / 10)                                         # it outlives the ordinary six seconds
+    events, t = run(w, [(A, 20.0, True)], t)
+    assert w.mode == "open"
+    events, t = run(w, [(A, 20.0, True)], t)
+    assert w.mode == "idle" and events == []

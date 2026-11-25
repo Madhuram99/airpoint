@@ -153,3 +153,18 @@ def test_the_mouse_knows_while_it_is_typing():
     assert m.typing and ActionRunner(m, (100, 100)).typing
     assert m.flush(2.0) and not m.typing
     assert FakeMouse().typing is False
+
+
+def test_point_puts_the_cursor_on_a_screen_point_and_the_runner_remembers_where():
+    m, r = make()
+    assert r.last_xy is None
+    r.apply([Event("point", (40.0, 30.0))])
+    assert m.calls == [] and r.last_xy is None            # the switch is off
+    r.toggle()
+    r.apply([Event("point", (40.0, 30.0)), Event("click")])
+    assert m.calls == [("move", 40, 30), ("click",)] and r.last_xy == (40.0, 30.0)
+    r.move(0.5, 0.5)
+    assert r.last_xy == r.to_screen(0.5, 0.5)
+    r.lock()
+    r.apply([Event("point", (1.0, 1.0))])
+    assert r.last_xy == r.to_screen(0.5, 0.5)

@@ -142,6 +142,7 @@ class ActionRunner:
         self.enabled = False
         self.locked = False       # the user's pause: nothing reaches the OS until unlocked
         self.button_down = False
+        self.last_xy = None       # where the cursor was last put, in screen points
 
     def toggle(self):
         self.release()
@@ -162,7 +163,8 @@ class ActionRunner:
 
     def move(self, nx, ny):
         if self.enabled and not self.locked:
-            self.mouse.move(*self.to_screen(nx, ny))
+            self.last_xy = self.to_screen(nx, ny)
+            self.mouse.move(*self.last_xy)
 
     def apply(self, events):
         if not self.enabled or self.locked:
@@ -181,6 +183,9 @@ class ActionRunner:
                 self.release()
             elif e.kind == "scroll":
                 self.mouse.scroll(e.arg)
+            elif e.kind == "point":          # straight to a screen point: the AI helper's steps
+                self.last_xy = tuple(e.arg)
+                self.mouse.move(*self.last_xy)
             elif e.kind == "hotkey":
                 self.mouse.hotkey(*e.arg)
             elif e.kind == "type":

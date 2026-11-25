@@ -18,7 +18,11 @@ EVENTS = {"click": "click", "talk": "talk", "right": "right_click", "double": "d
 
 
 class Wheel:
-    def __init__(self):
+    def __init__(self, items=ITEMS, centre="click", timeout=OPEN_TIMEOUT_S):
+        """`items`: six slots clockwise from the top; "" is an empty slot. `centre`: what staying put does
+        (None = nothing). An item with no meaning of its own comes back as Event("answer", item): that is
+        how the AI helper asks yes or no of a hand that can only point."""
+        self.items, self.centre, self.timeout = tuple(items), centre, timeout
         self.dwell = DwellDetector()
         self.mode = "idle"          # idle | open | drag | scroll
         self.anchor, self.pick, self.progress = None, -1, 0.0
@@ -34,7 +38,7 @@ class Wheel:
     def view(self):
         """What to draw: mode, anchor, pointed item (-1 = centre), countdown 0..1, where the hand is steering."""
         return {"mode": self.mode, "anchor": self.anchor, "pick": self.pick, "progress": self.progress,
-                "items": list(ITEMS), "dot": (self.offset[0] / R_OUT, self.offset[1] / R_OUT)}
+                "items": list(self.items), "dot": (self.offset[0] / R_OUT, self.offset[1] / R_OUT)}
 
     def reset(self):
         """Close without acting. -> the events needed to leave the system in a clean state."""
@@ -42,6 +46,11 @@ class Wheel:
         self.mode, self.pick, self.progress = "idle", -1, 0.0
         self.dwell.reset()
         return events
+
+    def open_at(self, xy, t):
+        """Open here and now, without waiting for a dwell."""
+        self.mode, self.anchor, self.offset = "open", xy, (0.0, 0.0)
+        self.t_open, self.t_pick, self.pick, self.progress = t, t, -1, 0.0
 
     def _close(self, xy):
         self.mode, self.pick, self.progress = "idle", -1, 0.0
@@ -70,16 +79,19 @@ class Wheel:
     def _choose(self, xy, t):
         dx, dy = self.offset
         r = math.hypot(dx, dy)
-        if r > R_OUT or t - self.t_open > OPEN_TIMEOUT_S:
+        if r > R_OUT or t - self.t_open > self.timeout:
             self._close(xy)
             return []
         pick = -1 if r < R_PICK else int(((90.0 - math.degrees(math.atan2(-dy, dx))) % 360.0 + 30.0) // 60.0) % 6
         if pick != self.pick:
             self.pick, self.t_pick = pick, t
+        item = self.centre if pick == -1 else self.items[pick]
+        if not item:                        # an empty slot, or a centre that does nothing: no countdown
+            self.progress = 0.0
+            return []
         self.progress = min((t - self.t_pick) / (CENTRE_S if pick == -1 else PICK_S), 1.0)
         if self.progress < 1.0:
             return []
-        item = "click" if pick == -1 else ITEMS[pick]
         if item == "drag":
             self.mode, self.progress = "drag", 0.0
             self.dwell.reset()
@@ -89,7 +101,7 @@ class Wheel:
             self.mode, self.t_tick, self.t_rest, self.progress = "scroll", t, t, 0.0
             return []
         self._close(xy)
-        return [Event(EVENTS[item])]
+        return [Event(EVENTS[item])] if item in EVENTS else [Event("answer", item)]
 
     def _scroll(self, xy, t):
         dy = self.offset[1]
