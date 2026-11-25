@@ -13,8 +13,9 @@ PORT = 8765
 MAX_BODY = 8 * 1024 * 1024
 STALE_S = 3.0                       # a live file older than this means AirPoint is not running
 TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
-         ".css": "text/css; charset=utf-8", ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png"}
-ROOT_FILES = ("index.html", "results.js")   # the dashboard, served beside the lab
+         ".css": "text/css; charset=utf-8", ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png",
+         ".task": "application/octet-stream"}
+ROOT_FILES = ("index.html", "results.js", "hand_landmarker.task")   # the dashboard and the hand model, beside the lab
 
 
 def read_state(root):
@@ -106,6 +107,8 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, {"conditions": aggregate(blocks), "blocks": recent})
         elif path.startswith("/lab/"):
             self._file(os.path.join(self.root, "lab"), path[len("/lab/"):])
+        elif path.startswith("/try/"):               # the browser demo: one server shows everything
+            self._file(os.path.join(self.root, "try"), path[len("/try/"):] or "index.html")
         elif path.lstrip("/") in ROOT_FILES:
             self._file(self.root, path.lstrip("/"))
         else:

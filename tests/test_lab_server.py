@@ -17,6 +17,11 @@ def lab(tmp_path):
     (tmp_path / "lab" / "lab.js").write_text("// js")
     (tmp_path / "index.html").write_text("<h1>dashboard</h1>")
     (tmp_path / "secret.txt").write_text("not served")
+    (tmp_path / "try").mkdir()
+    (tmp_path / "try" / "index.html").write_text("<h1>try it</h1>")
+    (tmp_path / "try" / "model.json").write_text("{}")
+    (tmp_path / "try" / "parity.mjs").write_text("// a tool for the terminal, not for the browser")
+    (tmp_path / "hand_landmarker.task").write_bytes(b"model")
     httpd = server.make_server(str(tmp_path), port=0)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     yield tmp_path, f"http://127.0.0.1:{httpd.server_address[1]}"
@@ -56,6 +61,10 @@ def test_serves_the_lab_pages_and_the_dashboard_and_nothing_else(lab):
     assert status(base + "/lab/../secret.txt") == 404
     assert status(base + "/lab/%2e%2e/secret.txt") == 404
     assert status(base + "/lab/missing.html") == 404
+    assert get(base + "/try/")[2] == "<h1>try it</h1>" and get(base + "/try/index.html")[2] == "<h1>try it</h1>"
+    assert get(base + "/try/model.json")[1] == "application/json"
+    assert get(base + "/hand_landmarker.task")[1] == "application/octet-stream"
+    assert status(base + "/try/../secret.txt") == 404 and status(base + "/try/parity.mjs") == 404
 
 
 def test_state_is_not_running_without_a_fresh_live_file(lab):

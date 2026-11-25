@@ -21,6 +21,11 @@ const Lab = {
   },
   saveWho(who) { localStorage.setItem(this.KEY, JSON.stringify(who)); },
 
+  // Is the lab's own server behind this page? Not when the folder is simply published as a web site.
+  async hasServer() {
+    try { return (await fetch("/api/state")).ok; } catch (e) { return false; }
+  },
+
   // AirPoint's live settings, or {running: false} when it is not running or the server is away.
   async state() {
     try { return await this.api("/api/state"); } catch (e) { return { running: false, state: null }; }
